@@ -1,0 +1,27 @@
+{
+  "name": "order-captain",
+  "private": true,
+  "version": "0.1.0",
+  "description": "اطلب كابتن — نظام تشغيل توصيل (مطاعم، كباتن، إدارة)",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "postinstall": "npm run build -w @captain/shared",
+    "build": "npm run build -w @captain/shared && npm run build -w @captain/api && npm run build -w @captain/web",
+    "dev": "concurrently -n shared,api,web -c blue,green,magenta \"npm run dev -w @captain/shared\" \"npm run dev -w @captain/api\" \"npm run dev -w @captain/web\"",
+    "dev:api": "npm run dev -w @captain/api",
+    "dev:web": "npm run dev -w @captain/web",
+    "db:generate": "npm run db:generate -w @captain/api",
+    "db:migrate": "npm run db:migrate -w @captain/api",
+    "db:push": "npm run db:push -w @captain/api",
+    "lint": "npm run lint -w @captain/api -w @captain/web --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
