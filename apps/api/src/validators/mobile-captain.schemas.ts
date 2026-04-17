@@ -2,10 +2,16 @@ import { z } from "zod";
 import { CaptainAvailabilityStatus, OrderStatus } from "@prisma/client";
 import { PaginationQuerySchema } from "./pagination.schemas.js";
 
-export const MobileCaptainLoginBodySchema = z.object({
-  phone: z.string().min(5).max(32),
-  password: z.string().min(1),
-});
+export const MobileCaptainLoginBodySchema = z
+  .object({
+    phone: z.string().min(5).max(32).optional(),
+    email: z.string().email().optional(),
+    password: z.string().min(1),
+  })
+  .refine((d) => Boolean(d.phone?.trim() || d.email?.trim()), {
+    message: "phone_or_email_required",
+    path: ["phone"],
+  });
 
 export const MobileCaptainRefreshBodySchema = z.object({
   refreshToken: z.string().min(10),

@@ -4,10 +4,15 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../utils/errors.js";
 import { activityService } from "../activity.service.js";
 import { notificationService } from "../notifications.service.js";
-import { ASSIGNMENT_TIMEOUT_NOTE, DISTRIBUTION_MAX_AUTO_ATTEMPTS, DISTRIBUTION_TIMEOUT_SECONDS } from "./constants.js";
+import {
+  ASSIGNMENT_TIMEOUT_NOTE,
+  AUTO_CAPTAIN_MAX_ACTIVE_ORDERS,
+  DISTRIBUTION_MAX_AUTO_ATTEMPTS,
+  DISTRIBUTION_TIMEOUT_SECONDS,
+} from "./constants.js";
 import { eligibleCaptainsForAutoDistribution, captainEligibleForManualOverride } from "./eligibility.js";
 import { lockOrderDistributionTx } from "./order-lock.js";
-import { countCompletedAutoRounds, pickCaptainAtRoundIndex } from "./round-robin.js";
+import { countCompletedAutoRounds, pickCaptainForAutoOffer } from "./round-robin.js";
 
 function expiredAtFromNow(): Date {
   return new Date(Date.now() + DISTRIBUTION_TIMEOUT_SECONDS * 1000);
@@ -108,12 +113,30 @@ export class DistributionEngine {
       orderBy: { id: "asc" },
     });
 
-    if (pool.length === 0) {
+    const capacityRows = await tx.order.groupBy({
+      by: ["assignedCaptainId"],
+      where: {
+        assignedCaptainId: { not: null },
+        distributionMode: DistributionMode.AUTO,
+        status: { in: [OrderStatus.ASSIGNED, OrderStatus.ACCEPTED, OrderStatus.PICKED_UP, OrderStatus.IN_TRANSIT] },
+      },
+      _count: { _all: true },
+    });
+    const loadByCaptain = new Map(
+      capacityRows
+        .filter((r) => r.assignedCaptainId)
+        .map((r) => [r.assignedCaptainId as string, r._count._all]),
+    );
+    const availablePool = pool.filter((c) => (loadByCaptain.get(c.id) ?? 0) < AUTO_CAPTAIN_MAX_ACTIVE_ORDERS);
+
+    if (availablePool.length === 0) {
       await tx.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.PENDING, assignedCaptainId: null },
       });
-      await activityService.logTx(tx, actorUserId, "DISTRIBUTION_NO_ELIGIBLE_CAPTAINS", "order", orderId, {});
+      await activityService.logTx(tx, actorUserId, "DISTRIBUTION_NO_ELIGIBLE_CAPTAINS", "order", orderId, {
+        reason: "AUTO_CAPACITY_REACHED_OR_NO_AVAILABLE",
+      });
       return null;
     }
 
@@ -129,7 +152,7 @@ export class DistributionEngine {
       return null;
     }
 
-    const captain = pickCaptainAtRoundIndex(pool, rounds);
+    const captain = pickCaptainForAutoOffer(availablePool, orderId, rounds);
     if (!captain) return null;
 
     await tx.orderAssignmentLog.create({
@@ -161,7 +184,7 @@ export class DistributionEngine {
     await activityService.logTx(tx, actorUserId, "DISTRIBUTION_AUTO_OFFER", "order", orderId, {
       captainId: captain.id,
       roundIndex: rounds,
-      poolSize: pool.length,
+      poolSize: availablePool.length,
     });
 
     return { captainId: captain.id };
@@ -229,6 +252,62 @@ export class DistributionEngine {
       await this.offerNextAutoCaptainTx(tx, orderId, actorUserId);
 
       return tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
+    });
+  }
+
+  async cancelCaptainAssignment(orderId: string, actorUserId: string | null) {
+    return prisma.$transaction(async (tx) => {
+      await lockOrderDistributionTx(tx, orderId);
+      const order = await loadOrder(tx, orderId);
+      if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
+
+      if (!order.assignedCaptainId) {
+        throw new AppError(409, "Order has no assigned captain", "INVALID_STATE");
+      }
+
+      if (order.status === OrderStatus.DELIVERED || order.status === OrderStatus.CANCELLED) {
+        throw new AppError(409, "Cannot cancel captain on closed order", "INVALID_STATE");
+      }
+
+      const previousCaptainId = order.assignedCaptainId;
+      const previousCaptain = await tx.captain.findUnique({
+        where: { id: previousCaptainId },
+        include: { user: { select: { id: true } } },
+      });
+
+      await tx.orderAssignmentLog.updateMany({
+        where: { orderId, responseStatus: AssignmentResponseStatus.PENDING },
+        data: {
+          responseStatus: AssignmentResponseStatus.CANCELLED,
+          notes: "Cancelled: dispatcher removed captain assignment",
+        },
+      });
+
+      await tx.order.update({
+        where: { id: orderId },
+        data: {
+          assignedCaptainId: null,
+          status: OrderStatus.CONFIRMED,
+        },
+      });
+
+      await activityService.logTx(tx, actorUserId, "ORDER_CAPTAIN_ASSIGNMENT_CANCELLED", "order", orderId, {
+        captainId: previousCaptainId,
+      });
+
+      const cancelledCaptainUserId = previousCaptain?.user.id ?? null;
+      if (cancelledCaptainUserId) {
+        await notificationService.notifyCaptainTx(
+          tx,
+          cancelledCaptainUserId,
+          "ORDER_ASSIGNMENT_CANCELLED",
+          "تم إلغاء التعيين",
+          `تم إلغاء تعيينك من الطلب ${order.orderNumber}.`,
+        );
+      }
+
+      const nextOrder = await tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
+      return { order: nextOrder, cancelledCaptainUserId };
     });
   }
 

@@ -24,14 +24,20 @@ export const captainsController = {
       page?: number;
       pageSize?: number;
       area?: string;
-      isActive?: boolean;
+      isActive?: boolean | string;
       availabilityStatus?: string;
     };
+    const isActive =
+      q.isActive === undefined
+        ? undefined
+        : typeof q.isActive === "string"
+          ? q.isActive === "true"
+          : q.isActive;
     const data = await captainsService.list({
       page: Number(q.page) || 1,
       pageSize: Number(q.pageSize) || 20,
       area: q.area,
-      isActive: q.isActive,
+      isActive,
       availabilityStatus: q.availabilityStatus as never,
     });
     return res.json(ok(data));
@@ -59,6 +65,25 @@ export const captainsController = {
 
   stats: async (req: Request, res: Response) => {
     const data = await captainsService.stats(pathParam(req, "id"));
+    return res.json(ok(data));
+  },
+
+  listOrders: async (req: Request, res: Response) => {
+    const q = req.query as Record<string, string | undefined>;
+    const data = await captainsService.listOrders(pathParam(req, "id"), {
+      page: Number(q.page) || 1,
+      pageSize: Number(q.pageSize) || 20,
+      from: q.from,
+      to: q.to,
+      q: q.q,
+      area: q.area,
+      status: q.status as never,
+    });
+    return res.json(ok(data));
+  },
+
+  deleteCaptain: async (req: Request, res: Response) => {
+    const data = await captainsService.deleteCaptain(pathParam(req, "id"), req.user!.id);
     return res.json(ok(data));
   },
 };

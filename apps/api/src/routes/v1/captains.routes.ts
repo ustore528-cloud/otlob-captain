@@ -9,6 +9,7 @@ import {
   UpdateCaptainBodySchema,
   CaptainIdParamSchema,
   ListCaptainsQuerySchema,
+  ListCaptainOrdersQuerySchema,
   CaptainAvailabilityBodySchema,
 } from "../../validators/captains.schemas.js";
 import { captainsController } from "../../controllers/captains.controller.js";
@@ -58,6 +59,21 @@ router.patch(
     });
     return res.json(ok(data));
   }),
+);
+
+router.get(
+  "/:id/orders",
+  requireRoles("ADMIN", "DISPATCHER"),
+  validate("params", CaptainIdParamSchema),
+  validate("query", ListCaptainOrdersQuerySchema),
+  asyncHandler(captainsController.listOrders.bind(captainsController)),
+);
+
+router.delete(
+  "/:id",
+  requireRoles("ADMIN"),
+  validate("params", CaptainIdParamSchema),
+  asyncHandler(captainsController.deleteCaptain.bind(captainsController)),
 );
 
 router.get(

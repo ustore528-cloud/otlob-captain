@@ -2,7 +2,7 @@
   "expo": {
     "name": "اطلب كابتن",
     "slug": "captain-mobile",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "captain",
@@ -12,13 +12,19 @@
       "resizeMode": "contain",
       "backgroundColor": "#0f172a"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.captain.mobile",
+      "buildNumber": "2",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "نستخدم موقعك لعرضك على خريطة التوزيع ولتتبع الطلبات النشطة.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "للتتبع أثناء التوصيل عند تفعيل الخلفية لاحقًا."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "للتتبع أثناء التوصيل عند تفعيل الخلفية لاحقًا.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "android": {
@@ -27,14 +33,38 @@
         "backgroundColor": "#0f172a"
       },
       "package": "com.captain.mobile",
-      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+      "versionCode": 2,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
-    "plugins": ["expo-router", "expo-secure-store"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "نستخدم موقعك لعرضك على خريطة التوزيع ولتتبع الطلبات النشطة.",
+          "locationAlwaysAndWhenInUsePermission": "للتتبع أثناء التوصيل عند تفعيل الخلفية لاحقًا."
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": { "origin": false }
+      "router": {
+        "origin": false,
+        "root": "src/app"
+      },
+      "eas": {
+        "projectId": "15b7a579-2bc6-4aec-9e2e-d16fe98d3916"
+      }
     }
   }
 }

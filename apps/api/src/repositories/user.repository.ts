@@ -1,6 +1,25 @@
 import type { Prisma, UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 
+const userPublicSelect = {
+  id: true,
+  fullName: true,
+  phone: true,
+  email: true,
+  role: true,
+  isActive: true,
+  createdAt: true,
+  updatedAt: true,
+  customerPickupAddress: true,
+  customerDropoffAddress: true,
+  customerLocationLink: true,
+  customerArea: true,
+  customerDropoffLat: true,
+  customerDropoffLng: true,
+  customerPreferredAmount: true,
+  customerPreferredDelivery: true,
+} satisfies Prisma.UserSelect;
+
 export const userRepository = {
   findById(id: string) {
     return prisma.user.findUnique({ where: { id } });
@@ -24,16 +43,7 @@ export const userRepository = {
         orderBy: { createdAt: "desc" },
         skip: (params.page - 1) * params.pageSize,
         take: params.pageSize,
-        select: {
-          id: true,
-          fullName: true,
-          phone: true,
-          email: true,
-          role: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+        select: userPublicSelect,
       }),
     ]);
   },
@@ -42,16 +52,15 @@ export const userRepository = {
     return prisma.user.update({
       where: { id },
       data: { isActive },
-      select: {
-        id: true,
-        fullName: true,
-        phone: true,
-        email: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: userPublicSelect,
+    });
+  },
+
+  updateCustomerProfile(id: string, data: Prisma.UserUpdateInput) {
+    return prisma.user.update({
+      where: { id },
+      data,
+      select: userPublicSelect,
     });
   },
 

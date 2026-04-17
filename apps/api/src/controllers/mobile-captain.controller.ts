@@ -7,7 +7,7 @@ import { toOrderDetailDto } from "../dto/order.dto.js";
 
 export const mobileCaptainController = {
   login: async (req: Request, res: Response) => {
-    const body = req.body as { phone: string; password: string };
+    const body = req.body as { phone?: string; email?: string; password: string };
     const data = await captainMobileService.login(body);
     return res.json(ok(data));
   },

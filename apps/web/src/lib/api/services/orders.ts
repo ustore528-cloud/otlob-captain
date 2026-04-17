@@ -2,7 +2,7 @@ import { apiFetch, paths } from "@/lib/api/http";
 import type { OrderListItem, Paginated } from "@/types/api";
 
 export type CreateOrderPayload = {
-  storeId: string;
+  storeId?: string;
   customerName: string;
   customerPhone: string;
   pickupAddress: string;
@@ -10,6 +10,8 @@ export type CreateOrderPayload = {
   area: string;
   amount: number;
   cashCollection?: number;
+  dropoffLatitude?: number;
+  dropoffLongitude?: number;
   notes?: string;
   distributionMode?: "AUTO" | "MANUAL";
 };
@@ -61,5 +63,12 @@ export function distributionDragDrop(token: string, orderId: string, captainId: 
     method: "POST",
     token,
     body: JSON.stringify({ captainId }),
+  });
+}
+
+export function distributionCancelCaptain(token: string, orderId: string) {
+  return apiFetch<unknown>(paths.orders.distributionCancelCaptain(orderId), {
+    method: "POST",
+    token,
   });
 }

@@ -43,6 +43,17 @@ export function DraggableOrderCard({ order, onDragState, onManual, onResend, bus
               {order.customerPhone}
             </p>
             <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted">{order.pickupAddress}</p>
+            {order.assignedCaptain ? (
+              <p className="mt-1 text-xs text-muted">
+                الكابتن الحالي: {order.assignedCaptain.user.fullName}
+                {order.status === "ASSIGNED" ? " (بانتظار القبول/الرفض)" : ""}
+              </p>
+            ) : null}
+            {order.distributionMode === "AUTO" && order.status === "ASSIGNED" ? (
+              <p className="mt-1 rounded-md bg-amber-500/15 px-2 py-1 text-[11px] text-amber-900 dark:text-amber-100">
+                التوزيع التلقائي: عند الرفض أو انتهاء المهلة ينتقل الطلب تلقائياً إلى كابتن آخر متاح.
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:items-end">

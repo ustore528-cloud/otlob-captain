@@ -13,7 +13,9 @@ setInterval(() => {
   void distributionService.tickExpired();
 }, env.DISTRIBUTION_POLL_MS);
 
-httpServer.listen(env.PORT, () => {
+const HOST = "0.0.0.0";
+
+httpServer.listen(env.PORT, HOST, () => {
   // eslint-disable-next-line no-console
-  console.log(`API listening on http://localhost:${env.PORT}`);
+  console.log(`API listening on http://${HOST}:${env.PORT} (reachable on LAN for device QA)`);
 });

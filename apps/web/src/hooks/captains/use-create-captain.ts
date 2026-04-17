@@ -11,6 +11,9 @@ export function useCreateCaptain() {
     onSuccess: async () => {
       toastSuccess("تم إنشاء الكابتن");
       await qc.invalidateQueries({ queryKey: queryKeys.captains.root });
+      await qc.invalidateQueries({ queryKey: queryKeys.users.root });
+      await qc.invalidateQueries({ queryKey: queryKeys.dashboard.root });
+      await qc.invalidateQueries({ queryKey: queryKeys.tracking.root });
     },
     onError: (e) => toastApiError(e, "تعذر إنشاء الكابتن"),
   });

@@ -7,7 +7,7 @@ export const OrderIdParamSchema = z.object({
 });
 
 export const CreateOrderBodySchema = z.object({
-  storeId: z.string().cuid(),
+  storeId: z.string().cuid().optional(),
   customerName: z.string().min(1).max(200),
   customerPhone: z.string().min(5).max(32),
   pickupAddress: z.string().min(1).max(500),
@@ -15,6 +15,8 @@ export const CreateOrderBodySchema = z.object({
   area: z.string().min(1).max(200),
   amount: z.coerce.number().nonnegative(),
   cashCollection: z.coerce.number().nonnegative().optional(),
+  dropoffLatitude: z.number().min(-90).max(90).optional(),
+  dropoffLongitude: z.number().min(-180).max(180).optional(),
   notes: z.string().max(2000).optional(),
   distributionMode: z.nativeEnum(DistributionMode).optional(),
 });

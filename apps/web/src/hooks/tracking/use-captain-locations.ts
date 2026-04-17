@@ -7,6 +7,8 @@ export function useCaptainLocations(options?: {
   captainIds?: string[];
   enabledActiveMap?: boolean;
   enabledLatest?: boolean;
+  /** تحديث دوري للخريطة (مثلاً صفحة التوزيع لمتابعة انتقال العرض بين الكباتن) */
+  activeMapRefetchInterval?: number | false;
 }) {
   const token = useAuthStore((s) => s.token);
   const role = useAuthStore((s) => s.user?.role);
@@ -17,6 +19,7 @@ export function useCaptainLocations(options?: {
     queryKey: queryKeys.tracking.activeMap(),
     queryFn: () => api.tracking.activeMap(),
     enabled: (options?.enabledActiveMap ?? true) && Boolean(token) && can,
+    refetchInterval: options?.activeMapRefetchInterval,
   });
 
   const latestLocations = useQuery({

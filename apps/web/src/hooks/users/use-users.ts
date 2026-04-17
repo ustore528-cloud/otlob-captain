@@ -13,8 +13,8 @@ function toListQuery(p: UsersListParams) {
 
 export function useUsers(params: UsersListParams, options?: { enabled?: boolean }) {
   const token = useAuthStore((s) => s.token);
-  const role = useAuthStore((s) => s.user?.role);
-  const can = role === "ADMIN" || role === "DISPATCHER";
+  const viewerRole = useAuthStore((s) => s.user?.role);
+  const can = viewerRole === "ADMIN" || viewerRole === "DISPATCHER";
   return useQuery({
     queryKey: queryKeys.users.list(params),
     queryFn: () => api.users.list(toListQuery(params)),

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/api/query-keys";
+import { invalidateOrderDistributionDomain } from "@/lib/invalidate-order-domain";
 import { api } from "@/lib/api/singleton";
 import { toastApiError, toastSuccess } from "@/lib/toast";
 
@@ -9,8 +9,7 @@ export function useStartOrderAutoDistribution() {
     mutationFn: (orderId: string) => api.orders.distributionAuto(orderId),
     onSuccess: async () => {
       toastSuccess("تم بدء التوزيع التلقائي");
-      await qc.invalidateQueries({ queryKey: queryKeys.orders.root });
-      await qc.invalidateQueries({ queryKey: queryKeys.dashboard.root });
+      await invalidateOrderDistributionDomain(qc);
     },
     onError: (e) => toastApiError(e, "تعذر بدء التوزيع"),
   });

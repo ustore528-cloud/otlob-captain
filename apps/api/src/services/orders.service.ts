@@ -16,7 +16,7 @@ import {
 export const ordersService = {
   async create(
     input: {
-      storeId: string;
+      storeId?: string;
       customerName: string;
       customerPhone: string;
       pickupAddress: string;
@@ -24,31 +24,67 @@ export const ordersService = {
       area: string;
       amount: number;
       cashCollection?: number;
+      dropoffLatitude?: number;
+      dropoffLongitude?: number;
       notes?: string;
       distributionMode?: "AUTO" | "MANUAL";
     },
     actor: { userId: string; role: string; storeId: string | null },
   ) {
+    let resolvedStoreId = input.storeId;
+
     if (actor.role === "STORE") {
-      if (!actor.storeId || input.storeId !== actor.storeId) {
+      if (!actor.storeId || (resolvedStoreId && resolvedStoreId !== actor.storeId)) {
         throw new AppError(403, "Cannot create order for another store", "FORBIDDEN");
+      }
+      resolvedStoreId = actor.storeId;
+    }
+
+    if (!resolvedStoreId && (actor.role === "ADMIN" || actor.role === "DISPATCHER")) {
+      const existing = await prisma.store.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: "asc" },
+      });
+      if (existing) {
+        resolvedStoreId = existing.id;
+      } else {
+        const operationalStore = await prisma.store.create({
+          data: {
+            name: "متجر التشغيل",
+            phone: "0000000000",
+            area: "عام",
+            address: "تشغيل النظام (بدون متجر فعلي)",
+            ownerUserId: actor.userId,
+            isActive: true,
+          },
+        });
+        resolvedStoreId = operationalStore.id;
       }
     }
 
-    const store = await prisma.store.findUnique({ where: { id: input.storeId } });
+    if (!resolvedStoreId) {
+      throw new AppError(400, "storeId is required", "BAD_REQUEST");
+    }
+
+    const store = await prisma.store.findUnique({ where: { id: resolvedStoreId } });
     if (!store?.isActive) throw new AppError(400, "Store not found or inactive", "BAD_REQUEST");
+
+    const notesWithCoords =
+      input.dropoffLatitude != null && input.dropoffLongitude != null
+        ? `${input.notes ? `${input.notes}\n` : ""}[coords] lat=${input.dropoffLatitude.toFixed(6)}, lng=${input.dropoffLongitude.toFixed(6)}`
+        : input.notes;
 
     const order = await orderRepository.create({
       orderNumber: generateOrderNumber(),
       customerName: input.customerName,
       customerPhone: input.customerPhone,
-      store: { connect: { id: input.storeId } },
+      store: { connect: { id: resolvedStoreId } },
       pickupAddress: input.pickupAddress,
       dropoffAddress: input.dropoffAddress,
       area: input.area,
       amount: new Prisma.Decimal(input.amount),
       cashCollection: new Prisma.Decimal(input.cashCollection ?? 0),
-      notes: input.notes,
+      notes: notesWithCoords,
       status: OrderStatus.PENDING,
       distributionMode: input.distributionMode ?? DistributionMode.AUTO,
       createdBy: { connect: { id: actor.userId } },

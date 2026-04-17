@@ -7,6 +7,7 @@ import {
   CreateNotificationBodySchema,
   NotificationIdParamSchema,
   ListNotificationsQuerySchema,
+  QuickStatusAlertBodySchema,
 } from "../../validators/notifications.schemas.js";
 import { notificationsController } from "../../controllers/notifications.controller.js";
 
@@ -18,6 +19,13 @@ router.post(
   requireRoles("ADMIN", "DISPATCHER"),
   validate("body", CreateNotificationBodySchema),
   asyncHandler(notificationsController.create.bind(notificationsController)),
+);
+
+router.post(
+  "/quick-status",
+  requireRoles("ADMIN", "DISPATCHER"),
+  validate("body", QuickStatusAlertBodySchema),
+  asyncHandler(notificationsController.quickStatusAlert.bind(notificationsController)),
 );
 
 router.get(

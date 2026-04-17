@@ -1,6 +1,7 @@
 import { paths } from "@captain/shared";
 
 const BASE = import.meta.env.VITE_API_URL ?? "";
+let unauthorizedHandler: (() => void) | null = null;
 
 export type ApiSuccess<T> = { success: true; data: T };
 export type ApiFail = { success: false; error: { code: string; message: string; details?: unknown } };
@@ -15,6 +16,10 @@ export class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
+}
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
 }
 
 function parseJson(text: string): unknown {
@@ -46,6 +51,9 @@ export async function apiFetch<T>(
   const json = parseJson(text);
 
   if (!res.ok) {
+    if (res.status === 401 && unauthorizedHandler) {
+      unauthorizedHandler();
+    }
     const body = json as ApiFail | null;
     if (body && body.success === false && body.error) {
       throw new ApiError(body.error.message, res.status, body.error.code, body.error.details);

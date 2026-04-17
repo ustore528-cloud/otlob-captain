@@ -12,6 +12,8 @@ export const queryKeys = {
     root: ["captains"] as const,
     list: (params: CaptainsListParams) => ["captains", "list", params] as const,
     stats: (id: string) => ["captains", "stats", id] as const,
+    orders: (captainId: string, params: CaptainOrdersQueryParams) =>
+      ["captains", captainId, "orders", params] as const,
   },
 
   users: {
@@ -62,6 +64,16 @@ export type CaptainsListParams = {
   area?: string;
   isActive?: boolean;
   availabilityStatus?: string;
+};
+
+export type CaptainOrdersQueryParams = {
+  page?: number;
+  pageSize?: number;
+  from?: string;
+  to?: string;
+  q?: string;
+  area?: string;
+  status?: string;
 };
 
 export type UsersListParams = {

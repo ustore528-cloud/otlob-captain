@@ -1,12 +1,11 @@
-import type { ReactNode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { queryClient } from "@/lib/query-client";
 
-export function AppProviders({ children }: { children: ReactNode }) {
+export function AppProviders({ children }: { children: unknown }) {
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      {children as never}
       <Toaster dir="rtl" position="top-center" richColors closeButton />
     </QueryClientProvider>
   );

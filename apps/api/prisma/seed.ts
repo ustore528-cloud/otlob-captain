@@ -77,11 +77,47 @@ async function main() {
 
   await prisma.captain.upsert({
     where: { userId: captainUser.id },
-    update: {},
+    update: {
+      vehicleType: "دراجه ناريه",
+      area: "الرياض",
+      isActive: true,
+      availabilityStatus: $Enums.CaptainAvailabilityStatus.AVAILABLE,
+    },
     create: {
       userId: captainUser.id,
-      vehicleType: "motorcycle",
+      vehicleType: "دراجه ناريه",
       area: "الرياض",
+      isActive: true,
+      availabilityStatus: $Enums.CaptainAvailabilityStatus.AVAILABLE,
+    },
+  });
+
+  /** كابتن مخصّص للمعاينة (لوحة التحكم + تطبيق الكابتن) — نفس كلمة مرور بقية الـ seed */
+  const previewCaptainUser = await prisma.user.upsert({
+    where: { phone: "+966599999991" },
+    update: {},
+    create: {
+      fullName: "كابتن معاينة",
+      phone: "+966599999991",
+      email: "preview-captain@example.com",
+      passwordHash,
+      role: $Enums.UserRole.CAPTAIN,
+      isActive: true,
+    },
+  });
+
+  await prisma.captain.upsert({
+    where: { userId: previewCaptainUser.id },
+    update: {
+      vehicleType: "دراجه ناريه",
+      area: "الرياض — معاينة",
+      isActive: true,
+      availabilityStatus: $Enums.CaptainAvailabilityStatus.AVAILABLE,
+    },
+    create: {
+      userId: previewCaptainUser.id,
+      vehicleType: "دراجه ناريه",
+      area: "الرياض — معاينة",
       isActive: true,
       availabilityStatus: $Enums.CaptainAvailabilityStatus.AVAILABLE,
     },
@@ -89,8 +125,14 @@ async function main() {
 
   // eslint-disable-next-line no-console
   console.log(
-    "Seed OK: users (ADMIN, DISPATCHER, STORE, CAPTAIN), store, captain profile",
+    "Seed OK: users (ADMIN, DISPATCHER, STORE, CAPTAIN×2), store, captain profiles",
   );
+  // eslint-disable-next-line no-console
+  console.log(
+    "معاينة تسجيل دخول الكابتن: هاتف +966599999991 | كلمة المرور: Admin12345!",
+  );
+  // eslint-disable-next-line no-console
+  console.log("كابتن تجريبي إضافي: +966511111111 | نفس كلمة المرور أعلاه.");
 }
 
 main()

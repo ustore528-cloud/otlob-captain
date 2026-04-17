@@ -1,6 +1,16 @@
 import type { Prisma } from "@prisma/client";
+import { prisma } from "../lib/prisma.js";
 import { notificationRepository } from "../repositories/notification.repository.js";
 import { activityService } from "./activity.service.js";
+
+type QuickStatusCode = "PRESSURE" | "LOW_ACTIVITY" | "RAISE_READINESS" | "ON_FIRE";
+
+const QUICK_STATUS_LABEL: Record<QuickStatusCode, string> = {
+  PRESSURE: "ضغط",
+  LOW_ACTIVITY: "حركة ضعيفة",
+  RAISE_READINESS: "ارفع الجاهزية",
+  ON_FIRE: "الوضع نار",
+};
 
 export const notificationService = {
   async create(userId: string, type: string, title: string, body: string, actorUserId?: string | null) {
@@ -38,5 +48,32 @@ export const notificationService = {
 
   markAllRead(userId: string) {
     return notificationRepository.markAllRead(userId);
+  },
+
+  async sendQuickStatusAlert(status: QuickStatusCode, actorUserId: string) {
+    const label = QUICK_STATUS_LABEL[status];
+    const captains = await prisma.captain.findMany({
+      where: { isActive: true, user: { isActive: true } },
+      select: { userId: true },
+    });
+    if (captains.length === 0) {
+      await activityService.log(actorUserId, "QUICK_STATUS_ALERT", "notification", "none", { status, label, count: 0 });
+      return { status, label, sent: 0 };
+    }
+
+    await prisma.notification.createMany({
+      data: captains.map((c) => ({
+        userId: c.userId,
+        type: "QUICK_STATUS_ALERT",
+        title: `تنبيه التشغيل: ${label}`,
+        body: `حالة الشغل الآن: ${label}`,
+      })),
+    });
+    await activityService.log(actorUserId, "QUICK_STATUS_ALERT", "notification", status, {
+      status,
+      label,
+      count: captains.length,
+    });
+    return { status, label, sent: captains.length };
   },
 };

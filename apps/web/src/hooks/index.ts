@@ -5,14 +5,20 @@ export { useCreateOrder } from "./orders/use-create-order";
 export { useResendOrderToDistribution } from "./orders/use-resend-order-to-distribution";
 export { useAssignOrderToCaptain, type AssignOrderMode, type AssignOrderToCaptainVariables } from "./orders/use-assign-order-to-captain";
 export { useStartOrderAutoDistribution } from "./orders/use-start-order-auto-distribution";
+export { useCancelOrderCaptainAssignment } from "./orders/use-cancel-order-captain-assignment";
 
 export { useCaptains, DEFAULT_CAPTAINS_LIST } from "./captains/use-captains";
 export { useToggleCaptain } from "./captains/use-toggle-captain";
 export { useCreateCaptain } from "./captains/use-create-captain";
 export { useCaptainStats } from "./captains/use-captain-stats";
+export { useCaptainOrdersReport } from "./captains/use-captain-orders-report";
+export { useUpdateCaptain } from "./captains/use-update-captain";
+export { useDeleteCaptain } from "./captains/use-delete-captain";
 
 export { useUsers } from "./users/use-users";
+export { useCreateUser } from "./users/use-create-user";
 export { useToggleUserActive } from "./users/use-toggle-user-active";
+export { useUpdateUserCustomerProfile } from "./users/use-update-user-customer-profile";
 
 export { useDashboardStats } from "./dashboard/use-dashboard-stats";
 
@@ -20,4 +26,5 @@ export { useCaptainLocations } from "./tracking/use-captain-locations";
 
 export { useStores } from "./stores/use-stores";
 export { useNotifications } from "./notifications/use-notifications";
+export { useSendQuickStatusAlert, type QuickStatusCode } from "./notifications/use-send-quick-status-alert";
 export { useActivityList } from "./activity/use-activity-list";

@@ -15,11 +15,15 @@ function toListQuery(p: OrdersListParams) {
   };
 }
 
-export function useOrders(params: OrdersListParams, options?: { enabled?: boolean }) {
+export function useOrders(
+  params: OrdersListParams,
+  options?: { enabled?: boolean; refetchInterval?: number | false },
+) {
   const token = useAuthStore((s) => s.token);
   return useQuery({
     queryKey: queryKeys.orders.list(params),
     queryFn: () => api.orders.list(toListQuery(params)),
     enabled: (options?.enabled ?? true) && Boolean(token),
+    refetchInterval: options?.refetchInterval,
   });
 }

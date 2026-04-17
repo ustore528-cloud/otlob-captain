@@ -30,16 +30,24 @@ export function createApiClient(getToken: GetToken) {
       distributionManual: (orderId: string, captainId: string) => orders.distributionManual(t(), orderId, captainId),
       distributionDragDrop: (orderId: string, captainId: string) =>
         orders.distributionDragDrop(t(), orderId, captainId),
+      distributionCancelCaptain: (orderId: string) => orders.distributionCancelCaptain(t(), orderId),
     },
     captains: {
       list: (q?: Parameters<typeof captains.listCaptains>[1]) => captains.listCaptains(t(), q),
       create: (body: captains.CreateCaptainPayload) => captains.createCaptain(t(), body),
       setActive: (id: string, isActive: boolean) => captains.setCaptainActive(t(), id, isActive),
       stats: (id: string) => captains.getCaptainStats(t(), id),
+      orders: (id: string, q?: Parameters<typeof captains.listCaptainOrders>[2]) =>
+        captains.listCaptainOrders(t(), id, q),
+      update: (id: string, body: captains.UpdateCaptainPayload) => captains.updateCaptain(t(), id, body),
+      delete: (id: string) => captains.deleteCaptain(t(), id),
     },
     users: {
       list: (q?: Parameters<typeof users.listUsers>[1]) => users.listUsers(t(), q),
+      create: (body: users.CreateUserPayload) => users.createUser(t(), body),
       setActive: (id: string, isActive: boolean) => users.setUserActive(t(), id, isActive),
+      updateCustomerProfile: (id: string, body: users.UpdateCustomerProfilePayload) =>
+        users.updateUserCustomerProfile(t(), id, body),
     },
     stores: {
       list: (page?: number, pageSize?: number) => stores.listStores(t(), page, pageSize),
@@ -50,6 +58,7 @@ export function createApiClient(getToken: GetToken) {
     },
     notifications: {
       list: (page?: number, pageSize?: number) => notifications.listNotifications(t(), page, pageSize),
+      quickStatus: (status: notifications.QuickStatusCode) => notifications.sendQuickStatus(t(), status),
     },
     activity: {
       list: (page?: number, pageSize?: number) => activity.listActivity(t(), page, pageSize),

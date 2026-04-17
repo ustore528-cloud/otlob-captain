@@ -27,7 +27,7 @@ export type CurrentAssignmentResponse =
   | { state: "ACTIVE"; order: ReturnType<typeof toOrderDetailDto> };
 
 export const captainMobileService = {
-  login(input: { phone: string; password: string }) {
+  login(input: { phone?: string; email?: string; password: string }) {
     return authService.loginCaptain(input);
   },
 

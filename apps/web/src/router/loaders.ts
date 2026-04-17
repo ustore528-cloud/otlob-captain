@@ -38,17 +38,19 @@ export async function ordersLoader() {
   if (!useAuthStore.getState().token) return null;
   await queryClient.prefetchQuery({
     queryKey: queryKeys.orders.list(ORDERS_PAGE_INITIAL_LIST_PARAMS),
-    queryFn: () => api.orders.list({ page: 1, pageSize: 50 }),
+    queryFn: () =>
+      api.orders.list({
+        page: ORDERS_PAGE_INITIAL_LIST_PARAMS.page,
+        pageSize: ORDERS_PAGE_INITIAL_LIST_PARAMS.pageSize,
+        ...(ORDERS_PAGE_INITIAL_LIST_PARAMS.status ? { status: ORDERS_PAGE_INITIAL_LIST_PARAMS.status } : {}),
+        ...(ORDERS_PAGE_INITIAL_LIST_PARAMS.orderNumber ? { orderNumber: ORDERS_PAGE_INITIAL_LIST_PARAMS.orderNumber } : {}),
+        ...(ORDERS_PAGE_INITIAL_LIST_PARAMS.customerPhone ? { customerPhone: ORDERS_PAGE_INITIAL_LIST_PARAMS.customerPhone } : {}),
+      }),
   });
   return null;
 }
 
 export async function newOrderLoader() {
-  if (!useAuthStore.getState().token) return null;
-  await queryClient.prefetchQuery({
-    queryKey: queryKeys.stores.list(1, 200),
-    queryFn: () => api.stores.list(1, 200),
-  });
   return null;
 }
 
@@ -64,8 +66,8 @@ export async function distributionLoader() {
     queryClient.prefetchQuery({ queryKey: queryKeys.orders.list(p2), queryFn: () => api.orders.list(p2) }),
     queryClient.prefetchQuery({ queryKey: queryKeys.tracking.activeMap(), queryFn: () => api.tracking.activeMap() }),
     queryClient.prefetchQuery({
-      queryKey: queryKeys.captains.list({ page: 1, pageSize: 200 }),
-      queryFn: () => api.captains.list({ page: 1, pageSize: 200 }),
+      queryKey: queryKeys.captains.list({ page: 1, pageSize: 100 }),
+      queryFn: () => api.captains.list({ page: 1, pageSize: 100 }),
     }),
   ]);
   return null;

@@ -35,4 +35,10 @@ export const notificationsController = {
     await notificationService.markAllRead(req.user!.id);
     return res.json(ok({ ok: true }));
   },
+
+  quickStatusAlert: async (req: Request, res: Response) => {
+    const payload = req.body as { status: "PRESSURE" | "LOW_ACTIVITY" | "RAISE_READINESS" | "ON_FIRE" };
+    const data = await notificationService.sendQuickStatusAlert(payload.status, req.user!.id);
+    return res.status(201).json(ok(data));
+  },
 };

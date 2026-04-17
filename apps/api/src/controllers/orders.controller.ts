@@ -72,6 +72,11 @@ export const ordersController = {
     return res.json(ok(data));
   },
 
+  cancelCaptainAssignment: async (req: Request, res: Response) => {
+    const data = await distributionService.cancelCaptainAssignment(pathParam(req, "id"), req.user!.id);
+    return res.json(ok(data));
+  },
+
   manualAssign: async (req: Request, res: Response) => {
     const body = req.body as { captainId: string; assignmentType?: AssignmentType };
     const mode =

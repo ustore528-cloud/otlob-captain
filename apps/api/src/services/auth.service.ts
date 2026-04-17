@@ -50,8 +50,12 @@ export const authService = {
   },
 
   /** تسجيل دخول مخصّص لتطبيق الكابتن — نفس JWT مع التحقق من الدور وبيانات الكابتن. */
-  async loginCaptain(input: { phone: string; password: string }) {
-    const result = await this.login({ phone: input.phone, password: input.password });
+  async loginCaptain(input: { phone?: string; email?: string; password: string }) {
+    const result = await this.login({
+      phone: input.phone,
+      email: input.email,
+      password: input.password,
+    });
     if (result.user.role !== UserRole.CAPTAIN) {
       throw new AppError(403, "Captain app login requires CAPTAIN role", "FORBIDDEN_ROLE");
     }

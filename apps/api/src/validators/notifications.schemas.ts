@@ -8,6 +8,10 @@ export const CreateNotificationBodySchema = z.object({
   message: z.string().min(1).max(10000),
 });
 
+export const QuickStatusAlertBodySchema = z.object({
+  status: z.enum(["PRESSURE", "LOW_ACTIVITY", "RAISE_READINESS", "ON_FIRE"]),
+});
+
 export const NotificationIdParamSchema = z.object({
   id: z.string().cuid(),
 });

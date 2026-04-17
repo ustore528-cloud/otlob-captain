@@ -28,6 +28,8 @@ export function useToggleCaptain() {
     onSuccess: async (_d, v) => {
       toastSuccess(v.isActive ? "تم التفعيل" : "تم التعطيل");
       await qc.invalidateQueries({ queryKey: queryKeys.captains.root });
+      await qc.invalidateQueries({ queryKey: queryKeys.tracking.root });
+      await qc.invalidateQueries({ queryKey: queryKeys.dashboard.root });
     },
   });
 }

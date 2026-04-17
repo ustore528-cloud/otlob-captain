@@ -25,6 +25,11 @@ export function createApp() {
     res.json({ success: true, data: { ok: true, service: "captain-api", env: env.NODE_ENV } });
   });
 
+  /** الجذر للتحقق السريع من المتصفح — نفس بيانات `/health` */
+  app.get("/", (_req, res) => {
+    res.json({ success: true, data: { ok: true, service: "captain-api", env: env.NODE_ENV } });
+  });
+
   app.use("/api/v1", v1Router);
 
   app.use(errorHandlerMiddleware);

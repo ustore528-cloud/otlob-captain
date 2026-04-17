@@ -4,6 +4,7 @@ import { distributionEngine } from "./distribution-engine.js";
 import { emitOrderUpdated, emitToCaptain } from "../../realtime/hub.js";
 import { CAPTAIN_SOCKET_EVENTS } from "../../realtime/captain-events.js";
 import { DISTRIBUTION_TIMEOUT_SECONDS } from "./constants.js";
+import { emitCaptainAssignmentEnded } from "../../realtime/order-emits.js";
 
 type OrderCaptainEmit = {
   id: string;
@@ -60,12 +61,33 @@ export const distributionService = {
     return order;
   },
 
+  cancelCaptainAssignment: async (orderId: string, actorUserId: string | null) => {
+    const result = await distributionEngine.cancelCaptainAssignment(orderId, actorUserId);
+    if (result.cancelledCaptainUserId) {
+      emitCaptainAssignmentEnded(result.cancelledCaptainUserId, { orderId, reason: "DISPATCH_CANCELLED" });
+    }
+    if (result.order) {
+      emitOrderUpdated({ id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status });
+    }
+    return result.order;
+  },
+
   afterCaptainRejectTx: (tx: Prisma.TransactionClient, orderId: string, actorUserId: string | null) =>
     distributionEngine.afterCaptainRejectTx(tx, orderId, actorUserId),
 };
 
 export { distributionEngine } from "./distribution-engine.js";
 export { eligibleCaptainsForAutoDistribution, captainEligibleForManualOverride } from "./eligibility.js";
-export { countCompletedAutoRounds, pickCaptainAtRoundIndex } from "./round-robin.js";
+export {
+  countCompletedAutoRounds,
+  pickCaptainAtRoundIndex,
+  pickCaptainForAutoOffer,
+  stablePoolIndexFromOrderId,
+} from "./round-robin.js";
 export { lockOrderDistributionTx } from "./order-lock.js";
-export { DISTRIBUTION_TIMEOUT_SECONDS, DISTRIBUTION_MAX_AUTO_ATTEMPTS, ASSIGNMENT_TIMEOUT_NOTE } from "./constants.js";
+export {
+  DISTRIBUTION_TIMEOUT_SECONDS,
+  DISTRIBUTION_MAX_AUTO_ATTEMPTS,
+  AUTO_CAPTAIN_MAX_ACTIVE_ORDERS,
+  ASSIGNMENT_TIMEOUT_NOTE,
+} from "./constants.js";

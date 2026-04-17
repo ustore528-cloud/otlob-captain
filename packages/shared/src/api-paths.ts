@@ -14,6 +14,7 @@ export const paths = {
     root: `${API_V1}/users`,
     byId: (id: string) => `${API_V1}/users/${id}`,
     active: (id: string) => `${API_V1}/users/${id}/active`,
+    customerProfile: (id: string) => `${API_V1}/users/${id}/customer-profile`,
   },
   stores: {
     root: `${API_V1}/stores`,
@@ -25,6 +26,7 @@ export const paths = {
     active: (id: string) => `${API_V1}/captains/${id}/active`,
     availability: (id: string) => `${API_V1}/captains/${id}/availability`,
     stats: (id: string) => `${API_V1}/captains/${id}/stats`,
+    orders: (id: string) => `${API_V1}/captains/${id}/orders`,
   },
   orders: {
     root: `${API_V1}/orders`,
@@ -35,6 +37,7 @@ export const paths = {
     distributionResend: (id: string) => `${API_V1}/orders/${id}/distribution/resend`,
     distributionManual: (id: string) => `${API_V1}/orders/${id}/distribution/manual`,
     distributionDragDrop: (id: string) => `${API_V1}/orders/${id}/distribution/drag-drop`,
+    distributionCancelCaptain: (id: string) => `${API_V1}/orders/${id}/distribution/cancel-captain`,
   },
   tracking: {
     activeMap: `${API_V1}/tracking/captains/active-map`,
@@ -44,6 +47,7 @@ export const paths = {
     root: `${API_V1}/notifications`,
     read: (id: string) => `${API_V1}/notifications/${id}/read`,
     readAll: `${API_V1}/notifications/read-all`,
+    quickStatus: `${API_V1}/notifications/quick-status`,
   },
   activity: {
     root: `${API_V1}/activity`,

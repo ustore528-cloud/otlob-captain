@@ -1,4 +1,8 @@
-import { CaptainAvailabilityStatus } from "@prisma/client";
+import {
+  AssignmentResponseStatus,
+  CaptainAvailabilityStatus,
+  OrderStatus,
+} from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { captainRepository } from "../repositories/captain.repository.js";
 import { captainLocationRepository } from "../repositories/captain-location.repository.js";
@@ -41,14 +45,87 @@ export const trackingService = {
         },
         user: { isActive: true },
       },
-      select: { id: true, area: true, availabilityStatus: true, user: { select: { fullName: true, phone: true } } },
+      select: {
+        id: true,
+        area: true,
+        availabilityStatus: true,
+        vehicleType: true,
+        user: { select: { fullName: true, phone: true } },
+      },
     });
     const ids = captains.map((c) => c.id);
     const locs = await captainLocationRepository.latestByCaptainIds(ids);
     const locByCaptain = new Map(locs.map((l) => [l.captainId, l]));
+    const assigned = await prisma.order.findMany({
+      where: {
+        assignedCaptainId: { in: ids },
+        status: {
+          in: [OrderStatus.ASSIGNED, OrderStatus.ACCEPTED, OrderStatus.PICKED_UP, OrderStatus.IN_TRANSIT],
+        },
+      },
+      select: { assignedCaptainId: true, orderNumber: true, status: true },
+      orderBy: { createdAt: "desc" },
+    });
+    const metaByCaptain = new Map<
+      string,
+      { waitingOffers: number; activeOrders: number; latestOrderNumber: string | null; latestOrderStatus: string | null }
+    >();
+    for (const row of assigned) {
+      const cid = row.assignedCaptainId;
+      if (!cid) continue;
+      const meta = metaByCaptain.get(cid) ?? {
+        waitingOffers: 0,
+        activeOrders: 0,
+        latestOrderNumber: null,
+        latestOrderStatus: null,
+      };
+      if (row.status === "ASSIGNED") meta.waitingOffers += 1;
+      if (row.status === "ACCEPTED" || row.status === "PICKED_UP" || row.status === "IN_TRANSIT") meta.activeOrders += 1;
+      if (!meta.latestOrderNumber) {
+        meta.latestOrderNumber = row.orderNumber;
+        meta.latestOrderStatus = row.status;
+      }
+      metaByCaptain.set(cid, meta);
+    }
+
+    const since = new Date(Date.now() - 15 * 60 * 1000);
+    const rejectRows = await prisma.orderAssignmentLog.groupBy({
+      by: ["captainId"],
+      where: {
+        captainId: { in: ids },
+        responseStatus: AssignmentResponseStatus.REJECTED,
+        assignedAt: { gte: since },
+      },
+      _count: { _all: true },
+    });
+    const recentRejectsByCaptain = new Map(rejectRows.map((r) => [r.captainId, r._count._all]));
+
+    const pendingExpiryLogs = await prisma.orderAssignmentLog.findMany({
+      where: {
+        captainId: { in: ids },
+        responseStatus: AssignmentResponseStatus.PENDING,
+        expiredAt: { not: null },
+      },
+      select: { captainId: true, expiredAt: true },
+    });
+    const earliestOfferExpiry = new Map<string, Date>();
+    for (const row of pendingExpiryLogs) {
+      if (!row.expiredAt) continue;
+      const prev = earliestOfferExpiry.get(row.captainId);
+      if (!prev || row.expiredAt < prev) {
+        earliestOfferExpiry.set(row.captainId, row.expiredAt);
+      }
+    }
+
     return captains.map((c) => ({
       ...c,
       lastLocation: locByCaptain.get(c.id) ?? null,
+      waitingOffers: metaByCaptain.get(c.id)?.waitingOffers ?? 0,
+      activeOrders: metaByCaptain.get(c.id)?.activeOrders ?? 0,
+      latestOrderNumber: metaByCaptain.get(c.id)?.latestOrderNumber ?? null,
+      latestOrderStatus: metaByCaptain.get(c.id)?.latestOrderStatus ?? null,
+      recentRejects: recentRejectsByCaptain.get(c.id) ?? 0,
+      assignmentOfferExpiresAt: earliestOfferExpiry.get(c.id)?.toISOString() ?? null,
     }));
   },
 };

@@ -76,6 +76,16 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  /** بيانات توصيل افتراضية لحساب عميل التطبيق (CUSTOMER) — مطابقة لحقول «طلب جديد» */
+  customerPickupAddress     String?  @map("customer_pickup_address") @db.VarChar(500)
+  customerDropoffAddress    String?  @map("customer_dropoff_address") @db.VarChar(500)
+  customerLocationLink      String?  @map("customer_location_link") @db.VarChar(2000)
+  customerArea              String?  @map("customer_area") @db.VarChar(200)
+  customerDropoffLat        Float?   @map("customer_dropoff_lat")
+  customerDropoffLng        Float?   @map("customer_dropoff_lng")
+  customerPreferredAmount   Decimal? @map("customer_preferred_amount") @db.Decimal(12, 2)
+  customerPreferredDelivery Decimal? @map("customer_preferred_delivery") @db.Decimal(12, 2)
+
   ownedStores   Store[]  @relation("StoreOwner")
   captain       Captain?
   ordersCreated Order[]  @relation("OrderCreatedBy")

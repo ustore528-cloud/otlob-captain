@@ -75,19 +75,43 @@ export const orderRepository = {
     status?: OrderStatus;
     from?: Date;
     to?: Date;
+    area?: string;
+    q?: string;
     page: number;
     pageSize: number;
   }) {
-    const where: Prisma.OrderWhereInput = {
-      OR: [{ assignedCaptainId: params.captainId }, { assignmentLogs: { some: { captainId: params.captainId } } }],
-    };
-    if (params.status) where.status = params.status;
+    const AND: Prisma.OrderWhereInput[] = [
+      {
+        OR: [
+          { assignedCaptainId: params.captainId },
+          { assignmentLogs: { some: { captainId: params.captainId } } },
+        ],
+      },
+    ];
+    if (params.status) AND.push({ status: params.status });
     if (params.from || params.to) {
       const createdAt: Prisma.DateTimeFilter = {};
       if (params.from) createdAt.gte = params.from;
       if (params.to) createdAt.lte = params.to;
-      where.createdAt = createdAt;
+      AND.push({ createdAt });
     }
+    const areaTrim = params.area?.trim();
+    if (areaTrim) AND.push({ area: { contains: areaTrim, mode: "insensitive" } });
+    const qTrim = params.q?.trim();
+    if (qTrim) {
+      AND.push({
+        OR: [
+          { orderNumber: { contains: qTrim, mode: "insensitive" } },
+          { customerName: { contains: qTrim, mode: "insensitive" } },
+          { customerPhone: { contains: qTrim, mode: "insensitive" } },
+          { pickupAddress: { contains: qTrim, mode: "insensitive" } },
+          { dropoffAddress: { contains: qTrim, mode: "insensitive" } },
+          { area: { contains: qTrim, mode: "insensitive" } },
+        ],
+      });
+    }
+
+    const where: Prisma.OrderWhereInput = { AND };
 
     return prisma.$transaction([
       prisma.order.count({ where }),
@@ -98,6 +122,9 @@ export const orderRepository = {
         take: params.pageSize,
         include: {
           store: { select: { id: true, name: true, area: true } },
+          assignedCaptain: {
+            include: { user: { select: { id: true, fullName: true, phone: true } } },
+          },
         },
       }),
     ]);

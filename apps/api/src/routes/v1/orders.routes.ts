@@ -83,6 +83,13 @@ router.post(
 );
 
 router.post(
+  "/:id/distribution/cancel-captain",
+  requireRoles("ADMIN", "DISPATCHER"),
+  validate("params", OrderIdParamSchema),
+  asyncHandler(ordersController.cancelCaptainAssignment.bind(ordersController)),
+);
+
+router.post(
   "/:id/distribution/manual",
   requireRoles("ADMIN", "DISPATCHER"),
   validate("params", OrderIdParamSchema),

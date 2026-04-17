@@ -62,12 +62,23 @@ export type UserListItem = {
   role: string;
   isActive: boolean;
   createdAt: string;
+  updatedAt: string;
+  /** حقول حساب عميل التطبيق (CUSTOMER) — مطابقة لحقول «طلب جديد» */
+  customerPickupAddress: string | null;
+  customerDropoffAddress: string | null;
+  customerLocationLink: string | null;
+  customerArea: string | null;
+  customerDropoffLat: number | null;
+  customerDropoffLng: number | null;
+  customerPreferredAmount: string | null;
+  customerPreferredDelivery: string | null;
 };
 
 export type ActiveMapCaptain = {
   id: string;
   area: string;
   availabilityStatus: string;
+  vehicleType: string;
   user: { fullName: string; phone: string };
   lastLocation: null | {
     captainId: string;
@@ -75,6 +86,14 @@ export type ActiveMapCaptain = {
     longitude: number;
     recordedAt: string;
   };
+  waitingOffers: number;
+  activeOrders: number;
+  latestOrderNumber: string | null;
+  latestOrderStatus: string | null;
+  /** رفض طلبات AUTO خلال آخر ~15 دقيقة (للتلوين على الخريطة) */
+  recentRejects: number;
+  /** نهاية مهلة قبول العرض الحالي (PENDING) — للعد التنازلي على الخريطة */
+  assignmentOfferExpiresAt: string | null;
 };
 
 export type NotificationItem = {

@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ActiveMapCaptain } from "@/types/api";
+import { assignmentOfferSecondsLeft, captainMapVisual } from "@/features/distribution/captain-map-visual";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -12,6 +13,21 @@ type DistributionMapProps = {
   /** تسليط الضوء على كابتن أثناء السحب */
   draggingOrderId: string | null;
 };
+
+function vehicleGlyph(vehicleType: string): string {
+  switch (vehicleType) {
+    case "بسكليت":
+      return "🚴";
+    case "دراجه ناريه":
+      return "🏍️";
+    case "سيارة":
+      return "🚗";
+    case "شحن نقل":
+      return "🚐";
+    default:
+      return "📦";
+  }
+}
 
 function bindDropTarget(
   el: Element | null,
@@ -44,10 +60,16 @@ function bindDropTarget(
 }
 
 export function DistributionMap({ captains, onAssignDrop, draggingOrderId }: DistributionMapProps) {
+  const [countdownTick, setCountdownTick] = useState(0);
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
   const cleanupsRef = useRef<Array<() => void>>([]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setCountdownTick((t) => t + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -91,21 +113,51 @@ export function DistributionMap({ captains, onAssignDrop, draggingOrderId }: Dis
     for (const c of captains) {
       const loc = c.lastLocation;
       if (!loc) continue;
-      const marker = L.circleMarker([loc.latitude, loc.longitude], {
-        radius: 10,
-        color: "#2563eb",
-        weight: 2,
-        fillColor: "#3b82f6",
-        fillOpacity: 0.85,
+      const vis = captainMapVisual(c);
+      const glyph = vehicleGlyph(c.vehicleType);
+      const pulseClass = vis.pulse ? "distribution-map-marker--pulse" : "";
+      const secLeft =
+        c.waitingOffers > 0 && c.assignmentOfferExpiresAt
+          ? assignmentOfferSecondsLeft(c.assignmentOfferExpiresAt)
+          : null;
+      const countdownLine =
+        secLeft !== null
+          ? `<div dir="ltr" style="margin-top:3px;font-size:11px;font-weight:700;color:#713f12;letter-spacing:0.02em;white-space:nowrap;text-align:center">⏱ ${secLeft} ث</div>`
+          : "";
+
+      const html = `
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:52px" title="${vis.label.replace(/"/g, "&quot;")}">
+        <div class="distribution-map-marker ${pulseClass}" style="
+          width:40px;height:40px;border-radius:9999px;
+          border:3px solid ${vis.border};background:${vis.bg};
+          display:flex;align-items:center;justify-content:center;
+          font-size:20px;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.2);
+        ">${glyph}</div>${countdownLine}</div>`;
+
+      const icon = L.divIcon({
+        className: "distribution-map-marker-wrap",
+        html,
+        iconSize: [56, 58],
+        iconAnchor: [28, 52],
+        popupAnchor: [0, -48],
       });
-      marker.bindPopup(`<div dir="rtl"><strong>${c.user.fullName}</strong><br/>${c.user.phone}</div>`);
+
+      const popupCountdown =
+        secLeft !== null
+          ? `<br/><span dir="ltr" style="font-weight:600;color:#92400e">المهلة: ${secLeft} ث متبقية</span>`
+          : "";
+
+      const marker = L.marker([loc.latitude, loc.longitude], { icon });
+      marker.bindPopup(
+        `<div dir="rtl"><strong>${c.user.fullName}</strong><br/>${c.vehicleType}<br/>${c.user.phone}<br/><span style="opacity:.85">${vis.label}</span>${popupCountdown}<br/>بانتظار رد: ${c.waitingOffers}<br/>طلبات نشطة: ${c.activeOrders}${c.recentRejects ? `<br/>رفض حديث: ${c.recentRejects}` : ""}${c.latestOrderNumber ? `<br/><span dir="ltr">${c.latestOrderNumber} (${c.latestOrderStatus})</span>` : ""}</div>`,
+      );
       marker.addTo(group);
 
-    const el = marker.getElement() ?? null;
-    const cleanup = bindDropTarget(el, c.id, onAssignDrop);
+      const el = marker.getElement() ?? null;
+      const cleanup = bindDropTarget(el, c.id, onAssignDrop);
       if (cleanup) cleanupsRef.current.push(cleanup);
     }
-  }, [captains, onAssignDrop]);
+  }, [captains, onAssignDrop, countdownTick]);
 
   useEffect(() => {
     mapRef.current?.invalidateSize();
@@ -113,12 +165,41 @@ export function DistributionMap({ captains, onAssignDrop, draggingOrderId }: Dis
 
   return (
     <div className="overflow-hidden rounded-2xl border border-card-border shadow-sm">
-      <div className="flex items-center justify-between border-b border-card-border bg-card px-4 py-3">
+      <style>{`
+        @keyframes distribution-map-marker-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.12); }
+        }
+        .distribution-map-marker--pulse {
+          animation: distribution-map-marker-pulse 1.4s ease-in-out infinite;
+        }
+        .distribution-map-marker-wrap {
+          background: transparent !important;
+          border: none !important;
+        }
+      `}</style>
+      <div className="flex flex-col gap-2 border-b border-card-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold">خريطة الكباتن</p>
           <p className="text-xs text-muted">
-            {draggingOrderId ? "أفلت الطلب على دائرة الكابتن للتعيين (سحب وإفلات)" : "اسحب بطاقة الطلب ثم أفلتها على الكابتن"}
+            {draggingOrderId
+              ? "أفلت الطلب على أيقونة الكابتن للتعيين (سحب وإفلات)"
+              : "الإطار الأصفر النابض = الكابتن الذي يعرض عليه الطلب الآن؛ ينتقل تلقائياً بعد الرفض أو انتهاء المهلة. اسحب بطاقة الطلب للتعيين اليدوي."}
           </p>
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted" dir="rtl">
+          <span>
+            <span className="inline-block h-2 w-2 rounded-full bg-[#ca8a04] align-middle ltr:mr-1 rtl:ml-1" /> بانتظار قبول
+          </span>
+          <span>
+            <span className="inline-block h-2 w-2 rounded-full bg-[#15803d] align-middle ltr:mr-1 rtl:ml-1" /> مقبول / توصيل
+          </span>
+          <span>
+            <span className="inline-block h-2 w-2 rounded-full bg-[#b91c1c] align-middle ltr:mr-1 rtl:ml-1" /> رفض حديث
+          </span>
+          <span>
+            <span className="inline-block h-2 w-2 rounded-full bg-[#2563eb] align-middle ltr:mr-1 rtl:ml-1" /> متاح
+          </span>
         </div>
       </div>
       <div ref={hostRef} className="h-[min(420px,55vh)] w-full" />

@@ -3,7 +3,13 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { requireRoles } from "../../middlewares/rbac.middleware.js";
-import { UserListQuerySchema, UserIdParamSchema, UserActiveBodySchema, CreateUserBodySchema } from "../../validators/users.schemas.js";
+import {
+  UserListQuerySchema,
+  UserIdParamSchema,
+  UserActiveBodySchema,
+  CreateUserBodySchema,
+  UpdateCustomerProfileBodySchema,
+} from "../../validators/users.schemas.js";
 import { usersController } from "../../controllers/users.controller.js";
 import { AppError } from "../../utils/errors.js";
 import { pathParam } from "../../utils/path-params.js";
@@ -43,6 +49,14 @@ router.patch(
   validate("params", UserIdParamSchema),
   validate("body", UserActiveBodySchema),
   asyncHandler(usersController.setActive.bind(usersController)),
+);
+
+router.patch(
+  "/:id/customer-profile",
+  requireRoles("ADMIN", "DISPATCHER"),
+  validate("params", UserIdParamSchema),
+  validate("body", UpdateCustomerProfileBodySchema),
+  asyncHandler(usersController.updateCustomerProfile.bind(usersController)),
 );
 
 export { router as usersRoutes };
