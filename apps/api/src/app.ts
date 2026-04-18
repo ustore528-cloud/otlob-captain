@@ -14,16 +14,12 @@ const corsOptions: CorsOptions = {
     const allowedOrigins = resolveCorsOrigin();
 
     if (allowedOrigins === true) {
-      callback(null, origin);
+      callback(null, true);
       return;
     }
 
-    if (
-      Array.isArray(allowedOrigins) &&
-      origin !== undefined &&
-      allowedOrigins.includes(origin)
-    ) {
-      callback(null, origin);
+    if (allowedOrigins === false) {
+      callback(new Error("CORS is disabled"));
       return;
     }
 
@@ -32,34 +28,39 @@ const corsOptions: CorsOptions = {
       return;
     }
 
-    callback(new Error(`CORS blocked for origin: ${origin}`));
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(
+      new Error(
+        `CORS blocked for origin: ${origin}. Allowed origins: ${allowedOrigins.join(", ")}`
+      )
+    );
   },
 };
 
-export function createApp() {
-  const app = express();
+const app = express();
 
-  app.use(
-    helmet({
-      crossOriginResourcePolicy: false,
-    }),
-  );
+app.set("trust proxy", 1);
 
-  app.use(cors(corsOptions));
+app.use(helmet());
+app.use(cors(corsOptions));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true }));
+app.use(rateLimitContextMiddleware);
 
-  app.use(rateLimitContextMiddleware);
-  app.use(express.json({ limit: "1mb" }));
-
-  app.get("/health", (_req, res) => {
-    res.json({ success: true, data: { ok: true, service: "captain-api", env: env.NODE_ENV } });
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    service: "captain-api",
+    environment: env.NODE_ENV,
   });
+});
 
-  app.get("/", (_req, res) => {
-    res.json({ success: true, data: { ok: true, service: "captain-api", env: env.NODE_ENV } });
-  });
+app.use("/api/v1", v1Router);
 
-  app.use("/api/v1", v1Router);
+app.use(errorHandlerMiddleware);
 
-  app.use(errorHandlerMiddleware);
-  return app;
-}
+export { app };
