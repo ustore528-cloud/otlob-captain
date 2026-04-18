@@ -9,13 +9,36 @@ import { errorHandlerMiddleware } from "./middlewares/error-handler.middleware.j
 import { v1Router } from "./routes/v1/index.js";
 
 const corsOptions: CorsOptions = {
-  origin: resolveCorsOrigin(),
   credentials: true,
+  origin(origin, callback) {
+    const allowedOrigins = resolveCorsOrigin();
+    if (allowedOrigins === true) {
+      callback(null, origin);
+      return;
+    }
+    if (!origin) {
+      callback(null, false);
+      return;
+    }
+    if (allowedOrigins.includes(origin)) {
+      callback(null, origin);
+      return;
+    }
+    callback(
+      new Error(
+        `CORS: origin "${origin}" is not allowed (expected one of: ${allowedOrigins.join(", ")})`,
+      ),
+    );
+  },
 };
 
 export function createApp() {
   const app = express();
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: false,
+    }),
+  );
   app.use(cors(corsOptions));
   app.options("*", cors(corsOptions));
 
