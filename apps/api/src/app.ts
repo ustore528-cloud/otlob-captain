@@ -46,7 +46,6 @@ export function createApp() {
   );
 
   app.use(cors(corsOptions));
-  app.options("*", cors(corsOptions));
 
   app.use(rateLimitContextMiddleware);
   app.use(express.json({ limit: "1mb" }));
