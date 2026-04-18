@@ -15,17 +15,25 @@ async function buildTokenPayload(userId: string, role: UserRole) {
   return { sub: userId, role, storeId };
 }
 
+function normalizeLoginIdentifiers(input: { phone?: string; email?: string; password: string }) {
+  const phone = input.phone?.trim() || undefined;
+  const emailRaw = input.email?.trim();
+  const email = emailRaw ? emailRaw.toLowerCase() : undefined;
+  return { phone, email, password: input.password };
+}
+
 export const authService = {
   async login(input: { phone?: string; email?: string; password: string }) {
-    const user = input.phone
-      ? await userRepository.findByPhone(input.phone)
-      : input.email
-        ? await userRepository.findByEmail(input.email)
+    const { phone, email, password } = normalizeLoginIdentifiers(input);
+    const user = phone
+      ? await userRepository.findByPhone(phone)
+      : email
+        ? await userRepository.findByEmail(email)
         : null;
     if (!user || !user.isActive) {
       throw new AppError(401, "Invalid credentials", "INVALID_CREDENTIALS");
     }
-    const ok = await verifyPassword(input.password, user.passwordHash);
+    const ok = await verifyPassword(password, user.passwordHash);
     if (!ok) throw new AppError(401, "Invalid credentials", "INVALID_CREDENTIALS");
 
     const payload = await buildTokenPayload(user.id, user.role);
@@ -51,10 +59,11 @@ export const authService = {
 
   /** تسجيل دخول مخصّص لتطبيق الكابتن — نفس JWT مع التحقق من الدور وبيانات الكابتن. */
   async loginCaptain(input: { phone?: string; email?: string; password: string }) {
+    const { phone, email, password } = normalizeLoginIdentifiers(input);
     const result = await this.login({
-      phone: input.phone,
-      email: input.email,
-      password: input.password,
+      phone,
+      email,
+      password,
     });
     if (result.user.role !== UserRole.CAPTAIN) {
       throw new AppError(403, "Captain app login requires CAPTAIN role", "FORBIDDEN_ROLE");
