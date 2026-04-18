@@ -12,37 +12,38 @@ const corsOptions: CorsOptions = {
   credentials: true,
   origin(origin, callback) {
     const allowedOrigins = resolveCorsOrigin();
+
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
     if (allowedOrigins === true) {
       callback(null, origin);
       return;
     }
-    if (!origin) {
-      callback(null, false);
-      return;
-    }
-    if (allowedOrigins.includes(origin)) {
+
+    if (Array.isArray(allowedOrigins) && allowedOrigins.includes(origin)) {
       callback(null, origin);
       return;
     }
-    callback(
-      new Error(
-        `CORS: origin "${origin}" is not allowed (expected one of: ${allowedOrigins.join(", ")})`,
-      ),
-    );
+
+    callback(new Error(`CORS blocked for origin: ${origin}`));
   },
 };
 
 export function createApp() {
   const app = express();
+
   app.use(
     helmet({
       crossOriginResourcePolicy: false,
     }),
   );
+
   app.use(cors(corsOptions));
   app.options("*", cors(corsOptions));
 
-  // نقطة الدخول المركزية لأي Rate Limiter خارجي (Redis مثلًا)
   app.use(rateLimitContextMiddleware);
   app.use(express.json({ limit: "1mb" }));
 
@@ -50,7 +51,6 @@ export function createApp() {
     res.json({ success: true, data: { ok: true, service: "captain-api", env: env.NODE_ENV } });
   });
 
-  /** الجذر للتحقق السريع من المتصفح — نفس بيانات `/health` */
   app.get("/", (_req, res) => {
     res.json({ success: true, data: { ok: true, service: "captain-api", env: env.NODE_ENV } });
   });
