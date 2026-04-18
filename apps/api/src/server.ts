@@ -1,10 +1,9 @@
 import http from "http";
 import { env } from "./config/env.js";
-import { createApp } from "./app.js";
+import { app } from "./app.js";
 import { attachSocketIo } from "./realtime/socket-server.js";
 import { distributionService } from "./services/distribution/index.js";
 
-const app = createApp();
 const httpServer = http.createServer(app);
 
 attachSocketIo(httpServer);
