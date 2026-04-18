@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import type { CorsOptions } from "cors";
 import helmet from "helmet";
 import { resolveCorsOrigin } from "./config/cors-options.js";
 import { env } from "./config/env.js";
@@ -7,15 +8,16 @@ import { rateLimitContextMiddleware } from "./middlewares/rate-limit-context.mid
 import { errorHandlerMiddleware } from "./middlewares/error-handler.middleware.js";
 import { v1Router } from "./routes/v1/index.js";
 
+const corsOptions: CorsOptions = {
+  origin: resolveCorsOrigin(),
+  credentials: true,
+};
+
 export function createApp() {
   const app = express();
   app.use(helmet());
-  app.use(
-    cors({
-      origin: resolveCorsOrigin(),
-      credentials: true,
-    }),
-  );
+  app.use(cors(corsOptions));
+  app.options("*", cors(corsOptions));
 
   // نقطة الدخول المركزية لأي Rate Limiter خارجي (Redis مثلًا)
   app.use(rateLimitContextMiddleware);
