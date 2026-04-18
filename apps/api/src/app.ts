@@ -13,18 +13,22 @@ const corsOptions: CorsOptions = {
   origin(origin, callback) {
     const allowedOrigins = resolveCorsOrigin();
 
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
     if (allowedOrigins === true) {
       callback(null, origin);
       return;
     }
 
-    if (Array.isArray(allowedOrigins) && allowedOrigins.includes(origin)) {
+    if (
+      Array.isArray(allowedOrigins) &&
+      origin !== undefined &&
+      allowedOrigins.includes(origin)
+    ) {
       callback(null, origin);
+      return;
+    }
+
+    if (!origin) {
+      callback(null, true);
       return;
     }
 
