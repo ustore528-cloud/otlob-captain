@@ -32,6 +32,8 @@ export function useAssignmentFallbackPolling(enabled: boolean): void {
 
     const t = setTimeout(() => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.captain.assignment });
+      /** يُطابق سلوك Socket — تفاصيل الطلب المفتوحة قد تبقى بعرض قديم بدون هذا */
+      void queryClient.invalidateQueries({ queryKey: ["captain-mobile", "orders", "detail"] });
     }, delay);
     return () => clearTimeout(t);
   }, [enabled, assignmentQuery.data, queryClient]);

@@ -1,9 +1,8 @@
 import { io, type Socket } from "socket.io-client";
-
-const BASE = import.meta.env.VITE_API_URL ?? "";
+import { apiBaseUrl } from "@/lib/api/http";
 
 export function createDashboardSocket(token: string): Socket {
-  return io(BASE || window.location.origin, {
+  return io(apiBaseUrl || window.location.origin, {
     path: "/socket.io",
     transports: ["websocket"],
     auth: { token },

@@ -7,8 +7,10 @@ export const routes = {
     login: "/(auth)/login" as Href,
   },
   app: {
-    tabs: "/(app)/(tabs)" as Href,
-    home: "/(app)/(tabs)" as Href,
+    /** المسار الافتراضي بعد تسجيل الدخول — تبويب الطلبات المتاحة */
+    tabs: "/(app)/(tabs)/orders" as Href,
+    home: "/(app)/(tabs)/home" as Href,
+    settings: "/(app)/(tabs)/settings" as Href,
     assignment: "/(app)/(tabs)/assignment" as Href,
     order: (orderId: string) => `/(app)/order/${orderId}` as Href,
     orders: "/(app)/(tabs)/orders" as Href,

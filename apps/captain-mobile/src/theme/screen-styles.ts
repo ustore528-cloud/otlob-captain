@@ -4,9 +4,10 @@ import { rtlLayout } from "./rtl";
 
 /** أنماط شاشات مشتركة — ألوان من `homeTheme` فقط */
 export const screenStyles = StyleSheet.create({
+  /** Page shell — soft gray so white cards read clearly (not flat white-only). */
   safe: {
     flex: 1,
-    backgroundColor: homeTheme.bg,
+    backgroundColor: homeTheme.bgSubtle,
     ...rtlLayout,
   },
   /** محتوى قابل للتمرير — يحدّ العرض على الشاشات العريضة */
@@ -48,11 +49,11 @@ export const screenStyles = StyleSheet.create({
     borderRadius: homeTheme.radiusLg,
     backgroundColor: homeTheme.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(248, 113, 113, 0.25)",
+    borderColor: homeTheme.dangerBorder,
     gap: 8,
   },
   errorTitle: {
-    color: "#fecaca",
+    color: homeTheme.dangerText,
     fontWeight: "800",
     fontSize: 17,
     textAlign: "center",
@@ -69,7 +70,7 @@ export const screenStyles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 22,
     borderRadius: homeTheme.radiusMd,
-    backgroundColor: "rgba(56, 189, 248, 0.12)",
+    backgroundColor: homeTheme.accentSoft,
     borderWidth: 1,
     borderColor: homeTheme.borderStrong,
   },

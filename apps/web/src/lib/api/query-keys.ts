@@ -45,6 +45,7 @@ export const queryKeys = {
   dashboard: {
     root: ["dashboard"] as const,
     stats: () => ["dashboard", "stats"] as const,
+    settings: () => ["dashboard", "settings"] as const,
   },
 } as const;
 

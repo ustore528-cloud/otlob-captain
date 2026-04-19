@@ -2,6 +2,7 @@ export { useApiClient } from "./use-api-client";
 
 export { useOrders } from "./orders/use-orders";
 export { useCreateOrder } from "./orders/use-create-order";
+export { useIncubatorCreateOrderWithDistribution } from "./incubator/use-incubator-create-order-with-distribution";
 export { useResendOrderToDistribution } from "./orders/use-resend-order-to-distribution";
 export { useAssignOrderToCaptain, type AssignOrderMode, type AssignOrderToCaptainVariables } from "./orders/use-assign-order-to-captain";
 export { useStartOrderAutoDistribution } from "./orders/use-start-order-auto-distribution";
@@ -21,6 +22,8 @@ export { useToggleUserActive } from "./users/use-toggle-user-active";
 export { useUpdateUserCustomerProfile } from "./users/use-update-user-customer-profile";
 
 export { useDashboardStats } from "./dashboard/use-dashboard-stats";
+export { useDashboardSettings } from "./dashboard/use-dashboard-settings";
+export { useUpdateDashboardSettings } from "./dashboard/use-update-dashboard-settings";
 
 export { useCaptainLocations } from "./tracking/use-captain-locations";
 

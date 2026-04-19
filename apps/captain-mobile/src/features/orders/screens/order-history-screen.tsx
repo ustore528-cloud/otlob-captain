@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -14,12 +14,16 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { QueryErrorState } from "@/components/ui/query-error-state";
 import { homeTheme } from "@/features/home/theme";
+import { formatUnknownError } from "@/lib/error-format";
 import { screenStyles } from "@/theme/screen-styles";
+import { useCaptainOrderMutations } from "@/features/assignment/hooks/use-captain-order-mutations";
 import { useOrderHistoryInfinite, type OrderHistoryFilters } from "@/hooks/api/use-order-history-infinite";
 import { routes } from "@/navigation/routes";
 import type { OrderListItemDto, OrderStatusDto } from "@/services/api/dto";
-import { orderStatusAr } from "@/lib/order-status-ar";
-import { formatOrderListDate } from "../utils/format-order-date";
+import { CaptainOrderListCard } from "../components/captain-order-list-card";
+import { getOrderListPrimaryAction } from "../utils/order-list-primary-action";
+import { orderStatusAccent } from "../utils/order-status-accent";
+import { WorkStatusBanner } from "@/features/work-status";
 
 const PAGE_SIZE = 20;
 
@@ -58,33 +62,41 @@ function buildApiFilters(status: StatusFilterValue, range: RangePreset): OrderHi
   return f;
 }
 
-function statusAccent(status: OrderStatusDto): { bg: string; border: string; text: string } {
-  switch (status) {
-    case "DELIVERED":
-      return { bg: "rgba(52, 211, 153, 0.12)", border: "rgba(52, 211, 153, 0.35)", text: "#6ee7b7" };
-    case "CANCELLED":
-      return { bg: "rgba(248, 113, 113, 0.1)", border: "rgba(248, 113, 113, 0.35)", text: "#fecaca" };
-    case "IN_TRANSIT":
-    case "PICKED_UP":
-      return { bg: "rgba(56, 189, 248, 0.1)", border: homeTheme.borderStrong, text: homeTheme.accent };
-    case "ASSIGNED":
-    case "ACCEPTED":
-      return { bg: homeTheme.accentSoft, border: homeTheme.borderStrong, text: homeTheme.accent };
-    default:
-      return { bg: "rgba(148, 163, 184, 0.1)", border: homeTheme.border, text: homeTheme.textMuted };
-  }
-}
+export type OrderHistoryScreenProps = {
+  /** يُدرَج تحت عنوان «الطلبات المتاحة» (مثل الطلب الحالي) */
+  listHeaderTop?: ReactNode;
+  /** شريط يُثبَّت أسفل الشاشة فوق التبويب (إجراءات الطلب الحالي) */
+  fixedFooter?: ReactNode;
+  /** شريط قبول/رفض/تقدّم — داخل رأس القائمة تحت العنوان (تبويب الطلبات) */
+  inlineAssignmentBar?: ReactNode;
+  /** يُستدعى مع تحديث السجل لمواءمة الطلب الحالي */
+  syncRefetchWithAssignment?: () => Promise<unknown>;
+  /** تبويب الطلبات المتاحة: خلفية بيضاء، بدون إطارات زائدة */
+  minimalChrome?: boolean;
+  /** بطاقة طلب العرض النشط: عدّاد إلغاء على البطاقة المطابقة */
+  activeOfferOrderId?: string | null;
+  activeOfferSecondsRemaining?: number;
+};
 
-export function OrderHistoryScreen() {
+export function OrderHistoryScreen({
+  listHeaderTop,
+  fixedFooter,
+  inlineAssignmentBar,
+  syncRefetchWithAssignment,
+  minimalChrome = false,
+  activeOfferOrderId = null,
+  activeOfferSecondsRemaining,
+}: OrderHistoryScreenProps = {}) {
   const router = useRouter();
+  const { updateStatus } = useCaptainOrderMutations();
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
   const [rangePreset, setRangePreset] = useState<RangePreset>("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  const apiFilters = useMemo(
-    () => buildApiFilters(statusFilter, rangePreset),
-    [statusFilter, rangePreset],
-  );
+  const apiFilters = useMemo((): OrderHistoryFilters => {
+    if (minimalChrome) return {};
+    return buildApiFilters(statusFilter, rangePreset);
+  }, [minimalChrome, statusFilter, rangePreset]);
 
   const query = useOrderHistoryInfinite(apiFilters, PAGE_SIZE, { staleTime: 30_000 });
 
@@ -96,10 +108,13 @@ export function OrderHistoryScreen() {
     setRefreshing(true);
     try {
       await query.refetch();
+      if (syncRefetchWithAssignment) {
+        await syncRefetchWithAssignment();
+      }
     } finally {
       setRefreshing(false);
     }
-  }, [query]);
+  }, [query, syncRefetchWithAssignment]);
 
   const loadMore = useCallback(() => {
     if (query.hasNextPage && !query.isFetchingNextPage) {
@@ -107,63 +122,67 @@ export function OrderHistoryScreen() {
     }
   }, [query]);
 
-  const renderItem = useCallback(
-    ({ item }: { item: OrderListItemDto }) => {
-      const statusLabel = orderStatusAr[item.status] ?? item.status;
-      const accent = statusAccent(item.status);
-      return (
-        <Pressable
-          style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-          onPress={() => router.push(routes.app.order(item.id))}
-          accessibilityRole="button"
-          accessibilityLabel={`تفاصيل الطلب ${item.orderNumber}`}
-        >
-          <View style={styles.cardTop}>
-            <View style={styles.orderBlock}>
-              <Text style={styles.orderNo}>{item.orderNumber}</Text>
-              <Text style={styles.dateText}>{formatOrderListDate(item.createdAt)}</Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: accent.bg, borderColor: accent.border }]}>
-              <Text style={[styles.badgeText, { color: accent.text }]}>{statusLabel}</Text>
-            </View>
-          </View>
+  const busyOrderId =
+    updateStatus.isPending && updateStatus.variables ? updateStatus.variables.orderId : null;
 
-          <View style={styles.divider} />
-
-          <View style={styles.row}>
-            <Ionicons name="person-outline" size={18} color={homeTheme.textMuted} />
-            <View style={styles.rowText}>
-              <Text style={styles.customer}>{item.customerName}</Text>
-              <Text style={styles.phone} numberOfLines={1}>
-                {item.customerPhone}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.row}>
-            <Ionicons name="storefront-outline" size={18} color={homeTheme.textMuted} />
-            <Text style={styles.store}>
-              {item.store.name} · {item.area}
-            </Text>
-          </View>
-
-          <View style={styles.footerRow}>
-            <View style={styles.amountPill}>
-              <Text style={styles.amountLabel}>التحصيل</Text>
-              <Text style={styles.amountValue}>{item.cashCollection} ر.س</Text>
-            </View>
-            <Ionicons name="chevron-back" size={22} color={homeTheme.textSubtle} />
-          </View>
-        </Pressable>
-      );
+  const onCardPrimary = useCallback(
+    async (item: OrderListItemDto) => {
+      const act = getOrderListPrimaryAction(item.status);
+      if (!act) return;
+      if (act.kind === "navigate_detail" || act.kind === "view_only") {
+        router.push(routes.app.order(item.id));
+        return;
+      }
+      const body =
+        act.kind === "pickup"
+          ? ({ status: "PICKED_UP" } as const)
+          : act.kind === "in_transit"
+            ? ({ status: "IN_TRANSIT" } as const)
+            : ({ status: "DELIVERED" } as const);
+      await updateStatus.mutateAsync({ orderId: item.id, body });
     },
-    [router],
+    [router, updateStatus],
   );
 
-  const listHeader = useMemo(
-    () => (
+  const renderItem = useCallback(
+    ({ item }: { item: OrderListItemDto }) => {
+      const accent = orderStatusAccent(item.status);
+      const primary = getOrderListPrimaryAction(item.status);
+      const offerCountdown =
+        minimalChrome &&
+        activeOfferOrderId &&
+        item.id === activeOfferOrderId &&
+        typeof activeOfferSecondsRemaining === "number"
+          ? activeOfferSecondsRemaining
+          : undefined;
+      return (
+        <CaptainOrderListCard
+          item={item}
+          statusAccent={accent}
+          primary={primary}
+          busy={busyOrderId === item.id}
+          flatVisual={minimalChrome}
+          compactList={minimalChrome}
+          compactOfferCountdownSeconds={offerCountdown}
+          onOpenDetail={() => router.push(routes.app.order(item.id))}
+          onPrimary={() => void onCardPrimary(item)}
+        />
+      );
+    },
+    [router, busyOrderId, onCardPrimary, minimalChrome, activeOfferOrderId, activeOfferSecondsRemaining],
+  );
+
+  const listHeader = useMemo(() => {
+    if (minimalChrome) return null;
+    return (
       <View style={styles.filtersBlock}>
-        <Text style={styles.filterLabel}>حالة الطلب</Text>
+        {listHeaderTop ? (
+          <View style={styles.registryHeader}>
+            <Text style={styles.registryLabel}>سجل الطلبات</Text>
+            <Text style={styles.registryHint}>اضغط البطاقة للتفاصيل</Text>
+          </View>
+        ) : null}
+        <Text style={styles.filterLabel}>الحالة</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -182,7 +201,7 @@ export function OrderHistoryScreen() {
             );
           })}
         </ScrollView>
-        <Text style={styles.filterLabel}>الفترة الزمنية</Text>
+        <Text style={[styles.filterLabel, styles.filterLabelSecond]}>الفترة</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -203,90 +222,208 @@ export function OrderHistoryScreen() {
         </ScrollView>
         {query.isSuccess ? (
           <Text style={styles.countLine}>
-            {totalCount === 0 ? "لا توجد نتائج" : `${totalCount} طلبًا مطابقًا`}
+            {totalCount === 0 ? "لا نتائج" : `${totalCount} طلب`}
           </Text>
         ) : null}
       </View>
+    );
+  }, [minimalChrome, statusFilter, rangePreset, query.isSuccess, totalCount, listHeaderTop]);
+
+  const listHeaderMain = useMemo(
+    () => (
+      <View>
+        {minimalChrome ? (
+          <View style={[styles.minimalScreenTitle, styles.minimalScreenTitleDense]}>
+            <Text style={styles.minimalScreenTitleTextDense}>الطلبات المتاحة</Text>
+          </View>
+        ) : null}
+        {minimalChrome && inlineAssignmentBar ? (
+          <View style={styles.inlineAssignmentSlot}>{inlineAssignmentBar}</View>
+        ) : null}
+        {listHeaderTop ? (
+          listHeaderTop
+        ) : !minimalChrome ? (
+          <View style={styles.hero}>
+            <Text style={styles.title}>الطلبات المتاحة</Text>
+            <Text style={styles.sub}>الطلبات المسندة والسجل — اضغط للتفاصيل والمسار</Text>
+          </View>
+        ) : null}
+        {listHeader}
+      </View>
     ),
-    [statusFilter, rangePreset, query.isSuccess, totalCount],
+    [listHeaderTop, listHeader, minimalChrome, inlineAssignmentBar],
   );
+
+  const safeStyle = screenStyles.safe;
 
   if (query.isLoading) {
     return (
-      <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
-        <View style={styles.hero}>
-          <Text style={styles.title}>سجل الطلبات</Text>
-          <Text style={styles.sub}>جاري التحميل…</Text>
-        </View>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={homeTheme.accent} />
-          <Text style={styles.muted}>جاري جلب الطلبات…</Text>
+      <SafeAreaView style={safeStyle} edges={["top", "left", "right"]}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: minimalChrome ? homeTheme.bgSubtle : undefined,
+          }}
+        >
+          <WorkStatusBanner />
+          {minimalChrome ? (
+            <>
+              {listHeaderMain}
+              <View style={[styles.listScrollShell, styles.center, styles.centerMinimal]}>
+                <ActivityIndicator size="small" color={homeTheme.accent} />
+                <Text style={styles.muted}>Loading orders…</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              {listHeaderTop ?? (
+                <View style={styles.hero}>
+                  <Text style={styles.title}>الطلبات المتاحة</Text>
+                  <Text style={styles.sub}>جاري التحميل…</Text>
+                </View>
+              )}
+              <View style={styles.center}>
+                <ActivityIndicator size="large" color={homeTheme.accent} />
+                <Text style={styles.muted}>جاري جلب الطلبات…</Text>
+              </View>
+            </>
+          )}
         </View>
       </SafeAreaView>
     );
   }
 
   if (query.isError) {
+    const errMsg = formatUnknownError(query.error, "Could not load orders.");
     return (
-      <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
-        <View style={styles.hero}>
-          <Text style={styles.title}>سجل الطلبات</Text>
-          <Text style={styles.sub}>سجل الطلبات المرتبطة بحسابك</Text>
+      <SafeAreaView style={safeStyle} edges={["top", "left", "right"]}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: minimalChrome ? homeTheme.bgSubtle : undefined,
+          }}
+        >
+          <WorkStatusBanner />
+          {minimalChrome ? (
+            <>
+              {listHeaderMain}
+              <View style={styles.listScrollShell}>
+                <View style={styles.historyInlineError}>
+                  <Text style={styles.historyInlineErrorText}>{errMsg}</Text>
+                  <Pressable onPress={() => void query.refetch()} style={styles.historyInlineRetry}>
+                    <Text style={styles.historyInlineRetryText}>Retry</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </>
+          ) : (
+            <>
+              {listHeaderTop ?? (
+                <View style={styles.hero}>
+                  <Text style={styles.title}>الطلبات المتاحة</Text>
+                  <Text style={styles.sub}>تعذّر تحميل القائمة</Text>
+                </View>
+              )}
+              <QueryErrorState error={query.error} onRetry={() => void query.refetch()} />
+            </>
+          )}
         </View>
-        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
-      <FlatList
-        data={items}
-        keyExtractor={(it) => it.id}
-        renderItem={renderItem}
-        ListHeaderComponent={
-          <View>
-            <View style={styles.hero}>
-              <Text style={styles.title}>سجل الطلبات</Text>
-              <Text style={styles.sub}>اضغط على أي طلب لعرض التفاصيل الكاملة والمسار</Text>
-            </View>
-            {listHeader}
-          </View>
-        }
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={homeTheme.accent} />
-        }
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.35}
-        ListFooterComponent={
-          query.isFetchingNextPage ? (
-            <View style={styles.footerLoad}>
-              <ActivityIndicator color={homeTheme.accent} />
-              <Text style={styles.muted}>تحميل المزيد…</Text>
-            </View>
-          ) : (
-            <View style={{ height: 16 }} />
-          )
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyWrap}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="receipt-outline" size={48} color={homeTheme.textSubtle} />
-            </View>
-            <Text style={styles.emptyTitle}>لا توجد طلبات</Text>
-            <Text style={styles.emptyBody}>
-              جرّب تغيير الفلاتر أعلاه، أو عد لاحقًا بعد تنفيذ طلبات جديدة.
-            </Text>
-          </View>
-        }
-      />
+    <SafeAreaView style={safeStyle} edges={["top", "left", "right"]}>
+      <View style={{ flex: 1, backgroundColor: minimalChrome ? homeTheme.bgSubtle : undefined }}>
+        <WorkStatusBanner />
+        <FlatList
+          style={{ flex: 1 }}
+          data={items}
+          keyExtractor={(it) => it.id}
+          renderItem={renderItem}
+          ListHeaderComponent={listHeaderMain}
+          contentContainerStyle={[
+            styles.listContent,
+            minimalChrome && styles.listContentMinimal,
+            fixedFooter && minimalChrome && !inlineAssignmentBar ? styles.listContentWithDock : null,
+          ]}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          windowSize={8}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void onRefresh()}
+              tintColor={homeTheme.accent}
+              colors={[homeTheme.accent]}
+              progressBackgroundColor={homeTheme.cardWhite}
+            />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.35}
+          ListFooterComponent={
+            query.isFetchingNextPage ? (
+              <View style={styles.footerLoad}>
+                <ActivityIndicator color={homeTheme.accent} />
+                <Text style={styles.muted}>تحميل المزيد…</Text>
+              </View>
+            ) : (
+              <View style={{ height: 16 }} />
+            )
+          }
+          ListEmptyComponent={
+            minimalChrome ? (
+              <Text style={styles.emptyMinimal}>لا توجد طلبات حاليًا.</Text>
+            ) : (
+              <View style={styles.emptyWrap}>
+                <View style={styles.emptyIcon}>
+                  <Ionicons name="receipt-outline" size={48} color={homeTheme.textSubtle} />
+                </View>
+                <Text style={styles.emptyTitle}>لا توجد طلبات</Text>
+                <Text style={styles.emptyBody}>
+                  جرّب تغيير الفلاتر أعلاه، أو عد لاحقًا بعد تنفيذ طلبات جديدة.
+                </Text>
+              </View>
+            )
+          }
+        />
+        {fixedFooter}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  minimalScreenTitle: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
+  /** Tighter title row — Orders tab / minimalChrome */
+  minimalScreenTitleDense: {
+    paddingTop: 2,
+    paddingBottom: 2,
+  },
+  /** شريط قبول/رفض داخل القائمة — عرض كامل مثل الشريط السابق */
+  inlineAssignmentSlot: {
+    marginHorizontal: -16,
+    marginBottom: 4,
+  },
+  minimalScreenTitleText: {
+    color: homeTheme.text,
+    fontSize: 22,
+    fontWeight: "900",
+    textAlign: "right",
+    letterSpacing: -0.35,
+  },
+  minimalScreenTitleTextDense: {
+    color: homeTheme.text,
+    fontSize: 20,
+    fontWeight: "900",
+    textAlign: "right",
+    letterSpacing: -0.35,
+  },
   hero: {
     paddingHorizontal: 20,
     paddingTop: 8,
@@ -308,24 +445,156 @@ const styles = StyleSheet.create({
   },
   filtersBlock: {
     paddingHorizontal: 20,
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  filtersBlockMinimal: {
+    paddingTop: 4,
+    marginBottom: 0,
+  },
+  /** Align with workbench width; less top padding — Orders tab */
+  filtersBlockMinimalDense: {
+    paddingHorizontal: 16,
+    paddingTop: 0,
+  },
+  filterLabelMinimal: {
+    marginTop: 4,
+    fontWeight: "700",
+    color: homeTheme.textMuted,
+  },
+  filterLabelDenseFirst: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  filterLabelDenseSecond: {
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  chipsRowDense: {
+    paddingVertical: 0,
+    gap: 4,
+  },
+  chipDense: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  chipTextDense: {
+    fontSize: 11,
+  },
+  chipMinimal: {
+    backgroundColor: homeTheme.cardWhite,
+  },
+  countLineMinimal: {
+    marginTop: 6,
+    opacity: 0.9,
+  },
+  countLineDense: {
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  listContentMinimal: {
+    paddingBottom: 16,
+  },
+  /** مساحة فوق شريط الإجراءات الثابت (قبول/رفض) حتى لا يُحجب آخر بطاقة */
+  listContentWithDock: {
+    paddingBottom: 100,
+  },
+  otherOrdersHint: {
+    paddingHorizontal: 16,
+    paddingTop: 2,
+    paddingBottom: 6,
+  },
+  otherOrdersHintDense: {
+    paddingHorizontal: 16,
+    paddingTop: 0,
+    paddingBottom: 4,
+  },
+  otherOrdersHintText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: homeTheme.textMuted,
+    textAlign: "right",
+  },
+  otherOrdersHintTextDense: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: homeTheme.textMuted,
+    textAlign: "right",
+    lineHeight: 14,
+  },
+  emptyMinimal: {
+    textAlign: "right",
+    color: homeTheme.textSubtle,
+    fontSize: 13,
+    paddingVertical: 20,
+    paddingHorizontal: 4,
+    lineHeight: 20,
+  },
+  centerMinimal: {
+    minHeight: 120,
+    gap: 10,
+  },
+  /** Remaining area under the header when history query is loading/error (minimalChrome). */
+  listScrollShell: {
+    flex: 1,
+  },
+  historyInlineError: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 10,
+    alignItems: "flex-end",
+  },
+  historyInlineErrorText: {
+    color: homeTheme.dangerText,
+    fontSize: 13,
+    textAlign: "right",
+    lineHeight: 20,
+  },
+  historyInlineRetry: {
+    paddingVertical: 4,
+  },
+  historyInlineRetryText: {
+    color: homeTheme.accent,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  registryHeader: {
+    marginTop: 6,
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: homeTheme.border,
+  },
+  registryLabel: {
+    color: homeTheme.textMuted,
+    fontSize: 15,
+    fontWeight: "800",
+    textAlign: "right",
+  },
+  registryHint: {
+    color: homeTheme.textSubtle,
+    fontSize: 11,
+    textAlign: "right",
+    marginTop: 2,
   },
   filterLabel: {
-    color: homeTheme.textMuted,
+    color: homeTheme.text,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
     textAlign: "right",
-    marginBottom: 8,
-    marginTop: 10,
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  filterLabelSecond: {
+    marginTop: 12,
   },
   chipsRow: {
     flexDirection: "row-reverse",
-    gap: 8,
-    paddingVertical: 4,
+    gap: 6,
+    paddingVertical: 2,
   },
   chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: homeTheme.border,
@@ -333,11 +602,11 @@ const styles = StyleSheet.create({
   },
   chipActive: {
     borderColor: homeTheme.borderStrong,
-    backgroundColor: "rgba(56, 189, 248, 0.12)",
+    backgroundColor: homeTheme.accentSoft,
   },
   chipText: {
     color: homeTheme.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
   },
   chipTextActive: {
@@ -346,75 +615,16 @@ const styles = StyleSheet.create({
   },
   countLine: {
     color: homeTheme.textSubtle,
-    fontSize: 12,
+    fontSize: 11,
     textAlign: "right",
-    marginTop: 10,
+    marginTop: 8,
+    marginBottom: 4,
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingHorizontal: 16,
+    paddingBottom: 28,
     flexGrow: 1,
   },
-  card: {
-    backgroundColor: homeTheme.surfaceElevated,
-    borderRadius: homeTheme.radiusLg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: homeTheme.border,
-    marginBottom: 12,
-  },
-  cardPressed: { opacity: 0.94 },
-  cardTop: {
-    flexDirection: "row-reverse",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  orderBlock: { flex: 1, alignItems: "flex-end" },
-  orderNo: { color: homeTheme.text, fontSize: 18, fontWeight: "900" },
-  dateText: { color: homeTheme.textMuted, fontSize: 12, marginTop: 4, textAlign: "right" },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    borderWidth: 1,
-    maxWidth: "42%",
-  },
-  badgeText: { fontSize: 11, fontWeight: "800", textAlign: "center" },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: homeTheme.border,
-    marginVertical: 12,
-  },
-  row: {
-    flexDirection: "row-reverse",
-    alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 10,
-  },
-  rowText: { flex: 1, alignItems: "flex-end" },
-  customer: { color: homeTheme.text, fontSize: 15, fontWeight: "700", textAlign: "right" },
-  phone: { color: homeTheme.textMuted, fontSize: 13, marginTop: 2, textAlign: "right" },
-  store: { flex: 1, color: homeTheme.textMuted, fontSize: 14, textAlign: "right", lineHeight: 20 },
-  footerRow: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 4,
-  },
-  amountPill: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: homeTheme.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: homeTheme.radiusMd,
-    borderWidth: 1,
-    borderColor: homeTheme.border,
-  },
-  amountLabel: { color: homeTheme.textSubtle, fontSize: 12 },
-  amountValue: { color: homeTheme.text, fontSize: 15, fontWeight: "800" },
   center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 14 },
   muted: { color: homeTheme.textMuted, fontSize: 14 },
   footerLoad: { paddingVertical: 20, alignItems: "center", gap: 8 },
@@ -427,7 +637,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: "rgba(148, 163, 184, 0.08)",
+    backgroundColor: homeTheme.neutralSoft,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,

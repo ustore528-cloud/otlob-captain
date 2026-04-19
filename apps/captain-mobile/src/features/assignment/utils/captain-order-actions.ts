@@ -15,19 +15,25 @@ export type CaptainActionResult =
       order: OrderDetailDto;
       nextStatus: "PICKED_UP" | "IN_TRANSIT" | "DELIVERED";
       labelAr: string;
+      labelEn: string;
     };
 
 function nextDeliveryStep(
   status: OrderStatusDto,
-): { nextStatus: "PICKED_UP" | "IN_TRANSIT" | "DELIVERED"; labelAr: string } | null {
+): {
+  nextStatus: "PICKED_UP" | "IN_TRANSIT" | "DELIVERED";
+  labelAr: string;
+  /** English primary CTA — aligned with order list */
+  labelEn: string;
+} | null {
   if (status === "ACCEPTED") {
-    return { nextStatus: "PICKED_UP", labelAr: "تم الاستلام من المتجر" };
+    return { nextStatus: "PICKED_UP", labelAr: "تم الاستلام من المتجر", labelEn: "Picked Up" };
   }
   if (status === "PICKED_UP") {
-    return { nextStatus: "IN_TRANSIT", labelAr: "في الطريق للعميل" };
+    return { nextStatus: "IN_TRANSIT", labelAr: "في الطريق للعميل", labelEn: "On the way" };
   }
   if (status === "IN_TRANSIT") {
-    return { nextStatus: "DELIVERED", labelAr: "تم تسليم الطلب" };
+    return { nextStatus: "DELIVERED", labelAr: "تم تسليم الطلب", labelEn: "Delivered" };
   }
   return null;
 }
@@ -41,6 +47,9 @@ export function deriveFromAssignment(res: CurrentAssignmentResponse): CaptainAct
     return { mode: "none" };
   }
   if (res.state === "OFFER") {
+    if (res.log.expiresAt && new Date(res.log.expiresAt) <= new Date()) {
+      return { mode: "none", readOnly: true, order: res.order };
+    }
     return {
       mode: "offer",
       orderId: res.order.id,
@@ -60,6 +69,7 @@ export function deriveFromAssignment(res: CurrentAssignmentResponse): CaptainAct
       order: res.order,
       nextStatus: step.nextStatus,
       labelAr: step.labelAr,
+      labelEn: step.labelEn,
     };
   }
   return { mode: "none" };
@@ -69,12 +79,23 @@ export function deriveFromAssignment(res: CurrentAssignmentResponse): CaptainAct
  * من GET طلب واحد — تفاصيل من إشعار / deep link.
  * يعتمد على سجلات التعيين + حالة الطلب.
  */
-export function deriveFromOrder(order: OrderDetailDto, captainId: string): CaptainActionResult {
-  const pending = order.assignmentLogs?.find(
-    (l) => l.captainId === captainId && l.responseStatus === "PENDING",
-  );
+function isPendingOfferStillValid(expiredAt: string | null): boolean {
+  if (!expiredAt) return true;
+  return new Date(expiredAt).getTime() > Date.now();
+}
 
-  if (order.status === "ASSIGNED" && pending) {
+export function deriveFromOrder(order: OrderDetailDto, captainId: string): CaptainActionResult {
+  const logs = order.assignmentLogs ?? [];
+  const pending = logs.find((l) => l.captainId === captainId && l.responseStatus === "PENDING");
+
+  const isActiveAssignee = order.assignedCaptainId != null && order.assignedCaptainId === captainId;
+
+  if (
+    order.status === "ASSIGNED" &&
+    pending &&
+    isActiveAssignee &&
+    isPendingOfferStillValid(pending.expiredAt ?? null)
+  ) {
     return {
       mode: "offer",
       orderId: order.id,
@@ -96,6 +117,7 @@ export function deriveFromOrder(order: OrderDetailDto, captainId: string): Capta
       order,
       nextStatus: step.nextStatus,
       labelAr: step.labelAr,
+      labelEn: step.labelEn,
     };
   }
 

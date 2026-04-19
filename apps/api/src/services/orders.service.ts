@@ -1,4 +1,4 @@
-import { DistributionMode, OrderStatus, Prisma } from "@prisma/client";
+import { AssignmentResponseStatus, DistributionMode, OrderStatus, Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { orderRepository } from "../repositories/order.repository.js";
 import { captainRepository } from "../repositories/captain.repository.js";
@@ -12,6 +12,41 @@ import {
   emitCaptainOrderUpdated,
   emitDispatcherOrderUpdated,
 } from "../realtime/order-emits.js";
+import { CAPTAIN_SOCKET_EVENTS } from "../realtime/captain-events.js";
+import { emitToCaptain } from "../realtime/hub.js";
+import { clampOfferExpiredAtToConfiguredWindow } from "./distribution/clamp-offer-expired-at.js";
+import { DISTRIBUTION_TIMEOUT_SECONDS } from "./distribution/constants.js";
+import { logCaptainOrderResponse } from "./captain-order-response-log.js";
+
+function decAmount(v: Prisma.Decimal | null | undefined): string {
+  if (v == null) return "0";
+  return v.toString();
+}
+
+/** ISO expiry for active captain offer — aligned with mobile `log.expiresAt` (clamped window). */
+function pendingOfferExpiresAtIsoForListItem(order: {
+  status: OrderStatus;
+  assignedCaptainId: string | null;
+  assignmentLogs?: Array<{
+    captainId: string;
+    assignedAt: Date;
+    expiredAt: Date | null;
+    responseStatus: AssignmentResponseStatus;
+  }>;
+}): string | null {
+  if (order.status !== OrderStatus.ASSIGNED || !order.assignedCaptainId) return null;
+  const log = order.assignmentLogs?.find(
+    (l) =>
+      l.responseStatus === AssignmentResponseStatus.PENDING &&
+      l.captainId === order.assignedCaptainId &&
+      l.expiredAt != null,
+  );
+  if (!log) return null;
+  const expAt = log.expiredAt;
+  if (!expAt) return null;
+  const clamped = clampOfferExpiredAtToConfiguredWindow(log.assignedAt, expAt);
+  return clamped ? clamped.toISOString() : null;
+}
 
 export const ordersService = {
   async create(
@@ -112,7 +147,36 @@ export const ordersService = {
       filters.storeId = actor.storeId;
     }
     const [total, items] = await orderRepository.list(filters);
-    return { total, items };
+    return {
+      total,
+      items: items.map((o) => ({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        status: o.status,
+        distributionMode: o.distributionMode,
+        customerName: o.customerName,
+        customerPhone: o.customerPhone,
+        pickupAddress: o.pickupAddress,
+        dropoffAddress: o.dropoffAddress,
+        area: o.area,
+        amount: decAmount(o.amount),
+        cashCollection: decAmount(o.cashCollection),
+        notes: o.notes,
+        createdAt: o.createdAt.toISOString(),
+        updatedAt: o.updatedAt.toISOString(),
+        store: o.store,
+        assignedCaptain: o.assignedCaptain
+          ? {
+              id: o.assignedCaptain.id,
+              user: {
+                fullName: o.assignedCaptain.user.fullName,
+                phone: o.assignedCaptain.user.phone,
+              },
+            }
+          : null,
+        pendingOfferExpiresAt: pendingOfferExpiresAtIsoForListItem(o),
+      })),
+    };
   },
 
   async getById(id: string, actor: { role: string; userId: string; storeId: string | null }) {
@@ -170,14 +234,62 @@ export const ordersService = {
   },
 
   async acceptByCaptain(orderId: string, userId: string) {
+    logCaptainOrderResponse("ACCEPT_REQUEST", { orderId, userId });
     return prisma.$transaction(async (tx) => {
       const captain = await tx.captain.findUnique({ where: { userId } });
       if (!captain) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
 
+      const orderRow = await tx.order.findUnique({
+        where: { id: orderId },
+        select: { id: true, status: true, assignedCaptainId: true },
+      });
+      if (!orderRow) throw new AppError(404, "Order not found", "NOT_FOUND");
+
       const log = await tx.orderAssignmentLog.findFirst({
         where: { orderId, captainId: captain.id, responseStatus: "PENDING" },
       });
-      if (!log) throw new AppError(409, "No pending assignment", "INVALID_STATE");
+
+      if (!log) {
+        const pendingAny = await tx.orderAssignmentLog.findMany({
+          where: { orderId, responseStatus: "PENDING" },
+          select: { id: true, captainId: true, expiredAt: true },
+        });
+        logCaptainOrderResponse("ACCEPT_REJECT_NO_PENDING_LOG", {
+          orderId,
+          captainId: captain.id,
+          orderStatus: orderRow.status,
+          orderAssignedCaptainId: orderRow.assignedCaptainId,
+          otherPendingLogs: pendingAny.length,
+        });
+        throw new AppError(409, "No pending assignment", "INVALID_STATE");
+      }
+
+      if (orderRow.assignedCaptainId !== captain.id) {
+        logCaptainOrderResponse("ACCEPT_REJECT_ASSIGNEE_MISMATCH", {
+          orderId,
+          captainId: captain.id,
+          orderAssignedCaptainId: orderRow.assignedCaptainId,
+          pendingLogId: log.id,
+        });
+        throw new AppError(409, "No pending assignment", "INVALID_STATE");
+      }
+
+      if (log.expiredAt && log.expiredAt.getTime() <= Date.now()) {
+        logCaptainOrderResponse("ACCEPT_REJECT_LOG_EXPIRED", {
+          orderId,
+          captainId: captain.id,
+          logId: log.id,
+          expiredAtIso: log.expiredAt.toISOString(),
+        });
+        throw new AppError(409, "Offer has expired", "OFFER_EXPIRED");
+      }
+
+      logCaptainOrderResponse("ACCEPT_OK_PENDING_LOG", {
+        orderId,
+        captainId: captain.id,
+        logId: log.id,
+        orderStatus: orderRow.status,
+      });
 
       await tx.orderAssignmentLog.update({
         where: { id: log.id },
@@ -202,6 +314,7 @@ export const ordersService = {
       await activityService.logTx(tx, userId, "ORDER_ACCEPTED_BY_CAPTAIN", "order", orderId, {});
       return order;
     }).then((order) => {
+      logCaptainOrderResponse("ACCEPT_SUCCESS", { orderId, orderNumber: order.orderNumber, status: order.status });
       emitDispatcherOrderUpdated(order);
       emitCaptainOrderUpdated(userId, order);
       return order;
@@ -209,14 +322,49 @@ export const ordersService = {
   },
 
   async rejectByCaptain(orderId: string, userId: string) {
+    logCaptainOrderResponse("REJECT_REQUEST", { orderId, userId });
     return prisma.$transaction(async (tx) => {
       const captain = await tx.captain.findUnique({ where: { userId } });
       if (!captain) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
 
+      const orderRow = await tx.order.findUnique({
+        where: { id: orderId },
+        select: { id: true, status: true, assignedCaptainId: true },
+      });
+      if (!orderRow) throw new AppError(404, "Order not found", "NOT_FOUND");
+
       const log = await tx.orderAssignmentLog.findFirst({
         where: { orderId, captainId: captain.id, responseStatus: "PENDING" },
       });
-      if (!log) throw new AppError(409, "No pending assignment", "INVALID_STATE");
+      if (!log) {
+        logCaptainOrderResponse("REJECT_REJECT_NO_PENDING_LOG", {
+          orderId,
+          captainId: captain.id,
+          orderStatus: orderRow.status,
+          orderAssignedCaptainId: orderRow.assignedCaptainId,
+        });
+        throw new AppError(409, "No pending assignment", "INVALID_STATE");
+      }
+
+      if (orderRow.assignedCaptainId !== captain.id) {
+        logCaptainOrderResponse("REJECT_REJECT_ASSIGNEE_MISMATCH", {
+          orderId,
+          captainId: captain.id,
+          orderAssignedCaptainId: orderRow.assignedCaptainId,
+          pendingLogId: log.id,
+        });
+        throw new AppError(409, "No pending assignment", "INVALID_STATE");
+      }
+
+      if (log.expiredAt && log.expiredAt.getTime() <= Date.now()) {
+        logCaptainOrderResponse("REJECT_REJECT_LOG_EXPIRED", {
+          orderId,
+          captainId: captain.id,
+          logId: log.id,
+          expiredAtIso: log.expiredAt.toISOString(),
+        });
+        throw new AppError(409, "Offer has expired", "OFFER_EXPIRED");
+      }
 
       await tx.orderAssignmentLog.update({
         where: { id: log.id },
@@ -236,8 +384,33 @@ export const ordersService = {
         },
       });
     }).then((order) => {
+      logCaptainOrderResponse("REJECT_SUCCESS", {
+        orderId,
+        orderNumber: order?.orderNumber ?? null,
+        status: order?.status ?? null,
+      });
       if (order) emitDispatcherOrderUpdated(order);
       emitCaptainAssignmentEnded(userId, { orderId, reason: "REJECTED" });
+      /**
+       * بعد الرفض، مسار AUTO قد يعرض الطلب على كابتن آخر داخل نفس المعاملة — يجب بث `captain:assignment`
+       * مثل `distributionService.startAuto` وإلا يعتمد الكابتن على الاستطلاع/الإشعارات فقط (تأخير واضح).
+       */
+      const nextCaptainUserId = order?.assignedCaptain?.userId;
+      if (
+        order?.status === OrderStatus.ASSIGNED &&
+        nextCaptainUserId &&
+        nextCaptainUserId !== userId
+      ) {
+        logCaptainOrderResponse("REJECT_EMIT_NEXT_OFFER", { orderId, nextCaptainUserId });
+        emitToCaptain(nextCaptainUserId, CAPTAIN_SOCKET_EVENTS.ASSIGNMENT, {
+          kind: "OFFER",
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          status: order.status,
+          timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
+        });
+        emitCaptainOrderUpdated(nextCaptainUserId, order);
+      }
       return order;
     });
   },

@@ -3,6 +3,7 @@ import { RequireGuest } from "@/components/require-guest";
 import { DashboardLayout } from "@/layouts/dashboard-layout";
 import { CaptainsPage } from "@/pages/captains-page";
 import { DistributionPage } from "@/pages/distribution-page";
+import { IncubatorHostPage } from "@/pages/incubator-host-page";
 import { HomePage } from "@/pages/home-page";
 import { LoginPage } from "@/pages/login-page";
 import { NewOrderPage } from "@/pages/new-order-page";
@@ -12,6 +13,7 @@ import {
   captainsLoader,
   distributionLoader,
   homeLoader,
+  incubatorHostLoader,
   newOrderLoader,
   ordersLoader,
   usersLoader,
@@ -33,6 +35,7 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage />, loader: homeLoader },
       { path: "orders/new", element: <NewOrderPage />, loader: newOrderLoader },
       { path: "distribution", element: <DistributionPage />, loader: distributionLoader },
+      { path: "incubator-host", element: <IncubatorHostPage />, loader: incubatorHostLoader },
       { path: "orders", element: <OrdersPage />, loader: ordersLoader },
       { path: "captains", element: <CaptainsPage />, loader: captainsLoader },
       { path: "users", element: <UsersPage />, loader: usersLoader },

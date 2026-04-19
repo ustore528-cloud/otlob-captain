@@ -1,6 +1,9 @@
 import { useEffect } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import { useAuthStore } from "@/store/auth-store";
 import { queryClient } from "@/lib/query-client";
+import { logCaptainAssignment } from "@/lib/captain-assignment-debug";
+import { queryKeys } from "@/hooks/api/query-keys";
 import { getCaptainSocket } from "@/services/socket/socket-client";
 import { attachCaptainRealtimeListeners } from "./captain-realtime-subscriptions";
 import { useAssignmentFallbackPolling } from "./hooks/use-assignment-fallback-polling";
@@ -14,6 +17,22 @@ export function CaptainRealtimeSync() {
   const isOn = Boolean(accessToken && captain);
 
   useAssignmentFallbackPolling(isOn);
+
+  /** عند العودة للتطبيق من الخلفية — جلب التعيين فورًا */
+  useEffect(() => {
+    if (!isOn) return;
+    let last: AppStateStatus = AppState.currentState;
+    const sub = AppState.addEventListener("change", (next) => {
+      const wasBg = last === "background" || last === "inactive";
+      if (wasBg && next === "active") {
+        logCaptainAssignment("APP_FOREGROUND_INVALIDATE");
+        void queryClient.invalidateQueries({ queryKey: queryKeys.captain.assignment });
+        void queryClient.invalidateQueries({ queryKey: ["captain-mobile", "orders", "historyInfinite"] });
+      }
+      last = next;
+    });
+    return () => sub.remove();
+  }, [isOn]);
 
   useEffect(() => {
     if (!isOn) return;

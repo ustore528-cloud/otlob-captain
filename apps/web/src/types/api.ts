@@ -31,6 +31,8 @@ export type OrderListItem = {
     id: string;
     user: { fullName: string; phone: string };
   };
+  /** نهاية مهلة قبول العرض الحالي (ASSIGNED + عرض PENDING) — ISO من الخادم */
+  pendingOfferExpiresAt?: string | null;
 };
 
 export type Paginated<T> = { total: number; items: T[] };
@@ -124,4 +126,15 @@ export type CaptainStats = {
     longitude: number;
     recordedAt: string;
   } | null;
+};
+
+/** إعدادات اللوحة (صف واحد في الخادم) — قيم الخريطة الافتراضية تُخزَّن إحداثياً. */
+export type DashboardSettingsDto = {
+  id: string;
+  mapCountry: string | null;
+  mapCityRegion: string | null;
+  mapDefaultLat: number | null;
+  mapDefaultLng: number | null;
+  mapDefaultZoom: number | null;
+  updatedAt: string;
 };

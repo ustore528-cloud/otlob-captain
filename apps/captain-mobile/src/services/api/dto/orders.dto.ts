@@ -31,6 +31,8 @@ export type AssignmentLogEntryDto = {
 export type OrderDetailDto = {
   id: string;
   orderNumber: string;
+  /** الكابتن المعيّن حاليًا — يُطابق واجهة الخادم */
+  assignedCaptainId: string | null;
   status: OrderStatusDto;
   customerName: string;
   customerPhone: string;
@@ -52,6 +54,8 @@ export type OrderListItemDto = {
   status: OrderStatusDto;
   customerName: string;
   customerPhone: string;
+  pickupAddress: string;
+  dropoffAddress: string;
   area: string;
   amount: string;
   cashCollection: string;

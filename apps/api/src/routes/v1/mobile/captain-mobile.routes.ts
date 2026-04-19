@@ -34,6 +34,11 @@ captainMobileRoutes.use(authMiddleware, requireRoles("CAPTAIN"));
 captainMobileRoutes.get("/me", asyncHandler(mobileCaptainController.me.bind(mobileCaptainController)));
 
 captainMobileRoutes.get(
+  "/me/work-status",
+  asyncHandler(mobileCaptainController.workStatus.bind(mobileCaptainController)),
+);
+
+captainMobileRoutes.get(
   "/me/assignment",
   asyncHandler(mobileCaptainController.currentAssignment.bind(mobileCaptainController)),
 );

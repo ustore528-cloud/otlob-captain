@@ -8,8 +8,25 @@ const httpServer = http.createServer(app);
 
 attachSocketIo(httpServer);
 
+/** يمنع تداخل دورات `tickExpired` في **نفس العملية** إذا تأخرت قاعدة البيانات — لا يحل تعدد نسخ API. */
+let distributionTickInFlight = false;
+
 setInterval(() => {
-  void distributionService.tickExpired();
+  if (distributionTickInFlight) {
+    // eslint-disable-next-line no-console
+    console.warn("[Distribution] tickExpired skipped: previous tick still in flight");
+    return;
+  }
+  distributionTickInFlight = true;
+  void distributionService
+    .tickExpired()
+    .catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error("[Distribution] tickExpired", err);
+    })
+    .finally(() => {
+      distributionTickInFlight = false;
+    });
 }, env.DISTRIBUTION_POLL_MS);
 
 const HOST = "0.0.0.0";

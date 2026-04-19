@@ -40,6 +40,20 @@ export type UpdateAvailabilityResponse = {
   captain: Pick<CaptainProfileDto, "id" | "availabilityStatus"> & { lastSeenAt: string | null };
 };
 
+/** Quick work-status codes — same as admin dashboard quick alert. */
+export type QuickWorkStatusCode = "PRESSURE" | "LOW_ACTIVITY" | "RAISE_READINESS" | "ON_FIRE";
+
+/** GET /mobile/captain/me/work-status — latest admin broadcast (activity log). */
+export type WorkStatusResponse =
+  | { active: false }
+  | {
+      active: true;
+      code: QuickWorkStatusCode;
+      /** Arabic label from server (admin source of truth). */
+      label: string;
+      updatedAt: string;
+    };
+
 /** GET /mobile/captain/me/assignment */
 export type AssignmentLogDto = {
   id: string;

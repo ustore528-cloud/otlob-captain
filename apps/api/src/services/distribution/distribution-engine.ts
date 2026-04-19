@@ -9,13 +9,51 @@ import {
   AUTO_CAPTAIN_MAX_ACTIVE_ORDERS,
   DISTRIBUTION_MAX_AUTO_ATTEMPTS,
   DISTRIBUTION_TIMEOUT_SECONDS,
+  OFFER_CONFIRMATION_WINDOW_SECONDS,
 } from "./constants.js";
+import { logOfferCreationDiagnostics } from "./offer-diagnostics.js";
+import { logDistributionTimeout } from "./distribution-timeout-log.js";
 import { eligibleCaptainsForAutoDistribution, captainEligibleForManualOverride } from "./eligibility.js";
 import { lockOrderDistributionTx } from "./order-lock.js";
 import { countCompletedAutoRounds, pickCaptainForAutoOffer } from "./round-robin.js";
 
 function expiredAtFromNow(): Date {
-  return new Date(Date.now() + DISTRIBUTION_TIMEOUT_SECONDS * 1000);
+  return new Date(Date.now() + OFFER_CONFIRMATION_WINDOW_SECONDS * 1000);
+}
+
+async function logOfferRowInsertedDiagnostics(
+  tx: Prisma.TransactionClient,
+  phase: string,
+  orderId: string,
+  captainId: string,
+): Promise<void> {
+  const row = await tx.orderAssignmentLog.findFirst({
+    where: { orderId, captainId, responseStatus: AssignmentResponseStatus.PENDING },
+    orderBy: { assignedAt: "desc" },
+  });
+  if (row?.expiredAt) {
+    logOfferCreationDiagnostics({
+      phase,
+      orderId,
+      captainId,
+      assignedAt: row.assignedAt,
+      expiredAt: row.expiredAt,
+    });
+  }
+}
+
+function logAssignmentCreated(
+  kind: string,
+  ctx: { orderId: string; captainId: string; expiredAt: Date; assignmentType: string },
+): void {
+  logDistributionTimeout("ASSIGNMENT_CREATED", {
+    kind,
+    orderId: ctx.orderId,
+    captainId: ctx.captainId,
+    assignmentType: ctx.assignmentType,
+    expiredAtIso: ctx.expiredAt.toISOString(),
+    timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
+  });
 }
 
 const orderInclude = {
@@ -36,24 +74,67 @@ export class DistributionEngine {
    * معالجة انتهاء المهلة: تسجيل TIMEOUT ثم الانتقال للكابتن التالي (AUTO فقط).
    * queue-safe: قفل advisory لكل order داخل المعاملة.
    */
-  async processDueTimeouts(): Promise<void> {
+  /**
+   * يعالج سجلات التعيين التي تجاوزت `expiredAt`.
+   * يُستدعى من `setInterval` في `server.ts` كل `DISTRIBUTION_POLL_MS`.
+   *
+   * **تعدد النسخ:** كل نسخة Node تشغّل حلقة خاصة؛ لا يوجد قفل عالمي هنا.
+   * تضارب على نفس الطلب يُخفّفه `lockOrderDistributionTx` داخل المعاملة (ليس إزالة كاملة لازدواجية العمل).
+   *
+   * @returns طلبات يجب بث تحديثها للواجهات بعد نجاح المعاملة
+   */
+  async processDueTimeouts(): Promise<{ orderId: string; expiredCaptainId: string }[]> {
     const now = new Date();
+    /** Also due when wall-clock has passed `assignedAt + window` (recovers bad `expiredAt` in DB). */
+    const assignedNotAfter = new Date(now.getTime() - DISTRIBUTION_TIMEOUT_SECONDS * 1000);
     const due = await prisma.orderAssignmentLog.findMany({
       where: {
         responseStatus: AssignmentResponseStatus.PENDING,
-        expiredAt: { lte: now },
+        OR: [{ expiredAt: { lte: now } }, { assignedAt: { lte: assignedNotAfter } }],
       },
-      select: { id: true, orderId: true },
+      select: { id: true, orderId: true, captainId: true, expiredAt: true },
     });
+
+    logDistributionTimeout("SCAN", {
+      dueCount: due.length,
+      nowIso: now.toISOString(),
+      timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
+      assignedNotAfterIso: assignedNotAfter.toISOString(),
+    });
+
+    const emitHints: { orderId: string; expiredCaptainId: string }[] = [];
 
     for (const row of due) {
       try {
-        await prisma.$transaction(async (tx) => {
+        logDistributionTimeout("PROCESS_START", {
+          logId: row.id,
+          orderId: row.orderId,
+          captainId: row.captainId,
+          expiredAtIso: row.expiredAt?.toISOString() ?? null,
+        });
+
+        const processed = await prisma.$transaction(async (tx) => {
           await lockOrderDistributionTx(tx, row.orderId);
 
           const log = await tx.orderAssignmentLog.findUnique({ where: { id: row.id } });
-          if (!log || log.responseStatus !== AssignmentResponseStatus.PENDING) return;
-          if (!log.expiredAt || log.expiredAt > now) return;
+          if (!log || log.responseStatus !== AssignmentResponseStatus.PENDING) {
+            logDistributionTimeout("SKIP_NOT_PENDING", { logId: row.id });
+            return false;
+          }
+          /** وقت داخل المعاملة — يقلل تعارض مقارنة `now` الخارجي إذا تأخرت المعاملة */
+          const nowInTx = new Date();
+          const windowEnd = new Date(log.assignedAt.getTime() + DISTRIBUTION_TIMEOUT_SECONDS * 1000);
+          const dueByExpiryField = log.expiredAt != null && log.expiredAt.getTime() <= nowInTx.getTime();
+          const dueByWallClock = nowInTx.getTime() >= windowEnd.getTime();
+          if (!dueByExpiryField && !dueByWallClock) {
+            logDistributionTimeout("SKIP_NOT_YET_DUE", {
+              logId: row.id,
+              expiredAtIso: log.expiredAt?.toISOString() ?? null,
+              nowInTxIso: nowInTx.toISOString(),
+              windowEndIso: windowEnd.toISOString(),
+            });
+            return false;
+          }
 
           await tx.orderAssignmentLog.update({
             where: { id: log.id },
@@ -63,22 +144,46 @@ export class DistributionEngine {
             },
           });
 
+          logDistributionTimeout("LOG_MARKED_EXPIRED", { logId: log.id, orderId: row.orderId });
+
           const order = await tx.order.findUnique({ where: { id: row.orderId } });
-          if (!order) return;
+          if (!order) return true;
 
           if (order.distributionMode === DistributionMode.AUTO && order.status === OrderStatus.ASSIGNED) {
-            await this.offerNextAutoCaptainTx(tx, order.id, null);
+            const next = await this.offerNextAutoCaptainTx(tx, order.id, null);
+            logDistributionTimeout(next ? "AUTO_REOFFER_OK" : "AUTO_REOFFER_STOPPED", {
+              orderId: order.id,
+              nextCaptainId: next?.captainId,
+            });
           } else {
             await tx.order.update({
               where: { id: row.orderId },
               data: { status: OrderStatus.PENDING, assignedCaptainId: null },
             });
+            logDistributionTimeout("MANUAL_OR_NON_AUTO_RELEASE", {
+              orderId: row.orderId,
+              distributionMode: order.distributionMode,
+              previousStatus: order.status,
+            });
           }
+          return true;
         });
+
+        if (processed) {
+          emitHints.push({ orderId: row.orderId, expiredCaptainId: row.captainId });
+          logDistributionTimeout("PROCESS_OK", { orderId: row.orderId, logId: row.id });
+        }
       } catch (e) {
+        logDistributionTimeout("PROCESS_FAIL", {
+          logId: row.id,
+          orderId: row.orderId,
+          error: e instanceof Error ? e.message : String(e),
+        });
         console.error("[DistributionEngine] processDueTimeouts", row.id, e);
       }
     }
+
+    return emitHints;
   }
 
   /** بعد رفض الكابتن — سلسلة AUTO أو إيقاف يدوي */
@@ -155,14 +260,22 @@ export class DistributionEngine {
     const captain = pickCaptainForAutoOffer(availablePool, orderId, rounds);
     if (!captain) return null;
 
+    const offerExpiresAt = expiredAtFromNow();
     await tx.orderAssignmentLog.create({
       data: {
         orderId,
         captainId: captain.id,
         assignmentType: $Enums.AssignmentType.AUTO,
         responseStatus: AssignmentResponseStatus.PENDING,
-        expiredAt: expiredAtFromNow(),
+        expiredAt: offerExpiresAt,
       },
+    });
+    await logOfferRowInsertedDiagnostics(tx, "AUTO_OFFER", orderId, captain.id);
+    logAssignmentCreated("AUTO_OFFER", {
+      orderId,
+      captainId: captain.id,
+      expiredAt: offerExpiresAt,
+      assignmentType: "AUTO",
     });
 
     await tx.order.update({
@@ -350,14 +463,27 @@ export class DistributionEngine {
         },
       });
 
+      const manualExpiresAt = expiredAtFromNow();
       await tx.orderAssignmentLog.create({
         data: {
           orderId,
           captainId: captain.id,
           assignmentType,
           responseStatus: AssignmentResponseStatus.PENDING,
-          expiredAt: expiredAtFromNow(),
+          expiredAt: manualExpiresAt,
         },
+      });
+      await logOfferRowInsertedDiagnostics(
+        tx,
+        assignmentType === $Enums.AssignmentType.DRAG_DROP ? "DRAG_DROP" : "MANUAL",
+        orderId,
+        captain.id,
+      );
+      logAssignmentCreated(assignmentType === $Enums.AssignmentType.DRAG_DROP ? "DRAG_DROP" : "MANUAL", {
+        orderId,
+        captainId: captain.id,
+        expiredAt: manualExpiresAt,
+        assignmentType: String(assignmentType),
       });
 
       await tx.order.update({
@@ -409,14 +535,22 @@ export class DistributionEngine {
         },
       });
 
+      const reassignExpiresAt = expiredAtFromNow();
       await tx.orderAssignmentLog.create({
         data: {
           orderId,
           captainId: captain.id,
           assignmentType: $Enums.AssignmentType.REASSIGN,
           responseStatus: AssignmentResponseStatus.PENDING,
-          expiredAt: expiredAtFromNow(),
+          expiredAt: reassignExpiresAt,
         },
+      });
+      await logOfferRowInsertedDiagnostics(tx, "REASSIGN", orderId, captain.id);
+      logAssignmentCreated("REASSIGN", {
+        orderId,
+        captainId: captain.id,
+        expiredAt: reassignExpiresAt,
+        assignmentType: "REASSIGN",
       });
 
       await tx.order.update({

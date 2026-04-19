@@ -1,7 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import type { CaptainActionResult } from "../utils/captain-order-actions";
 import { homeTheme } from "@/features/home/theme";
+import { ORDER_DROPOFF_LOCATION_LABEL, ORDER_PICKUP_LOCATION_LABEL } from "@/lib/order-location-labels";
+import type { OrderDetailDto } from "@/services/api/dto";
+import { paymentSummaryLineArFromDetail } from "@/features/orders/utils/order-list-primary-action";
+import { formatAssignmentOfferCountdownAr } from "@/lib/assignment-offer-seconds-left";
 
 type Props = {
   actions: CaptainActionResult;
@@ -9,66 +13,204 @@ type Props = {
   onAccept: () => void;
   onReject: () => void;
   onAdvance: () => void;
+  /** ثوانٍ متبقية لعرض القبول/الرفض — من `expiresAt` على الخادم (غالباً نافذة ~30 ث) */
+  offerSecondsRemaining?: number | null;
+  /** ملخص عناوين + زر تفاصيل فوق أزرار القبول/الرفض — تبويب الطلبات */
+  compactSummary?: boolean;
+  onOpenOrderDetail?: () => void;
 };
 
-export function AssignmentActionsBar({ actions, busy, onAccept, onReject, onAdvance }: Props) {
+function InlineOrderSummary({
+  order,
+  onOpenDetail,
+}: {
+  order: OrderDetailDto;
+  onOpenDetail: () => void;
+}) {
+  const pay = paymentSummaryLineArFromDetail(order);
+  const pickup = order.pickupAddress?.trim() || "—";
+  const drop = (order.dropoffAddress || order.area || "").trim() || "—";
+  return (
+    <View style={styles.sumWrap}>
+      <View style={styles.sumLocBlock}>
+        <Text style={styles.sumLocLabel}>{ORDER_PICKUP_LOCATION_LABEL}</Text>
+        <Text style={styles.sumLocValue} numberOfLines={4}>
+          {pickup}
+        </Text>
+        <Text style={[styles.sumLocLabel, styles.sumLocLabelSpaced]}>{ORDER_DROPOFF_LOCATION_LABEL}</Text>
+        <Text style={styles.sumLocValue} numberOfLines={4}>
+          {drop}
+        </Text>
+      </View>
+      <Pressable
+        onPress={onOpenDetail}
+        style={({ pressed }) => [styles.detailsCard, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel="تفاصيل الطلب كاملة"
+      >
+        <View style={styles.detailsCardBody}>
+          <Text style={styles.detailsCardTitle}>تفاصيل الطلب</Text>
+          {order.customerName ? (
+            <Text style={styles.detailsLine} numberOfLines={1}>
+              {order.customerName}
+            </Text>
+          ) : null}
+          <View style={styles.detailsPhoneRow}>
+            <Ionicons name="call-outline" size={14} color={homeTheme.accent} />
+            <Text style={styles.detailsPhone}>{order.customerPhone}</Text>
+          </View>
+          <Text style={styles.detailsPay} numberOfLines={2}>
+            {pay}
+          </Text>
+          <Text style={styles.detailsHint}>اضغط لعرض كل التفاصيل والمسار</Text>
+        </View>
+        <Ionicons name="chevron-back" size={18} color={homeTheme.accent} />
+      </Pressable>
+    </View>
+  );
+}
+
+const dockShadow =
+  Platform.OS === "ios"
+    ? {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+      }
+    : { elevation: 5 };
+
+export function AssignmentActionsBar({
+  actions,
+  busy,
+  onAccept,
+  onReject,
+  onAdvance,
+  offerSecondsRemaining,
+  compactSummary = false,
+  onOpenOrderDetail,
+}: Props) {
+  const compact = compactSummary;
+  const showInlineOrder =
+    compact &&
+    onOpenOrderDetail &&
+    (actions.mode === "offer" || actions.mode === "active_patch");
+
   if (actions.mode === "none" && !actions.readOnly) {
     return null;
   }
 
   if (actions.mode === "none" && actions.readOnly) {
     return (
-      <View style={styles.readOnly}>
-        <Text style={styles.readOnlyText}>لا تتوفر إجراءات على هذا الطلب في وضعك الحالي.</Text>
+      <View style={[styles.dockWrap, dockShadow]}>
+        <View style={styles.readOnly}>
+          <Text style={styles.readOnlyText}>لا تتوفر إجراءات على هذا الطلب في وضعك الحالي.</Text>
+        </View>
       </View>
     );
   }
 
   if (actions.mode === "offer") {
+    const showCountdown = typeof offerSecondsRemaining === "number";
+    const sec = showCountdown ? offerSecondsRemaining : 0;
+    const urgent = showCountdown && sec <= 10;
+
     return (
-      <View style={styles.col}>
-        <Pressable
-          style={({ pressed }) => [styles.btnPrimary, pressed && styles.pressed, busy && styles.disabled]}
-          onPress={onAccept}
-          disabled={busy}
-        >
-          {busy ? (
-            <ActivityIndicator color="#0f172a" />
-          ) : (
-            <>
-              <Ionicons name="checkmark-circle-outline" size={22} color="#0f172a" />
-              <Text style={styles.btnPrimaryText}>قبول الطلب</Text>
-            </>
-          )}
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.btnDanger, pressed && styles.pressed, busy && styles.disabled]}
-          onPress={onReject}
-          disabled={busy}
-        >
-          <Ionicons name="close-circle-outline" size={22} color="#fecaca" />
-          <Text style={styles.btnDangerText}>رفض العرض</Text>
-        </Pressable>
+      <View style={[styles.dockWrap, dockShadow, compact && styles.dockWrapCompact]}>
+        {showCountdown ? (
+          <View style={[styles.offerCountdownRow, compact && styles.offerCountdownRowCompact]}>
+            <Text style={styles.offerCountdownLabel}>الوقت المتبقي للموافقة أو الرفض على الطلب</Text>
+            <Text style={[styles.offerCountdownDigits, urgent && styles.offerCountdownUrgent, compact && styles.offerCountdownDigitsCompact]}>
+              {showCountdown ? formatAssignmentOfferCountdownAr(offerSecondsRemaining) : "—"}
+            </Text>
+          </View>
+        ) : null}
+        {showInlineOrder ? <InlineOrderSummary order={actions.order} onOpenDetail={onOpenOrderDetail} /> : null}
+        <View style={styles.offerRow}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.btnReject,
+              compact && styles.btnRejectCompact,
+              pressed && styles.pressed,
+              busy && styles.disabled,
+            ]}
+            onPress={onReject}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Decline offer"
+          >
+            <Ionicons name="close-outline" size={compact ? 18 : 22} color={homeTheme.dangerText} />
+            <Text style={[styles.btnRejectText, compact && styles.btnRejectTextCompact]} numberOfLines={1}>
+              رفض
+            </Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.btnAccept,
+              compact && styles.btnAcceptCompact,
+              pressed && styles.pressed,
+              busy && styles.disabled,
+            ]}
+            onPress={onAccept}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Confirm order"
+          >
+            {busy ? (
+              <ActivityIndicator color={homeTheme.onAccent} size="small" />
+            ) : (
+              <View style={styles.btnAcceptInner}>
+                <Ionicons name="checkmark-circle" size={compact ? 18 : 22} color={homeTheme.onAccent} />
+                <View style={styles.btnAcceptTextCol}>
+                  <Text style={[styles.btnAcceptText, compact && styles.btnAcceptTextCompact]} numberOfLines={1}>
+                    قبول الطلب
+                  </Text>
+                  {!compact ? (
+                    <Text style={styles.btnAcceptSub} numberOfLines={1}>
+                      Confirm
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+            )}
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   if (actions.mode === "active_patch") {
     return (
-      <Pressable
-        style={({ pressed }) => [styles.btnPrimary, pressed && styles.pressed, busy && styles.disabled]}
-        onPress={onAdvance}
-        disabled={busy}
-      >
-        {busy ? (
-          <ActivityIndicator color="#0f172a" />
-        ) : (
-          <>
-            <Ionicons name="arrow-forward-circle-outline" size={22} color="#0f172a" />
-            <Text style={styles.btnPrimaryText}>{actions.labelAr}</Text>
-          </>
-        )}
-      </Pressable>
+      <View style={[styles.dockWrap, dockShadow, compact && styles.dockWrapCompact]}>
+        {showInlineOrder ? <InlineOrderSummary order={actions.order} onOpenDetail={onOpenOrderDetail!} /> : null}
+        <Pressable
+          style={({ pressed }) => [
+            styles.btnAdvance,
+            compact && styles.btnAdvanceCompact,
+            pressed && styles.pressed,
+            busy && styles.disabled,
+          ]}
+          onPress={onAdvance}
+          disabled={busy}
+          accessibilityRole="button"
+        >
+          {busy ? (
+            <ActivityIndicator color={homeTheme.onAccent} size="small" />
+          ) : (
+            <View style={styles.btnAdvanceInner}>
+              <Ionicons name="arrow-forward-circle" size={compact ? 18 : 22} color={homeTheme.onAccent} />
+              <View style={styles.btnAdvanceTextCol}>
+                <Text style={[styles.btnAdvanceEn, compact && styles.btnAdvanceEnCompact]} numberOfLines={1}>
+                  {actions.labelEn}
+                </Text>
+                <Text style={[styles.btnAdvanceAr, compact && styles.btnAdvanceArCompact]} numberOfLines={2}>
+                  {actions.labelAr}
+                </Text>
+              </View>
+            </View>
+          )}
+        </Pressable>
+      </View>
     );
   }
 
@@ -76,44 +218,237 @@ export function AssignmentActionsBar({ actions, busy, onAccept, onReject, onAdva
 }
 
 const styles = StyleSheet.create({
-  col: { gap: 12 },
+  dockWrap: {
+    backgroundColor: homeTheme.cardWhite,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === "ios" ? 6 : 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: homeTheme.border,
+  },
+  dockWrapCompact: {
+    paddingTop: 8,
+    paddingBottom: Platform.OS === "ios" ? 6 : 8,
+  },
+  sumWrap: {
+    marginBottom: 10,
+    gap: 8,
+  },
+  sumLocBlock: {
+    gap: 4,
+  },
+  sumLocLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: homeTheme.textSubtle,
+    textAlign: "right",
+  },
+  sumLocLabelSpaced: {
+    marginTop: 6,
+  },
+  sumLocValue: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: "700",
+    color: homeTheme.text,
+    textAlign: "right",
+  },
+  detailsCard: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: homeTheme.border,
+    backgroundColor: homeTheme.neutralSoft,
+  },
+  detailsCardBody: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  detailsCardTitle: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: homeTheme.text,
+    textAlign: "right",
+  },
+  detailsLine: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: homeTheme.textMuted,
+    textAlign: "right",
+  },
+  detailsPhoneRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 4,
+  },
+  detailsPhone: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: homeTheme.accent,
+    textAlign: "right",
+  },
+  detailsPay: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: homeTheme.text,
+    textAlign: "right",
+    lineHeight: 16,
+  },
+  detailsHint: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: homeTheme.textSubtle,
+    textAlign: "right",
+    marginTop: 2,
+  },
+  offerCountdownRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  offerCountdownRowCompact: {
+    marginBottom: 6,
+  },
+  offerCountdownLabel: {
+    flex: 1,
+    color: homeTheme.textMuted,
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "right",
+    lineHeight: 18,
+  },
+  offerCountdownDigits: {
+    fontVariant: ["tabular-nums"],
+    color: homeTheme.accent,
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  offerCountdownDigitsCompact: {
+    fontSize: 17,
+  },
+  offerCountdownUrgent: {
+    color: homeTheme.dangerText,
+  },
+  offerRow: {
+    flexDirection: "row-reverse",
+    alignItems: "stretch",
+    gap: 8,
+  },
   readOnly: {
-    padding: 14,
+    padding: 12,
     borderRadius: homeTheme.radiusMd,
-    backgroundColor: "rgba(148, 163, 184, 0.08)",
+    backgroundColor: homeTheme.neutralSoft,
     borderWidth: 1,
     borderColor: homeTheme.border,
   },
   readOnlyText: {
     color: homeTheme.textMuted,
-    fontSize: 14,
+    fontSize: 13,
     textAlign: "right",
-    lineHeight: 22,
+    lineHeight: 20,
   },
-  btnPrimary: {
+  btnAccept: {
+    flex: 1.2,
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
     backgroundColor: homeTheme.accent,
-    paddingVertical: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
     borderRadius: homeTheme.radiusMd,
-    minHeight: 54,
+    minHeight: 48,
   },
-  btnDanger: {
+  btnAcceptCompact: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    minHeight: 36,
+    flex: 1,
+  },
+  btnAcceptInner: {
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    backgroundColor: "rgba(248, 113, 113, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(248, 113, 113, 0.45)",
-    paddingVertical: 16,
-    borderRadius: homeTheme.radiusMd,
-    minHeight: 54,
+    gap: 6,
   },
-  pressed: { opacity: 0.9 },
-  disabled: { opacity: 0.6 },
-  btnPrimaryText: { color: "#0f172a", fontSize: 16, fontWeight: "900" },
-  btnDangerText: { color: "#fecaca", fontSize: 16, fontWeight: "800" },
+  btnAcceptTextCol: { alignItems: "flex-end", flexShrink: 1 },
+  btnReject: {
+    flex: 1,
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    backgroundColor: homeTheme.surface,
+    borderWidth: 1.5,
+    borderColor: homeTheme.dangerBorder,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: homeTheme.radiusMd,
+    minHeight: 48,
+  },
+  btnRejectCompact: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    minHeight: 36,
+  },
+  btnAdvance: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: homeTheme.accent,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: homeTheme.radiusMd,
+    minHeight: 50,
+  },
+  btnAdvanceCompact: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    minHeight: 40,
+  },
+  btnAdvanceInner: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    flex: 1,
+  },
+  btnAdvanceTextCol: { flex: 1, alignItems: "flex-end" },
+  pressed: { opacity: 0.92 },
+  disabled: { opacity: 0.55 },
+  btnAcceptText: { color: homeTheme.onAccent, fontSize: 15, fontWeight: "800", flexShrink: 1 },
+  btnAcceptTextCompact: { fontSize: 12 },
+  btnAcceptSub: {
+    color: "rgba(250,247,240,0.88)",
+    fontSize: 10,
+    fontWeight: "600",
+    marginTop: 1,
+    textAlign: "right",
+  },
+  btnRejectText: { color: homeTheme.dangerText, fontSize: 15, fontWeight: "800", flexShrink: 1 },
+  btnRejectTextCompact: { fontSize: 12 },
+  btnAdvanceEn: {
+    color: homeTheme.onAccent,
+    fontSize: 15,
+    fontWeight: "800",
+    textAlign: "right",
+  },
+  btnAdvanceEnCompact: { fontSize: 12 },
+  btnAdvanceAr: {
+    color: "rgba(250,247,240,0.88)",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "right",
+    marginTop: 2,
+  },
+  btnAdvanceArCompact: { fontSize: 11, marginTop: 1 },
 });

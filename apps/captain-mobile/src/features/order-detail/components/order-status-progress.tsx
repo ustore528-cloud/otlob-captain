@@ -18,17 +18,21 @@ function deliveryStepIndex(s: OrderStatusDto): number {
 
 type Props = {
   status: OrderStatusDto;
+  /** تقليل الحجم لشاشة تفاصيل الطلب */
+  compact?: boolean;
 };
 
 /**
  * شريط تقدّم لمسار التسليم بعد القبول؛ وعرض مختصر للحالات الأخرى.
  */
-export function OrderStatusProgress({ status }: Props) {
+export function OrderStatusProgress({ status, compact }: Props) {
   if (status === "CANCELLED") {
     return (
-      <View style={styles.bannerDanger}>
-        <Ionicons name="close-circle" size={22} color={homeTheme.danger} />
-        <Text style={styles.bannerDangerText}>هذا الطلب ملغى ولا يمكن متابعة التسليم.</Text>
+      <View style={[styles.bannerDanger, compact && styles.bannerDangerCompact]}>
+        <Ionicons name="close-circle" size={compact ? 18 : 22} color={homeTheme.danger} />
+        <Text style={[styles.bannerDangerText, compact && styles.bannerDangerTextCompact]}>
+          هذا الطلب ملغى ولا يمكن متابعة التسليم.
+        </Text>
       </View>
     );
   }
@@ -36,8 +40,8 @@ export function OrderStatusProgress({ status }: Props) {
   const di = deliveryStepIndex(status);
   if (di >= 0) {
     return (
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>تقدّم التسليم</Text>
+      <View style={[styles.card, compact && styles.cardCompact]}>
+        <Text style={[styles.sectionTitle, compact && styles.sectionTitleCompact]}>تقدّم التسليم</Text>
         <View style={styles.steps}>
           {DELIVERY_CHAIN.map((step, idx) => {
             const done = status === "DELIVERED" || idx < di;
@@ -53,7 +57,7 @@ export function OrderStatusProgress({ status }: Props) {
                     ]}
                   >
                     {done ? (
-                      <Ionicons name="checkmark" size={14} color="#0f172a" />
+                      <Ionicons name="checkmark" size={14} color={homeTheme.onAccent} />
                     ) : current ? (
                       <View style={styles.dotInner} />
                     ) : null}
@@ -62,12 +66,18 @@ export function OrderStatusProgress({ status }: Props) {
                     <View style={[styles.vline, done && styles.vlineDone]} />
                   ) : null}
                 </View>
-                <View style={styles.stepTextCol}>
-                  <Text style={[styles.stepLabel, (done || current) && styles.stepLabelActive]}>
+                <View style={[styles.stepTextCol, compact && styles.stepTextColCompact]}>
+                  <Text
+                    style={[
+                      styles.stepLabel,
+                      compact && styles.stepLabelCompact,
+                      (done || current) && styles.stepLabelActive,
+                    ]}
+                  >
                     {step.label}
                   </Text>
                   {current ? (
-                    <Text style={styles.stepSub}>الخطوة الحالية</Text>
+                    <Text style={[styles.stepSub, compact && styles.stepSubCompact]}>الخطوة الحالية</Text>
                   ) : null}
                 </View>
               </View>
@@ -79,16 +89,18 @@ export function OrderStatusProgress({ status }: Props) {
   }
 
   return (
-    <View style={styles.bannerInfo}>
-      <Ionicons name="information-circle-outline" size={22} color={homeTheme.warning} />
+    <View style={[styles.bannerInfo, compact && styles.bannerInfoCompact]}>
+      <Ionicons name="information-circle-outline" size={compact ? 18 : 22} color={homeTheme.warning} />
       <View style={{ flex: 1 }}>
-        <Text style={styles.bannerInfoTitle}>قبل بدء التسليم</Text>
-        <Text style={styles.bannerInfoBody}>
+        <Text style={[styles.bannerInfoTitle, compact && styles.bannerInfoTitleCompact]}>قبل بدء التسليم</Text>
+        <Text style={[styles.bannerInfoBody, compact && styles.bannerInfoBodyCompact]}>
           الحالة الحالية: <Text style={styles.em}>{orderStatusAr[status] ?? status}</Text>
         </Text>
-        <Text style={styles.bannerInfoHint}>
-          بعد قبول العرض وتحويل الطلب إلى «مقبول»، يظهر هنا مسار الاستلام والتسليم خطوة بخطوة.
-        </Text>
+        {!compact ? (
+          <Text style={styles.bannerInfoHint}>
+            بعد قبول العرض وتحويل الطلب إلى «مقبول»، يظهر هنا مسار الاستلام والتسليم خطوة بخطوة.
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -102,12 +114,21 @@ const styles = StyleSheet.create({
     borderColor: homeTheme.border,
     padding: 16,
   },
+  cardCompact: {
+    padding: 10,
+    borderRadius: homeTheme.radiusMd,
+    marginTop: 8,
+  },
   sectionTitle: {
     color: homeTheme.text,
     fontSize: 15,
     fontWeight: "800",
     textAlign: "right",
     marginBottom: 12,
+  },
+  sectionTitleCompact: {
+    fontSize: 12,
+    marginBottom: 8,
   },
   steps: { gap: 0 },
   stepRow: {
@@ -134,7 +155,7 @@ const styles = StyleSheet.create({
   },
   dotCurrent: {
     borderColor: homeTheme.accent,
-    backgroundColor: "rgba(56, 189, 248, 0.15)",
+    backgroundColor: homeTheme.accentSoft,
   },
   dotInner: {
     width: 10,
@@ -150,18 +171,25 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   vlineDone: {
-    backgroundColor: "rgba(56, 189, 248, 0.45)",
+    backgroundColor: homeTheme.accentMuted,
   },
   stepTextCol: {
     flex: 1,
     paddingRight: 12,
     paddingBottom: 16,
   },
+  stepTextColCompact: {
+    paddingBottom: 10,
+    paddingRight: 8,
+  },
   stepLabel: {
     color: homeTheme.textMuted,
     fontSize: 14,
     fontWeight: "600",
     textAlign: "right",
+  },
+  stepLabelCompact: {
+    fontSize: 12,
   },
   stepLabelActive: {
     color: homeTheme.text,
@@ -173,23 +201,35 @@ const styles = StyleSheet.create({
     textAlign: "right",
     fontWeight: "700",
   },
+  stepSubCompact: {
+    fontSize: 10,
+    marginTop: 2,
+  },
   bannerDanger: {
     flexDirection: "row-reverse",
     alignItems: "flex-start",
     gap: 10,
     padding: 14,
     borderRadius: homeTheme.radiusMd,
-    backgroundColor: "rgba(248, 113, 113, 0.1)",
+    backgroundColor: homeTheme.dangerSoft,
     borderWidth: 1,
-    borderColor: "rgba(248, 113, 113, 0.35)",
+    borderColor: homeTheme.dangerBorder,
   },
   bannerDangerText: {
     flex: 1,
-    color: "#fecaca",
+    color: homeTheme.dangerText,
     fontSize: 14,
     lineHeight: 22,
     textAlign: "right",
     fontWeight: "600",
+  },
+  bannerDangerCompact: {
+    padding: 10,
+    gap: 8,
+  },
+  bannerDangerTextCompact: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   bannerInfo: {
     flexDirection: "row-reverse",
@@ -197,9 +237,9 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 14,
     borderRadius: homeTheme.radiusMd,
-    backgroundColor: "rgba(251, 191, 36, 0.08)",
+    backgroundColor: homeTheme.goldSoft,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.25)",
+    borderColor: homeTheme.goldMuted,
   },
   bannerInfoTitle: {
     color: homeTheme.text,
@@ -221,5 +261,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: "right",
     lineHeight: 20,
+  },
+  bannerInfoCompact: {
+    padding: 10,
+    gap: 8,
+    marginTop: 8,
+  },
+  bannerInfoTitleCompact: {
+    fontSize: 12,
+  },
+  bannerInfoBodyCompact: {
+    fontSize: 11,
+    marginTop: 4,
+    lineHeight: 17,
   },
 });

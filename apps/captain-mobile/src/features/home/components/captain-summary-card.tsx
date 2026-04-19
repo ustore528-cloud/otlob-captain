@@ -10,10 +10,18 @@ type Props = {
 };
 
 const statusTone: Record<string, { bg: string; border: string; text: string }> = {
-  AVAILABLE: { bg: "rgba(52, 211, 153, 0.12)", border: "rgba(52, 211, 153, 0.35)", text: "#6ee7b7" },
-  OFFLINE: { bg: "rgba(148, 163, 184, 0.1)", border: "rgba(148, 163, 184, 0.25)", text: "#cbd5e1" },
-  BUSY: { bg: "rgba(251, 191, 36, 0.12)", border: "rgba(251, 191, 36, 0.35)", text: "#fcd34d" },
-  ON_DELIVERY: { bg: "rgba(56, 189, 248, 0.12)", border: "rgba(56, 189, 248, 0.35)", text: "#7dd3fc" },
+  AVAILABLE: {
+    bg: homeTheme.successSoft,
+    border: homeTheme.successBorder,
+    text: homeTheme.successText,
+  },
+  OFFLINE: { bg: homeTheme.neutralSoft, border: homeTheme.border, text: homeTheme.textMuted },
+  BUSY: { bg: homeTheme.goldSoft, border: homeTheme.goldMuted, text: homeTheme.gold },
+  ON_DELIVERY: {
+    bg: homeTheme.accentSoft,
+    border: homeTheme.borderStrong,
+    text: homeTheme.accent,
+  },
 };
 
 export function CaptainSummaryCard({ user, captain }: Props) {

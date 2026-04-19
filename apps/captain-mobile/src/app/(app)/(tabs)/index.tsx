@@ -1,5 +1,6 @@
-import { HomeScreen } from "@/features/home";
+import { Redirect } from "expo-router";
 
-export default function HomeTab() {
-  return <HomeScreen />;
+/** فتح مجموعة التبويبات يوجّه مباشرةً إلى «الطلبات المتاحة» */
+export default function TabsIndexRedirect() {
+  return <Redirect href="/(app)/(tabs)/orders" />;
 }

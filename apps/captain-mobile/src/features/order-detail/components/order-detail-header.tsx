@@ -61,14 +61,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   offerBanner: {
-    backgroundColor: "rgba(251, 191, 36, 0.1)",
+    backgroundColor: homeTheme.goldSoft,
     borderRadius: 12,
     padding: 10,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.35)",
+    borderColor: homeTheme.goldMuted,
   },
   offerText: {
-    color: "#fcd34d",
+    color: homeTheme.gold,
     fontSize: 13,
     textAlign: "right",
     lineHeight: 20,

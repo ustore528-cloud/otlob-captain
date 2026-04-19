@@ -28,7 +28,7 @@ export function QueryErrorState({
 
   return (
     <View style={[styles.box, style]} accessibilityRole="alert">
-      <Ionicons name="cloud-offline-outline" size={40} color="#fecaca" style={styles.icon} />
+      <Ionicons name="cloud-offline-outline" size={40} color={homeTheme.dangerText} style={styles.icon} />
       <Text style={styles.errorTitle}>{title}</Text>
       <Text style={styles.errorBody}>{message}</Text>
       {onRetry ? (
@@ -48,12 +48,12 @@ const styles = StyleSheet.create({
     borderRadius: homeTheme.radiusLg,
     backgroundColor: homeTheme.surfaceElevated,
     borderWidth: 1,
-    borderColor: "rgba(248, 113, 113, 0.25)",
+    borderColor: homeTheme.dangerBorder,
     gap: 8,
   },
   icon: { alignSelf: "center", marginBottom: 4 },
   errorTitle: {
-    color: "#fecaca",
+    color: homeTheme.dangerText,
     fontWeight: "800",
     fontSize: 17,
     textAlign: "center",
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 22,
     borderRadius: homeTheme.radiusMd,
-    backgroundColor: "rgba(56, 189, 248, 0.12)",
+    backgroundColor: homeTheme.accentSoft,
     borderWidth: 1,
     borderColor: homeTheme.borderStrong,
   },

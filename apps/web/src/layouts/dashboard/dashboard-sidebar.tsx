@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import {
+  Heart,
   LayoutDashboard,
   LogOut,
   MapPinned,
@@ -19,6 +20,7 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
 export type DashboardNavFlags = {
   canNewOrder: boolean;
   canDistribution: boolean;
+  canIncubatorHost: boolean;
   canOrders: boolean;
   canCaptains: boolean;
   canUsers: boolean;
@@ -57,6 +59,12 @@ export function DashboardSidebar({ userLabel, nav, onLogout }: Props) {
           <NavLink className={navClass} to="/distribution">
             <MapPinned className="size-4 shrink-0" />
             التوزيع
+          </NavLink>
+        ) : null}
+        {nav.canIncubatorHost ? (
+          <NavLink className={navClass} to="/incubator-host">
+            <Heart className="size-4 shrink-0" />
+            الأم الحاضنة
           </NavLink>
         ) : null}
         {nav.canOrders ? (

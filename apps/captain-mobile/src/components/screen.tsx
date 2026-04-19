@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { homeTheme } from "@/features/home/theme";
 
 type Props = {
   title: string;
@@ -21,19 +22,19 @@ export function Screen({ title, subtitle, children }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#0f172a" },
+  safe: { flex: 1, backgroundColor: homeTheme.bgSubtle },
   inner: { flex: 1, paddingHorizontal: 20, paddingTop: 8 },
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#f8fafc",
+    color: homeTheme.text,
     textAlign: "right",
     writingDirection: "rtl",
   },
   subtitle: {
     marginTop: 8,
     fontSize: 14,
-    color: "#94a3b8",
+    color: homeTheme.textMuted,
     textAlign: "right",
     writingDirection: "rtl",
   },

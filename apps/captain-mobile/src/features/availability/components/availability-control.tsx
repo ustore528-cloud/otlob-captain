@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   optionActive: {
     borderColor: homeTheme.borderStrong,
-    backgroundColor: "rgba(56, 189, 248, 0.06)",
+    backgroundColor: homeTheme.accentSoft,
   },
   optionPressed: { opacity: 0.92 },
   optionBlocked: { opacity: 0.65 },
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "right",
   },
-  optionTitleActive: { color: "#e0f2fe" },
+  optionTitleActive: { color: homeTheme.accent },
   optionHint: {
     color: homeTheme.textSubtle,
     fontSize: 12,

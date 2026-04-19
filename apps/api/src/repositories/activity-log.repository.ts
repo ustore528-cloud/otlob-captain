@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { normalizePaginationForPrisma } from "../utils/pagination.js";
 
 export const activityLogRepository = {
   async create(data: Prisma.ActivityLogCreateInput) {
@@ -12,13 +13,15 @@ export const activityLogRepository = {
     if (filters.entityType) where.entityType = filters.entityType;
     if (filters.entityId) where.entityId = filters.entityId;
 
+    const { skip, take } = normalizePaginationForPrisma(filters);
+
     const [total, items] = await prisma.$transaction([
       prisma.activityLog.count({ where }),
       prisma.activityLog.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        skip: (filters.page - 1) * filters.pageSize,
-        take: filters.pageSize,
+        skip,
+        take,
         include: { user: { select: { id: true, fullName: true, phone: true, role: true } } },
       }),
     ]);

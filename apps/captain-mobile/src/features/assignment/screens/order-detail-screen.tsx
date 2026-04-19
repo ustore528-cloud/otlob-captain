@@ -1,13 +1,14 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useOrderDetail } from "@/hooks/api/use-order-detail";
 import { useAuth } from "@/hooks/use-auth";
 import { OrderDetailContent } from "@/features/order-detail";
 import { AssignmentActionsBar } from "../components/assignment-actions-bar";
 import { useCaptainOrderMutations } from "../hooks/use-captain-order-mutations";
+import { ScreenHeader } from "@/components/screen-header";
+import { WorkStatusBanner } from "@/features/work-status";
 import { QueryErrorState } from "@/components/ui/query-error-state";
 import { homeTheme } from "@/features/home/theme";
 import { alertMutationError } from "@/lib/alert-mutation-error";
@@ -56,89 +57,89 @@ export function OrderDetailScreen() {
     );
   };
 
+  const showActions = Boolean(orderQuery.data && derived);
+
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(app)/(tabs)/orders");
+  };
+
   return (
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
-      <View style={styles.topBar}>
-        <Pressable
-          style={styles.backBtn}
-          onPress={() => (router.canGoBack() ? router.back() : router.replace("/(app)/(tabs)/assignment"))}
-          hitSlop={12}
-        >
-          <Ionicons name="chevron-forward" size={26} color={homeTheme.text} />
-          <Text style={styles.backText}>رجوع</Text>
-        </Pressable>
-        <Text style={styles.topTitle}>تفاصيل الطلب</Text>
-        <View style={{ width: 72 }} />
-      </View>
+      <WorkStatusBanner />
+      <View style={styles.page}>
+        <ScreenHeader title="تفاصيل الطلب" onBack={goBack} />
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {!orderId ? (
-          <Text style={styles.err}>معرّف الطلب غير صالح</Text>
-        ) : orderQuery.isLoading ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color={homeTheme.accent} />
-            <Text style={styles.muted}>جاري التحميل…</Text>
-          </View>
-        ) : orderQuery.isError ? (
-          <QueryErrorState
-            title="تعذّر فتح الطلب"
-            error={orderQuery.error}
-            onRetry={() => void orderQuery.refetch()}
-            fallbackMessage="تحقق من الصلاحيات أو الرابط."
-            style={{ marginHorizontal: 0 }}
-          />
-        ) : orderQuery.data && !captain?.id ? (
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color={homeTheme.accent} />
-            <Text style={styles.muted}>جاري تجهيز الجلسة…</Text>
-          </View>
-        ) : orderQuery.data && derived ? (
-          <>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {!orderId ? (
+            <Text style={styles.err}>معرّف الطلب غير صالح</Text>
+          ) : orderQuery.isLoading ? (
+            <View style={styles.center}>
+              <ActivityIndicator size="large" color={homeTheme.accent} />
+              <Text style={styles.muted}>جاري التحميل…</Text>
+            </View>
+          ) : orderQuery.isError ? (
+            <QueryErrorState
+              title="تعذّر فتح الطلب"
+              error={orderQuery.error}
+              onRetry={() => void orderQuery.refetch()}
+              fallbackMessage="تحقق من الصلاحيات أو الرابط."
+              style={{ marginHorizontal: 0 }}
+            />
+          ) : orderQuery.data && !captain?.id ? (
+            <View style={styles.center}>
+              <ActivityIndicator size="large" color={homeTheme.accent} />
+              <Text style={styles.muted}>جاري تجهيز الجلسة…</Text>
+            </View>
+          ) : orderQuery.data && derived ? (
             <OrderDetailContent order={orderQuery.data} showAssignmentLogs />
-            <View style={{ height: 16 }} />
+          ) : (
+            <Text style={styles.err}>لا يمكن عرض الطلب</Text>
+          )}
+        </ScrollView>
+
+        {showActions ? (
+          <SafeAreaView edges={["bottom"]} style={styles.actionDock}>
             <AssignmentActionsBar
-              actions={derived}
+              actions={derived!}
               busy={pending}
               onAccept={handleAccept}
               onReject={handleReject}
               onAdvance={handleAdvance}
             />
-          </>
-        ) : (
-          <Text style={styles.err}>لا يمكن عرض الطلب</Text>
-        )}
-        <View style={{ height: 32 }} />
-      </ScrollView>
+          </SafeAreaView>
+        ) : null}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  topBar: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: homeTheme.border,
-  },
-  backBtn: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 4,
-    width: 72,
-  },
-  backText: { color: homeTheme.accent, fontSize: 16, fontWeight: "700" },
-  topTitle: {
+  page: {
     flex: 1,
-    textAlign: "center",
-    color: homeTheme.text,
-    fontSize: 17,
-    fontWeight: "800",
+    backgroundColor: homeTheme.bgSubtle,
   },
-  scroll: { paddingHorizontal: 20, paddingTop: 16 },
-  center: { paddingVertical: 48, alignItems: "center", gap: 12 },
-  muted: { color: homeTheme.textMuted },
-  err: { color: homeTheme.textMuted, textAlign: "center", marginTop: 24 },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  actionDock: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: homeTheme.border,
+    backgroundColor: homeTheme.surface,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  center: { paddingVertical: 40, alignItems: "center", gap: 10 },
+  muted: { color: homeTheme.textMuted, fontSize: 13 },
+  err: { color: homeTheme.textMuted, textAlign: "center", marginTop: 20, fontSize: 14 },
 });

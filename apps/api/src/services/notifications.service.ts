@@ -3,7 +3,7 @@ import { prisma } from "../lib/prisma.js";
 import { notificationRepository } from "../repositories/notification.repository.js";
 import { activityService } from "./activity.service.js";
 
-type QuickStatusCode = "PRESSURE" | "LOW_ACTIVITY" | "RAISE_READINESS" | "ON_FIRE";
+export type QuickStatusCode = "PRESSURE" | "LOW_ACTIVITY" | "RAISE_READINESS" | "ON_FIRE";
 
 const QUICK_STATUS_LABEL: Record<QuickStatusCode, string> = {
   PRESSURE: "ضغط",
@@ -11,6 +11,10 @@ const QUICK_STATUS_LABEL: Record<QuickStatusCode, string> = {
   RAISE_READINESS: "ارفع الجاهزية",
   ON_FIRE: "الوضع نار",
 };
+
+function isQuickStatusCode(v: string): v is QuickStatusCode {
+  return v === "PRESSURE" || v === "LOW_ACTIVITY" || v === "RAISE_READINESS" || v === "ON_FIRE";
+}
 
 export const notificationService = {
   async create(userId: string, type: string, title: string, body: string, actorUserId?: string | null) {
@@ -75,5 +79,36 @@ export const notificationService = {
       count: captains.length,
     });
     return { status, label, sent: captains.length };
+  },
+
+  /**
+   * Latest admin “quick work status” broadcast — from activity log (same source as dashboard alerts).
+   */
+  async getLatestQuickWorkStatus(): Promise<{
+    active: boolean;
+    code?: QuickStatusCode;
+    label?: string;
+    updatedAt?: string;
+  }> {
+    const row = await prisma.activityLog.findFirst({
+      where: { action: "QUICK_STATUS_ALERT" },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!row) {
+      return { active: false };
+    }
+    const meta = row.metadata as { status?: string; label?: string } | null;
+    const raw = meta?.status ?? row.entityId;
+    if (!raw || raw === "none" || !isQuickStatusCode(raw)) {
+      return { active: false };
+    }
+    const code = raw;
+    const label = meta?.label ?? QUICK_STATUS_LABEL[code];
+    return {
+      active: true,
+      code,
+      label,
+      updatedAt: row.createdAt.toISOString(),
+    };
   },
 };

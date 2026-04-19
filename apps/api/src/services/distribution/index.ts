@@ -1,10 +1,12 @@
-import { $Enums, type OrderStatus } from "@prisma/client";
+import { $Enums, OrderStatus } from "@prisma/client";
 import type { AssignmentType, Prisma } from "@prisma/client";
+import { prisma } from "../../lib/prisma.js";
 import { distributionEngine } from "./distribution-engine.js";
 import { emitOrderUpdated, emitToCaptain } from "../../realtime/hub.js";
 import { CAPTAIN_SOCKET_EVENTS } from "../../realtime/captain-events.js";
 import { DISTRIBUTION_TIMEOUT_SECONDS } from "./constants.js";
 import { emitCaptainAssignmentEnded } from "../../realtime/order-emits.js";
+import { logDistributionTimeout } from "./distribution-timeout-log.js";
 
 type OrderCaptainEmit = {
   id: string;
@@ -29,8 +31,61 @@ function emitCaptainDistributionSocket(order: OrderCaptainEmit, kind: "OFFER" | 
  * واجهة موحّدة للمتحكمات والـ worker — تنفّذ عبر DistributionEngine.
  * بعد نجاح المعاملة: إشعار Socket للكابتن المعروض + تحديث للوحة التوزيع.
  */
+async function emitAfterTimeoutProcessing(hint: { orderId: string; expiredCaptainId: string }): Promise<void> {
+  const expiredCaptain = await prisma.captain.findUnique({
+    where: { id: hint.expiredCaptainId },
+    select: { userId: true },
+  });
+  if (expiredCaptain) {
+    emitCaptainAssignmentEnded(expiredCaptain.userId, { orderId: hint.orderId, reason: "OFFER_EXPIRED" });
+  }
+
+  const order = await prisma.order.findUnique({
+    where: { id: hint.orderId },
+    select: {
+      id: true,
+      orderNumber: true,
+      status: true,
+      assignedCaptain: { select: { userId: true } },
+    },
+  });
+  if (!order) {
+    logDistributionTimeout("EMIT_AFTER_TIMEOUT_NO_ORDER", { orderId: hint.orderId });
+    return;
+  }
+
+  if (order.status === OrderStatus.ASSIGNED && order.assignedCaptain?.userId) {
+    emitCaptainDistributionSocket(order, "OFFER");
+  } else {
+    emitOrderUpdated({ id: order.id, orderNumber: order.orderNumber, status: order.status });
+  }
+}
+
 export const distributionService = {
-  tickExpired: () => distributionEngine.processDueTimeouts(),
+  /**
+   * يعالج المهلات المستحقة ثم يبث للوحة والكابتن (مثل الرفض اليدوي + إعادة العرض التلقائي).
+   */
+  tickExpired: async () => {
+    logDistributionTimeout("TICK_START", {});
+    try {
+      const hints = await distributionEngine.processDueTimeouts();
+      for (const h of hints) {
+        try {
+          await emitAfterTimeoutProcessing(h);
+          logDistributionTimeout("EMIT_AFTER_TIMEOUT_OK", { orderId: h.orderId });
+        } catch (e) {
+          logDistributionTimeout("EMIT_AFTER_TIMEOUT_FAIL", {
+            orderId: h.orderId,
+            error: e instanceof Error ? e.message : String(e),
+          });
+          console.error("[distributionService.tickExpired] emit", h.orderId, e);
+        }
+      }
+    } catch (e) {
+      logDistributionTimeout("TICK_EXPIRED_FAIL", { error: e instanceof Error ? e.message : String(e) });
+      console.error("[distributionService.tickExpired]", e);
+    }
+  },
 
   startAuto: async (orderId: string, actorUserId: string | null) => {
     const order = await distributionEngine.startAutoDistribution(orderId, actorUserId);
@@ -87,6 +142,7 @@ export {
 export { lockOrderDistributionTx } from "./order-lock.js";
 export {
   DISTRIBUTION_TIMEOUT_SECONDS,
+  OFFER_CONFIRMATION_WINDOW_SECONDS,
   DISTRIBUTION_MAX_AUTO_ATTEMPTS,
   AUTO_CAPTAIN_MAX_ACTIVE_ORDERS,
   ASSIGNMENT_TIMEOUT_NOTE,

@@ -7,16 +7,18 @@ type Props = {
   title: string;
   icon: ComponentProps<typeof Ionicons>["name"];
   children: ReactNode;
+  /** تقليل الحشو والخطوط — شاشة تفاصيل الطلب */
+  compact?: boolean;
 };
 
-export function SectionCard({ title, icon, children }: Props) {
+export function SectionCard({ title, icon, children, compact }: Props) {
   return (
-    <View style={styles.card}>
-      <View style={styles.head}>
-        <Ionicons name={icon} size={20} color={homeTheme.accent} />
-        <Text style={styles.title}>{title}</Text>
+    <View style={[styles.card, compact && styles.cardCompact]}>
+      <View style={[styles.head, compact && styles.headCompact]}>
+        <Ionicons name={icon} size={compact ? 16 : 20} color={homeTheme.accent} />
+        <Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text>
       </View>
-      <View style={styles.body}>{children}</View>
+      <View style={[styles.body, compact && styles.bodyCompact]}>{children}</View>
     </View>
   );
 }
@@ -29,15 +31,23 @@ const styles = StyleSheet.create({
     borderColor: homeTheme.border,
     overflow: "hidden",
   },
+  cardCompact: {
+    borderRadius: homeTheme.radiusMd,
+  },
   head: {
     flexDirection: "row-reverse",
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "rgba(56, 189, 248, 0.06)",
+    backgroundColor: homeTheme.cardHeaderTint,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: homeTheme.border,
+  },
+  headCompact: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
   },
   title: {
     flex: 1,
@@ -46,9 +56,18 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "right",
   },
+  titleCompact: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
   body: {
     paddingHorizontal: 16,
     paddingBottom: 8,
     paddingTop: 4,
+  },
+  bodyCompact: {
+    paddingHorizontal: 12,
+    paddingBottom: 6,
+    paddingTop: 2,
   },
 });

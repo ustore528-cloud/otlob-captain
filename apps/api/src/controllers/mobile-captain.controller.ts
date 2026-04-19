@@ -4,6 +4,7 @@ import { ok } from "../utils/api-response.js";
 import { pathParam } from "../utils/path-params.js";
 import { captainMobileService } from "../services/captain-mobile.service.js";
 import { toOrderDetailDto } from "../dto/order.dto.js";
+import { notificationService } from "../services/notifications.service.js";
 
 export const mobileCaptainController = {
   login: async (req: Request, res: Response) => {
@@ -31,6 +32,12 @@ export const mobileCaptainController = {
 
   currentAssignment: async (req: Request, res: Response) => {
     const data = await captainMobileService.getCurrentAssignment(req.user!.id);
+    return res.json(ok(data));
+  },
+
+  /** Latest global quick work-status alert (admin dashboard) — for captain app indicator. */
+  workStatus: async (_req: Request, res: Response) => {
+    const data = await notificationService.getLatestQuickWorkStatus();
     return res.json(ok(data));
   },
 

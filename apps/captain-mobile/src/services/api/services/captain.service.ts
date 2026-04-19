@@ -5,6 +5,7 @@ import type {
   MeResponse,
   UpdateAvailabilityRequest,
   UpdateAvailabilityResponse,
+  WorkStatusResponse,
 } from "../dto";
 
 export const captainService = {
@@ -14,6 +15,10 @@ export const captainService = {
 
   getAssignment(): Promise<CurrentAssignmentResponse> {
     return authRequest<CurrentAssignmentResponse>(paths.mobileCaptain.assignment, { method: "GET" });
+  },
+
+  getWorkStatus(): Promise<WorkStatusResponse> {
+    return authRequest<WorkStatusResponse>(paths.mobileCaptain.workStatus, { method: "GET" });
   },
 
   updateAvailability(body: UpdateAvailabilityRequest): Promise<UpdateAvailabilityResponse> {

@@ -1,5 +1,7 @@
 import { ApiError, apiFetch } from "@/lib/api/http";
-import { V1_ROUTES } from "@/lib/api/v1-routes";
+
+/** Must match API `GET /api/v1/geocode/place` (kept local so builds do not depend on a separate routes module in the repo snapshot). */
+const GEOCODE_PLACE_PATH = "/api/v1/geocode/place" as const;
 
 export type GeocodePlaceResult = {
   lat: number;
@@ -44,6 +46,6 @@ export function geocodePlace(
   if (country) p.set("country", country);
   if (city) p.set("city", city);
   const qs = p.toString();
-  const url = `${V1_ROUTES.geocodePlace}${qs ? `?${qs}` : ""}`;
+  const url = `${GEOCODE_PLACE_PATH}${qs ? `?${qs}` : ""}`;
   return apiFetch<unknown>(url, { token }).then(parseGeocodePlacePayload);
 }

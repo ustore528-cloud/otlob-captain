@@ -29,6 +29,7 @@ export function mockOrderListItem(over: Partial<OrderListItem> = {}): OrderListI
     createdAt: over.createdAt ?? new Date().toISOString(),
     store: over.store ?? { id: "store-1", name: "متجر", area: "الرياض" },
     assignedCaptain: over.assignedCaptain ?? null,
+    pendingOfferExpiresAt: over.pendingOfferExpiresAt ?? null,
   };
 }
 

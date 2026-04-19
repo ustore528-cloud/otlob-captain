@@ -1,5 +1,6 @@
 import type { Prisma, UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { normalizePaginationForPrisma } from "../utils/pagination.js";
 
 const userPublicSelect = {
   id: true,
@@ -36,13 +37,14 @@ export const userRepository = {
   list(params: { role?: UserRole; page: number; pageSize: number }) {
     const where: Prisma.UserWhereInput = {};
     if (params.role) where.role = params.role;
+    const { skip, take } = normalizePaginationForPrisma(params);
     return prisma.$transaction([
       prisma.user.count({ where }),
       prisma.user.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
+        skip,
+        take,
         select: userPublicSelect,
       }),
     ]);

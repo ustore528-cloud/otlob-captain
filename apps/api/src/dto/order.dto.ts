@@ -21,6 +21,8 @@ export type OrderAssignmentLogDto = {
 export type OrderDetailDto = {
   id: string;
   orderNumber: string;
+  /** الكابتن المعيّن حاليًا على الطلب — يُستخدم للتمييز بين عرض قديم وبيانات الطلب الحالية */
+  assignedCaptainId: string | null;
   status: OrderStatus;
   customerName: string;
   customerPhone: string;
@@ -42,6 +44,8 @@ export type OrderListItemDto = {
   status: OrderStatus;
   customerName: string;
   customerPhone: string;
+  pickupAddress: string;
+  dropoffAddress: string;
   area: string;
   amount: string;
   cashCollection: string;
@@ -53,6 +57,7 @@ export type OrderListItemDto = {
 type OrderWithStore = {
   id: string;
   orderNumber: string;
+  assignedCaptainId: string | null;
   status: OrderStatus;
   customerName: string;
   customerPhone: string;
@@ -80,6 +85,7 @@ export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
   return {
     id: order.id,
     orderNumber: order.orderNumber,
+    assignedCaptainId: order.assignedCaptainId,
     status: order.status,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
@@ -115,6 +121,8 @@ export function toOrderListItemDto(order: {
   status: OrderStatus;
   customerName: string;
   customerPhone: string;
+  pickupAddress: string;
+  dropoffAddress: string;
   area: string;
   amount: Decimal;
   cashCollection: Decimal;
@@ -128,6 +136,8 @@ export function toOrderListItemDto(order: {
     status: order.status,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
+    pickupAddress: order.pickupAddress,
+    dropoffAddress: order.dropoffAddress,
     area: order.area,
     amount: dec(order.amount),
     cashCollection: dec(order.cashCollection),

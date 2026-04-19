@@ -6,6 +6,7 @@ import {
   type TextInputProps,
   View,
 } from "react-native";
+import { homeTheme } from "@/features/home/theme";
 
 type Props = TextInputProps & {
   label: string;
@@ -19,7 +20,7 @@ export function TextField({ label, error, rightAccessory, style, ...rest }: Prop
       <Text style={styles.label}>{label}</Text>
       <View style={styles.row}>
         <TextInput
-          placeholderTextColor="#64748b"
+          placeholderTextColor={homeTheme.textSubtle}
           style={[styles.input, style]}
           textAlign="right"
           {...rest}
@@ -34,7 +35,7 @@ export function TextField({ label, error, rightAccessory, style, ...rest }: Prop
 const styles = StyleSheet.create({
   wrap: { marginBottom: 16 },
   label: {
-    color: "#94a3b8",
+    color: homeTheme.textMuted,
     fontSize: 13,
     marginBottom: 8,
     textAlign: "right",
@@ -43,13 +44,13 @@ const styles = StyleSheet.create({
   row: { position: "relative" },
   input: {
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: homeTheme.inputBorder,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: "#f8fafc",
-    backgroundColor: "#1e293b",
+    color: homeTheme.text,
+    backgroundColor: homeTheme.inputBg,
   },
   acc: {
     position: "absolute",
@@ -60,7 +61,7 @@ const styles = StyleSheet.create({
   },
   err: {
     marginTop: 6,
-    color: "#f87171",
+    color: homeTheme.dangerText,
     fontSize: 12,
     textAlign: "right",
     writingDirection: "rtl",

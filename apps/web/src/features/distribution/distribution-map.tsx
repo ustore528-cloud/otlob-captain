@@ -4,14 +4,15 @@ import { assignmentOfferSecondsLeft, captainMapVisual } from "@/features/distrib
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-const DEFAULT_CENTER: [number, number] = [24.7136, 46.6753];
-
 type DistributionMapProps = {
   captains: ActiveMapCaptain[];
   /** عند الإفلات على كابتن */
   onAssignDrop: (orderId: string, captainId: string) => void;
   /** تسليط الضوء على كابتن أثناء السحب */
   draggingOrderId: string | null;
+  /** مركز الخريطة عند عدم وجود كباتن أو بعد التحميل — من إعدادات اللوحة أو الافتراضي. */
+  defaultCenter: [number, number];
+  defaultZoom: number;
 };
 
 function vehicleGlyph(vehicleType: string): string {
@@ -59,7 +60,13 @@ function bindDropTarget(
   };
 }
 
-export function DistributionMap({ captains, onAssignDrop, draggingOrderId }: DistributionMapProps) {
+export function DistributionMap({
+  captains,
+  onAssignDrop,
+  draggingOrderId,
+  defaultCenter,
+  defaultZoom,
+}: DistributionMapProps) {
   const [countdownTick, setCountdownTick] = useState(0);
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -75,7 +82,7 @@ export function DistributionMap({ captains, onAssignDrop, draggingOrderId }: Dis
     const host = hostRef.current;
     if (!host) return;
 
-    const map = L.map(host, { zoomControl: true }).setView(DEFAULT_CENTER, 11);
+    const map = L.map(host, { zoomControl: true }).setView(defaultCenter, defaultZoom);
     mapRef.current = map;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -91,7 +98,15 @@ export function DistributionMap({ captains, onAssignDrop, draggingOrderId }: Dis
       mapRef.current = null;
       layerRef.current = null;
     };
+    // الإحداثيات الابتدائية من أول رسم فقط؛ التحديث اللاحق لإعدادات الخادم عبر التأثير التالي.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.setView(defaultCenter, defaultZoom);
+  }, [defaultCenter[0], defaultCenter[1], defaultZoom]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -107,7 +122,7 @@ export function DistributionMap({ captains, onAssignDrop, draggingOrderId }: Dis
       const bounds = L.latLngBounds(withLoc.map((c) => [c.lastLocation!.latitude, c.lastLocation!.longitude]));
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
     } else {
-      map.setView(DEFAULT_CENTER, 11);
+      map.setView(defaultCenter, defaultZoom);
     }
 
     for (const c of captains) {
@@ -149,7 +164,7 @@ export function DistributionMap({ captains, onAssignDrop, draggingOrderId }: Dis
 
       const marker = L.marker([loc.latitude, loc.longitude], { icon });
       marker.bindPopup(
-        `<div dir="rtl"><strong>${c.user.fullName}</strong><br/>${c.vehicleType}<br/>${c.user.phone}<br/><span style="opacity:.85">${vis.label}</span>${popupCountdown}<br/>بانتظار رد: ${c.waitingOffers}<br/>طلبات نشطة: ${c.activeOrders}${c.recentRejects ? `<br/>رفض حديث: ${c.recentRejects}` : ""}${c.latestOrderNumber ? `<br/><span dir="ltr">${c.latestOrderNumber} (${c.latestOrderStatus})</span>` : ""}</div>`,
+        `<div dir="rtl"><strong>${c.user.fullName}</strong><br/>${c.vehicleType}<br/>${c.user.phone}<br/><span style="opacity:.85">${vis.label}</span>${popupCountdown}<br/><span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:6px;border:1px solid rgba(180,83,9,.35);background:rgba(245,158,11,.15);font-weight:700;color:#78350f">بانتظار الرد: ${c.waitingOffers}</span> <span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:6px;border:1px solid rgba(5,150,105,.35);background:rgba(16,185,129,.12);font-weight:700;color:#065f46">نشطة: ${c.activeOrders}</span>${c.recentRejects ? `<br/>رفض حديث: ${c.recentRejects}` : ""}${c.latestOrderNumber ? `<br/><span dir="ltr">${c.latestOrderNumber} (${c.latestOrderStatus})</span>` : ""}</div>`,
       );
       marker.addTo(group);
 
@@ -157,7 +172,7 @@ export function DistributionMap({ captains, onAssignDrop, draggingOrderId }: Dis
       const cleanup = bindDropTarget(el, c.id, onAssignDrop);
       if (cleanup) cleanupsRef.current.push(cleanup);
     }
-  }, [captains, onAssignDrop, countdownTick]);
+  }, [captains, onAssignDrop, countdownTick, defaultCenter, defaultZoom]);
 
   useEffect(() => {
     mapRef.current?.invalidateSize();

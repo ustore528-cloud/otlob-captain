@@ -14,6 +14,7 @@ import { Screen } from "@/components/screen";
 import { TextField } from "@/components/ui/text-field";
 import { useLogin } from "@/features/auth/hooks/use-login";
 import { loginFormSchema } from "@/features/auth/validation/login-schema";
+import { homeTheme } from "@/features/home/theme";
 
 export function LoginScreen() {
   const { login, loading, error } = useLogin();
@@ -37,7 +38,7 @@ export function LoginScreen() {
     }
     try {
       await login(parsed.data.identifier, parsed.data.password);
-      router.replace("/(app)/(tabs)");
+      router.replace("/(app)/(tabs)/orders");
     } catch {
       // Error message set inside useLogin
     }
@@ -100,7 +101,7 @@ export function LoginScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#0f172a" />
+              <ActivityIndicator color={homeTheme.onAccent} />
             ) : (
               <Text style={styles.primaryText}>تسجيل الدخول</Text>
             )}
@@ -115,7 +116,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { paddingBottom: 32, paddingTop: 8 },
   lead: {
-    color: "#94a3b8",
+    color: homeTheme.textMuted,
     fontSize: 14,
     lineHeight: 22,
     textAlign: "right",
@@ -123,15 +124,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   banner: {
-    backgroundColor: "rgba(248, 113, 113, 0.12)",
+    backgroundColor: homeTheme.dangerSoft,
     borderRadius: 12,
     padding: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "rgba(248, 113, 113, 0.35)",
+    borderColor: homeTheme.dangerBorder,
   },
   bannerText: {
-    color: "#fecaca",
+    color: homeTheme.dangerText,
     fontSize: 14,
     textAlign: "right",
     writingDirection: "rtl",
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
   },
   primary: {
     marginTop: 8,
-    backgroundColor: "#0ea5e9",
+    backgroundColor: homeTheme.accent,
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: "center",
@@ -147,5 +148,5 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   primaryDisabled: { opacity: 0.75 },
-  primaryText: { color: "#0f172a", fontWeight: "800", fontSize: 16 },
+  primaryText: { color: homeTheme.onAccent, fontWeight: "800", fontSize: 16 },
 });

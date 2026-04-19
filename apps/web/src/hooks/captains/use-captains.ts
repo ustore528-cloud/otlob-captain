@@ -15,7 +15,10 @@ function toListQuery(p: CaptainsListParams) {
   };
 }
 
-export function useCaptains(params: CaptainsListParams = DEFAULT_CAPTAINS_LIST, options?: { enabled?: boolean }) {
+export function useCaptains(
+  params: CaptainsListParams = DEFAULT_CAPTAINS_LIST,
+  options?: { enabled?: boolean; refetchInterval?: number | false },
+) {
   const token = useAuthStore((s) => s.token);
   const role = useAuthStore((s) => s.user?.role);
   const can = role === "ADMIN" || role === "DISPATCHER";
@@ -23,5 +26,6 @@ export function useCaptains(params: CaptainsListParams = DEFAULT_CAPTAINS_LIST, 
     queryKey: queryKeys.captains.list(params),
     queryFn: () => api.captains.list(toListQuery(params)),
     enabled: (options?.enabled ?? true) && Boolean(token) && can,
+    refetchInterval: options?.refetchInterval,
   });
 }

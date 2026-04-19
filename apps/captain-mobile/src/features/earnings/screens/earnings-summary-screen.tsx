@@ -10,7 +10,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { ScreenHeader } from "@/components/screen-header";
+import { WorkStatusBanner } from "@/features/work-status";
 import { QueryErrorState } from "@/components/ui/query-error-state";
+import { useInnerToolBack } from "@/hooks/use-inner-tool-back";
 import { homeTheme } from "@/features/home/theme";
 import { screenStyles } from "@/theme/screen-styles";
 import { useEarningsSummary } from "@/hooks/api/use-earnings-summary";
@@ -57,6 +60,7 @@ function rangeDescription(preset: RangePreset): string {
 }
 
 export function EarningsSummaryScreen() {
+  const goBack = useInnerToolBack();
   const { isAuthenticated } = useAuth();
   const [preset, setPreset] = useState<RangePreset>("30d");
   const [refreshing, setRefreshing] = useState(false);
@@ -84,8 +88,9 @@ export function EarningsSummaryScreen() {
   if (!isAuthenticated) {
     return (
       <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
-        <Text style={styles.title}>ملخص الأرباح</Text>
-        <Text style={styles.muted}>سجّل الدخول لعرض إحصائياتك.</Text>
+        <WorkStatusBanner />
+        <ScreenHeader title="ملخص الأرباح" onBack={goBack} />
+        <Text style={[styles.muted, styles.guestPad]}>سجّل الدخول لعرض إحصائياتك.</Text>
       </SafeAreaView>
     );
   }
@@ -93,9 +98,7 @@ export function EarningsSummaryScreen() {
   if (query.isLoading) {
     return (
       <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
-        <View style={styles.heroPad}>
-          <Text style={styles.title}>ملخص الأرباح</Text>
-        </View>
+        <ScreenHeader title="ملخص الأرباح" onBack={goBack} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={homeTheme.accent} />
           <Text style={styles.muted}>جاري تحميل الملخص…</Text>
@@ -107,8 +110,9 @@ export function EarningsSummaryScreen() {
   if (query.isError) {
     return (
       <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+        <WorkStatusBanner />
+        <ScreenHeader title="ملخص الأرباح" onBack={goBack} />
         <View style={styles.heroPad}>
-          <Text style={styles.title}>ملخص الأرباح</Text>
           <Text style={styles.sub}>طلبات مسلّمة فقط — من الخادم</Text>
         </View>
         <QueryErrorState error={query.error} onRetry={() => void query.refetch()} />
@@ -118,7 +122,10 @@ export function EarningsSummaryScreen() {
 
   return (
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+      <WorkStatusBanner />
+      <ScreenHeader title="ملخص الأرباح" onBack={goBack} />
       <ScrollView
+        style={styles.scrollFlex}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -127,7 +134,6 @@ export function EarningsSummaryScreen() {
       >
         <View style={styles.heroPad}>
           <Text style={styles.kicker}>أداؤك</Text>
-          <Text style={styles.title}>ملخص الأرباح</Text>
           <Text style={styles.sub}>{rangeDescription(preset)}</Text>
         </View>
 
@@ -200,7 +206,9 @@ export function EarningsSummaryScreen() {
 }
 
 const styles = StyleSheet.create({
+  scrollFlex: { flex: 1 },
   scroll: { paddingBottom: 24 },
+  guestPad: { paddingHorizontal: 20, paddingTop: 12 },
   heroPad: { paddingHorizontal: 20, paddingTop: 8 },
   kicker: {
     color: homeTheme.accent,
@@ -209,13 +217,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
     letterSpacing: 0.3,
     marginBottom: 4,
-  },
-  title: {
-    color: homeTheme.text,
-    fontSize: 28,
-    fontWeight: "900",
-    textAlign: "right",
-    letterSpacing: -0.5,
   },
   sub: {
     color: homeTheme.textSubtle,
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
   },
   chipActive: {
     borderColor: homeTheme.borderStrong,
-    backgroundColor: "rgba(56, 189, 248, 0.12)",
+    backgroundColor: homeTheme.accentSoft,
   },
   chipText: { color: homeTheme.textMuted, fontSize: 13, fontWeight: "600" },
   chipTextActive: { color: homeTheme.accent, fontWeight: "800" },
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     padding: 14,
     borderRadius: homeTheme.radiusMd,
-    backgroundColor: "rgba(148, 163, 184, 0.06)",
+    backgroundColor: homeTheme.neutralSoft,
     borderWidth: 1,
     borderColor: homeTheme.border,
   },
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: "rgba(148, 163, 184, 0.08)",
+    backgroundColor: homeTheme.neutralSoft,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,

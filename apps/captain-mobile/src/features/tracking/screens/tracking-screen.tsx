@@ -10,8 +10,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { ScreenHeader } from "@/components/screen-header";
+import { WorkStatusBanner } from "@/features/work-status";
 import { homeTheme } from "@/features/home/theme";
 import { screenStyles } from "@/theme/screen-styles";
+import { useInnerToolBack } from "@/hooks/use-inner-tool-back";
 import { useAuth } from "@/hooks/use-auth";
 import { useCaptainTracking } from "../use-captain-tracking";
 
@@ -29,6 +32,7 @@ function issueIcon(kind: string): keyof typeof Ionicons.glyphMap {
 }
 
 export function TrackingScreen() {
+  const goBack = useInnerToolBack();
   const { isAuthenticated } = useAuth();
   const { snapshot, setSessionEnabled, refreshPermission } = useCaptainTracking();
 
@@ -46,16 +50,18 @@ export function TrackingScreen() {
   if (!isAuthenticated) {
     return (
       <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
-        <Text style={styles.title}>التتبع</Text>
-        <Text style={styles.muted}>سجّل الدخول لإرسال موقعك للخادم.</Text>
+        <WorkStatusBanner />
+        <ScreenHeader title="التتبع" onBack={goBack} />
+        <Text style={[styles.muted, styles.guestPad]}>سجّل الدخول لإرسال موقعك للخادم.</Text>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>التتبع</Text>
+      <WorkStatusBanner />
+      <ScreenHeader title="التتبع" onBack={goBack} />
+      <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.sub}>
           إرسال موقعك دوريًا أثناء عمل التطبيق في المقدّمة. التتبع في الخلفية يُضاف لاحقًا عبر مهمة
           منفصلة.
@@ -70,8 +76,8 @@ export function TrackingScreen() {
             <Switch
               value={snapshot.sessionEnabled}
               onValueChange={setSessionEnabled}
-              trackColor={{ false: "#334155", true: "rgba(56, 189, 248, 0.35)" }}
-              thumbColor={snapshot.sessionEnabled ? homeTheme.accent : "#94a3b8"}
+              trackColor={{ false: "rgba(43, 43, 43, 0.22)", true: homeTheme.accentMuted }}
+              thumbColor={snapshot.sessionEnabled ? homeTheme.accent : homeTheme.tabBarInactive}
             />
           </View>
         </View>
@@ -139,7 +145,7 @@ export function TrackingScreen() {
         {snapshot.lastIssue ? (
           <View style={[styles.card, styles.issueCard]}>
             <View style={styles.issueHead}>
-              <Ionicons name={issueIcon(snapshot.lastIssue.kind)} size={22} color="#fbbf24" />
+              <Ionicons name={issueIcon(snapshot.lastIssue.kind)} size={22} color={homeTheme.gold} />
               <Text style={styles.issueTitle}>تنبيه</Text>
             </View>
             <Text style={styles.issueBody}>{snapshot.lastIssue.message}</Text>
@@ -169,13 +175,9 @@ function StatusRow({ label, value, ok }: { label: string; value: string; ok: boo
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32 },
-  title: {
-    color: homeTheme.text,
-    fontSize: 24,
-    fontWeight: "900",
-    textAlign: "right",
-  },
+  scrollFlex: { flex: 1 },
+  scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32 },
+  guestPad: { paddingHorizontal: 20, paddingTop: 12 },
   sub: {
     color: homeTheme.textSubtle,
     fontSize: 14,
@@ -239,8 +241,8 @@ const styles = StyleSheet.create({
   },
   time: { color: homeTheme.textMuted, fontSize: 12, textAlign: "right", marginTop: 6 },
   issueCard: {
-    borderColor: "rgba(251, 191, 36, 0.35)",
-    backgroundColor: "rgba(251, 191, 36, 0.06)",
+    borderColor: homeTheme.goldMuted,
+    backgroundColor: homeTheme.goldSoft,
   },
   issueHead: {
     flexDirection: "row-reverse",
@@ -248,6 +250,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  issueTitle: { color: "#fcd34d", fontWeight: "800", fontSize: 16 },
+  issueTitle: { color: homeTheme.gold, fontWeight: "800", fontSize: 16 },
   issueBody: { color: homeTheme.textMuted, fontSize: 14, lineHeight: 22, textAlign: "right" },
 });

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/layout/stat-card";
 import { DashboardActivityCard } from "@/features/dashboard/components/dashboard-activity-card";
+import { DashboardMapSettingsCard } from "@/features/dashboard/components/dashboard-map-settings-card";
 import { DashboardNotificationCard } from "@/features/dashboard/components/dashboard-notification-card";
 import { QueryErrorLine } from "@/features/dashboard/components/query-error-line";
 import { useActivityList, useDashboardStats, useNotifications, useSendQuickStatusAlert, type QuickStatusCode } from "@/hooks";
@@ -78,6 +79,8 @@ export function DashboardPage() {
           <StatCard label="طلبات التجهيز" value={stats?.confirmedOrders ?? "—"} />
         </div>
       ) : null}
+
+      {dispatch ? <DashboardMapSettingsCard /> : null}
 
       {dispatch ? (
         <Card className="border-card-border shadow-sm">

@@ -1,5 +1,7 @@
 import { ApiError } from "@/lib/api/http";
 import * as activity from "@/lib/api/services/activity";
+import * as dashboardSettings from "@/lib/api/services/dashboard-settings";
+import * as geocode from "@/lib/api/services/geocode";
 import * as captains from "@/lib/api/services/captains";
 import * as notifications from "@/lib/api/services/notifications";
 import * as orders from "@/lib/api/services/orders";
@@ -62,6 +64,14 @@ export function createApiClient(getToken: GetToken) {
     },
     activity: {
       list: (page?: number, pageSize?: number) => activity.listActivity(t(), page, pageSize),
+    },
+    dashboardSettings: {
+      get: () => dashboardSettings.getDashboardSettings(t()),
+      patch: (body: dashboardSettings.DashboardSettingsPatchPayload) =>
+        dashboardSettings.patchDashboardSettings(t(), body),
+    },
+    geocode: {
+      place: (params: { country?: string | null; city?: string | null }) => geocode.geocodePlace(t(), params),
     },
   };
 }

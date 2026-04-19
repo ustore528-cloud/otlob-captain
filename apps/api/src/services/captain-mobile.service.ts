@@ -14,7 +14,10 @@ import { authService } from "./auth.service.js";
 import { captainsService } from "./captains.service.js";
 import { ordersService } from "./orders.service.js";
 import { trackingService } from "./tracking.service.js";
+import { env } from "../config/env.js";
 import { DISTRIBUTION_TIMEOUT_SECONDS } from "./distribution/constants.js";
+import { clampOfferExpiredAtToConfiguredWindow } from "./distribution/clamp-offer-expired-at.js";
+import { logOfferPayloadCaptainMobileDiagnostics } from "./distribution/offer-diagnostics.js";
 
 export type CurrentAssignmentResponse =
   | { state: "NONE" }
@@ -61,13 +64,20 @@ export const captainMobileService = {
     const captain = await captainRepository.findByUserId(userId);
     if (!captain) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
 
+    /** يجب أن يكون الطلب مُسندًا لهذا الكابتن، وأن لا يكون انتهاء العرض قد مرّ (قبل أن يعالجها worker التوزيع) */
+    const now = new Date();
     const pendingLog = await prisma.orderAssignmentLog.findFirst({
       where: {
         captainId: captain.id,
         responseStatus: AssignmentResponseStatus.PENDING,
-        order: { status: { notIn: [OrderStatus.CANCELLED, OrderStatus.DELIVERED] } },
+        OR: [{ expiredAt: null }, { expiredAt: { gt: now } }],
+        order: {
+          assignedCaptainId: captain.id,
+          status: OrderStatus.ASSIGNED,
+        },
       },
-      orderBy: { assignedAt: "desc" },
+      /** أقرب `expiredAt` أولاً — يطابق خريطة التتبع (`assignmentOfferExpiresAt` = أقل مهلة بين العروض المعلقة) */
+      orderBy: [{ expiredAt: "asc" }, { assignedAt: "desc" }],
       include: {
         order: {
           include: {
@@ -79,13 +89,25 @@ export const captainMobileService = {
     });
 
     if (pendingLog?.order) {
+      const expiresAtClamped = clampOfferExpiredAtToConfiguredWindow(
+        pendingLog.assignedAt,
+        pendingLog.expiredAt,
+      );
+      if (env.OFFER_DIAGNOSTICS === "1") {
+        logOfferPayloadCaptainMobileDiagnostics({
+          orderId: pendingLog.orderId,
+          captainId: captain.id,
+          assignedAtIso: pendingLog.assignedAt.toISOString(),
+          expiresAtIso: expiresAtClamped ? expiresAtClamped.toISOString() : null,
+        });
+      }
       return {
         state: "OFFER",
         timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
         log: {
           id: pendingLog.id,
           assignedAt: pendingLog.assignedAt.toISOString(),
-          expiresAt: pendingLog.expiredAt ? pendingLog.expiredAt.toISOString() : null,
+          expiresAt: expiresAtClamped ? expiresAtClamped.toISOString() : null,
         },
         order: toOrderDetailDto(pendingLog.order),
       };

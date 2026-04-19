@@ -1,5 +1,6 @@
-import type { Prisma, OrderStatus } from "@prisma/client";
+import { AssignmentResponseStatus, type Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { normalizePaginationForPrisma } from "../utils/pagination.js";
 
 export const orderRepository = {
   findById(id: string) {
@@ -53,17 +54,31 @@ export const orderRepository = {
     if (params.orderNumber) where.orderNumber = { contains: params.orderNumber, mode: "insensitive" };
     if (params.customerPhone) where.customerPhone = { contains: params.customerPhone };
 
+    const { skip, take } = normalizePaginationForPrisma(params);
+
     return prisma.$transaction([
       prisma.order.count({ where }),
       prisma.order.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
+        skip,
+        take,
         include: {
           store: { select: { id: true, name: true, area: true } },
           assignedCaptain: {
             include: { user: { select: { fullName: true, phone: true } } },
+          },
+          /** للوحة التوزيع: مهلة قبول العرض الحالي (PENDING لنفس الكابتن المعيّن) */
+          assignmentLogs: {
+            where: { responseStatus: AssignmentResponseStatus.PENDING },
+            orderBy: { assignedAt: "desc" },
+            take: 5,
+            select: {
+              captainId: true,
+              assignedAt: true,
+              expiredAt: true,
+              responseStatus: true,
+            },
           },
         },
       }),
@@ -113,13 +128,15 @@ export const orderRepository = {
 
     const where: Prisma.OrderWhereInput = { AND };
 
+    const { skip, take } = normalizePaginationForPrisma(params);
+
     return prisma.$transaction([
       prisma.order.count({ where }),
       prisma.order.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
+        skip,
+        take,
         include: {
           store: { select: { id: true, name: true, area: true } },
           assignedCaptain: {

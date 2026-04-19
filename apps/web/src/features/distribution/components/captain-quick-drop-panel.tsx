@@ -19,10 +19,13 @@ export function CaptainQuickDropPanel({ captains, onDropOrderOnCaptain }: Props)
   }, []);
 
   return (
-    <div className="grid gap-2 rounded-2xl border border-card-border bg-card p-4 shadow-sm">
-      <h3 className="text-sm font-semibold">إفلات سريع — الكباتن</h3>
-      <p className="text-xs text-muted">ألوان البطاقات مطابقة لحالة الكابتن على الخريطة.</p>
-      <div className="mt-2 grid max-h-[420px] gap-2 overflow-y-auto pe-1">
+    <div className="grid gap-2 rounded-2xl border border-card-border bg-card p-3 shadow-sm sm:p-4">
+      <p className="text-xs text-muted">
+        ألوان البطاقات = حالة الكابتن على الخريطة. أسفل الاسم:{" "}
+        <span className="font-semibold text-amber-900/90 dark:text-amber-200">بانتظار الرد</span> (عرض يحتاج قبولاً) و{" "}
+        <span className="font-semibold text-emerald-900/90 dark:text-emerald-200">طلبات نشطة</span> (قيد التوصيل).
+      </p>
+      <div className="mt-1 grid max-h-[min(420px,50vh)] gap-2 overflow-y-auto pe-1">
         {captains.map((c) => {
           const vis = captainMapVisual(c);
           const secLeft =
@@ -58,15 +61,36 @@ export function CaptainQuickDropPanel({ captains, onDropOrderOnCaptain }: Props)
               <div className="mt-0.5 text-xs text-foreground/80" dir="ltr">
                 {c.user.phone}
               </div>
+              <div className="mt-2 flex flex-wrap gap-2 [direction:rtl]">
+                <div
+                  className="flex min-w-[6.5rem] flex-1 items-center justify-between gap-2 rounded-lg border border-amber-600/35 bg-amber-500/15 px-2 py-1.5 dark:border-amber-500/40 dark:bg-amber-500/12"
+                  title="طلبات بحالة ASSIGNED — بانتظار قبول أو رفض الكابتن"
+                >
+                  <span className="max-w-[4.5rem] text-[10px] font-bold leading-tight text-amber-950 dark:text-amber-100">
+                    بانتظار الرد
+                  </span>
+                  <span className="min-w-[1.25rem] text-center font-mono text-base font-black tabular-nums leading-none text-amber-950 dark:text-amber-50">
+                    {c.waitingOffers}
+                  </span>
+                </div>
+                <div
+                  className="flex min-w-[6.5rem] flex-1 items-center justify-between gap-2 rounded-lg border border-emerald-600/35 bg-emerald-500/12 px-2 py-1.5 dark:border-emerald-500/35 dark:bg-emerald-500/10"
+                  title="طلبات مقبولة أو قيد التوصيل (نشطة)"
+                >
+                  <span className="max-w-[4.5rem] text-[10px] font-bold leading-tight text-emerald-950 dark:text-emerald-100">
+                    طلبات نشطة
+                  </span>
+                  <span className="min-w-[1.25rem] text-center font-mono text-base font-black tabular-nums leading-none text-emerald-950 dark:text-emerald-50">
+                    {c.activeOrders}
+                  </span>
+                </div>
+              </div>
               {secLeft !== null ? (
-                <div dir="ltr" className="mt-1 text-[11px] font-semibold" style={{ color: "#713f12" }}>
+                <div dir="ltr" className="mt-1.5 text-[11px] font-semibold" style={{ color: "#713f12" }}>
                   ⏱ {secLeft} ث
                 </div>
               ) : null}
               <div className="mt-1 text-[11px] text-foreground/70">{c.availabilityStatus}</div>
-              <div className="mt-1 text-[11px] text-foreground/70">
-                بانتظار رد: {c.waitingOffers} · طلبات نشطة: {c.activeOrders}
-              </div>
               {c.latestOrderNumber ? (
                 <div className="mt-1 text-[11px] font-mono text-foreground/70" dir="ltr">
                   {c.latestOrderNumber} ({c.latestOrderStatus})

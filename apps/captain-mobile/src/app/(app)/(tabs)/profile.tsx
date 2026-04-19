@@ -1,6 +1,9 @@
 import { useMemo, useCallback } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ScreenHeader } from "@/components/screen-header";
+import { WorkStatusBanner } from "@/features/work-status";
+import { useInnerToolBack } from "@/hooks/use-inner-tool-back";
 import {
   AvailabilityControl,
   availabilityLabel,
@@ -16,6 +19,7 @@ import type { CaptainAvailabilityStatus } from "@/services/api/dto";
 
 export default function ProfileTab() {
   const { user, captain, signOut, isAuthenticated } = useAuth();
+  const goBack = useInnerToolBack();
   const meQuery = useCaptainMe({ enabled: isAuthenticated, staleTime: 20_000 });
   const updateAv = useUpdateAvailability();
 
@@ -35,8 +39,9 @@ export default function ProfileTab() {
 
   return (
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.screenTitle}>حسابي</Text>
+      <WorkStatusBanner />
+      <ScreenHeader title="حسابي" onBack={goBack} />
+      <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.screenSub}>بياناتك وحالة التوفر</Text>
 
         <View style={styles.card}>
@@ -81,18 +86,12 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  scrollFlex: { flex: 1 },
   scroll: { paddingHorizontal: 20, paddingBottom: 32, paddingTop: 8 },
-  screenTitle: {
-    color: homeTheme.text,
-    fontSize: 24,
-    fontWeight: "900",
-    textAlign: "right",
-  },
   screenSub: {
     color: homeTheme.textSubtle,
     fontSize: 14,
     textAlign: "right",
-    marginTop: 6,
     marginBottom: 16,
   },
   card: {

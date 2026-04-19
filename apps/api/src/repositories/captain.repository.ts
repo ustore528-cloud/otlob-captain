@@ -1,5 +1,6 @@
 import { CaptainAvailabilityStatus, type Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { normalizePaginationForPrisma } from "../utils/pagination.js";
 
 export const captainRepository = {
   findById(id: string) {
@@ -28,13 +29,15 @@ export const captainRepository = {
     if (params.isActive !== undefined) where.isActive = params.isActive;
     if (params.availabilityStatus) where.availabilityStatus = params.availabilityStatus;
 
+    const { skip, take } = normalizePaginationForPrisma(params);
+
     return prisma.$transaction([
       prisma.captain.count({ where }),
       prisma.captain.findMany({
         where,
         orderBy: { updatedAt: "desc" },
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
+        skip,
+        take,
         include: { user: { select: { id: true, fullName: true, phone: true, isActive: true } } },
       }),
     ]);

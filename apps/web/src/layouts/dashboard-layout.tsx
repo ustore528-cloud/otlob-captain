@@ -17,6 +17,7 @@ export function DashboardLayout() {
   const nav = {
     canNewOrder: canOrders,
     canDistribution: isDispatch,
+    canIncubatorHost: isDispatch,
     canOrders,
     canCaptains: isDispatch,
     canUsers: isDispatch,

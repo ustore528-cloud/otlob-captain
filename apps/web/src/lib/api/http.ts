@@ -1,7 +1,25 @@
 import { paths } from "@captain/shared";
 
-const BASE = import.meta.env.VITE_API_URL ?? "";
 let unauthorizedHandler: (() => void) | null = null;
+
+/**
+ * `VITE_API_URL` must be the server **origin** only (e.g. `https://api.example.com`, empty for same-origin + Vite proxy).
+ * If someone sets `…/api` or `…/api/v1`, requests would become `/api/api/v1/...` and return **404**.
+ */
+export function resolveApiBase(): string {
+  let base = (import.meta.env.VITE_API_URL ?? "").trim();
+  if (!base) return "";
+  base = base.replace(/\/+$/, "");
+  if (/\/api\/v1$/i.test(base)) {
+    return base.replace(/\/api\/v1$/i, "");
+  }
+  if (/\/api$/i.test(base)) {
+    return base.replace(/\/api$/i, "");
+  }
+  return base;
+}
+
+export const apiBaseUrl = resolveApiBase();
 
 export type ApiSuccess<T> = { success: true; data: T };
 export type ApiFail = { success: false; error: { code: string; message: string; details?: unknown } };
@@ -39,7 +57,7 @@ export async function apiFetch<T>(
   init: RequestInit & { token?: string | null } = {},
 ): Promise<T> {
   const { token, headers, ...rest } = init;
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${apiBaseUrl}${path}`, {
     ...rest,
     headers: {
       "Content-Type": "application/json",
@@ -59,7 +77,12 @@ export async function apiFetch<T>(
       throw new ApiError(body.error.message, res.status, body.error.code, body.error.details);
     }
     const legacy = json as { error?: string; code?: string; details?: unknown } | null;
-    throw new ApiError(legacy?.error ?? "Request failed", res.status, legacy?.code, legacy?.details);
+    let fallback = legacy?.error ?? "Request failed";
+    if (res.status === 404 && path.includes("/geocode/")) {
+      fallback =
+        "لم يُعثر على مسار تحديد الموقع (404). تأكد أن عنوان الـ API في الإعدادات هو أصل الموقع فقط (بدون /api)، وأن الخادم منشور بنسخة تتضمن /api/v1/geocode/place.";
+    }
+    throw new ApiError(fallback, res.status, legacy?.code, legacy?.details);
   }
 
   const okBody = json as ApiSuccess<T> | null;
@@ -71,4 +94,3 @@ export async function apiFetch<T>(
 }
 
 export { paths };
-export const apiBaseUrl = BASE;

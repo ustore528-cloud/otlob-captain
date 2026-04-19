@@ -8,7 +8,10 @@ import { captainRepository } from "../repositories/captain.repository.js";
 import { captainLocationRepository } from "../repositories/captain-location.repository.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
+import { env } from "../config/env.js";
 import { emitCaptainLocation } from "../realtime/hub.js";
+import { clampOfferExpiredAtToConfiguredWindow } from "./distribution/clamp-offer-expired-at.js";
+import { logOfferPayloadTrackingMapDiagnostics } from "./distribution/offer-diagnostics.js";
 
 export const trackingService = {
   async updateLocation(userId: string, latitude: number, longitude: number) {
@@ -106,26 +109,37 @@ export const trackingService = {
         responseStatus: AssignmentResponseStatus.PENDING,
         expiredAt: { not: null },
       },
-      select: { captainId: true, expiredAt: true },
+      select: { captainId: true, expiredAt: true, assignedAt: true },
     });
     const earliestOfferExpiry = new Map<string, Date>();
     for (const row of pendingExpiryLogs) {
       if (!row.expiredAt) continue;
+      const clamped = clampOfferExpiredAtToConfiguredWindow(row.assignedAt, row.expiredAt);
+      if (!clamped) continue;
       const prev = earliestOfferExpiry.get(row.captainId);
-      if (!prev || row.expiredAt < prev) {
-        earliestOfferExpiry.set(row.captainId, row.expiredAt);
+      if (!prev || clamped < prev) {
+        earliestOfferExpiry.set(row.captainId, clamped);
       }
     }
 
-    return captains.map((c) => ({
-      ...c,
-      lastLocation: locByCaptain.get(c.id) ?? null,
-      waitingOffers: metaByCaptain.get(c.id)?.waitingOffers ?? 0,
-      activeOrders: metaByCaptain.get(c.id)?.activeOrders ?? 0,
-      latestOrderNumber: metaByCaptain.get(c.id)?.latestOrderNumber ?? null,
-      latestOrderStatus: metaByCaptain.get(c.id)?.latestOrderStatus ?? null,
-      recentRejects: recentRejectsByCaptain.get(c.id) ?? 0,
-      assignmentOfferExpiresAt: earliestOfferExpiry.get(c.id)?.toISOString() ?? null,
-    }));
+    return captains.map((c) => {
+      const assignmentOfferExpiresAt = earliestOfferExpiry.get(c.id)?.toISOString() ?? null;
+      if (env.OFFER_DIAGNOSTICS === "1") {
+        logOfferPayloadTrackingMapDiagnostics({
+          captainId: c.id,
+          assignmentOfferExpiresAtIso: assignmentOfferExpiresAt,
+        });
+      }
+      return {
+        ...c,
+        lastLocation: locByCaptain.get(c.id) ?? null,
+        waitingOffers: metaByCaptain.get(c.id)?.waitingOffers ?? 0,
+        activeOrders: metaByCaptain.get(c.id)?.activeOrders ?? 0,
+        latestOrderNumber: metaByCaptain.get(c.id)?.latestOrderNumber ?? null,
+        latestOrderStatus: metaByCaptain.get(c.id)?.latestOrderStatus ?? null,
+        recentRejects: recentRejectsByCaptain.get(c.id) ?? 0,
+        assignmentOfferExpiresAt,
+      };
+    });
   },
 };

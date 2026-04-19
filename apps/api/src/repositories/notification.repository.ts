@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { normalizePaginationForPrisma } from "../utils/pagination.js";
 
 export const notificationRepository = {
   create(data: Prisma.NotificationCreateInput) {
@@ -10,13 +11,15 @@ export const notificationRepository = {
     const where: Prisma.NotificationWhereInput = { userId };
     if (params.isRead !== undefined) where.isRead = params.isRead;
 
+    const { skip, take } = normalizePaginationForPrisma(params);
+
     return prisma.$transaction([
       prisma.notification.count({ where }),
       prisma.notification.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        skip: (params.page - 1) * params.pageSize,
-        take: params.pageSize,
+        skip,
+        take,
       }),
     ]);
   },

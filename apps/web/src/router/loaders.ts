@@ -54,6 +54,10 @@ export async function newOrderLoader() {
   return null;
 }
 
+export async function incubatorHostLoader() {
+  return null;
+}
+
 export async function distributionLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;

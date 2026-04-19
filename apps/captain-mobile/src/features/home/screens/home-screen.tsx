@@ -1,5 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
-import { useRouter, type Href } from "expo-router";
+import { useRouter } from "expo-router";
 import { useCallback, useMemo } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,25 +9,19 @@ import { useAuth } from "@/hooks/use-auth";
 import { AvailabilityControl, useUpdateAvailability } from "@/features/availability";
 import type { CaptainAvailabilityStatus } from "@/services/api/dto";
 import { CaptainSummaryCard } from "../components/captain-summary-card";
-import type { QuickActionId } from "../components/quick-actions";
-import { QuickActions } from "../components/quick-actions";
 import { LastNotificationCard } from "../components/last-notification-card";
 import { parseAvailabilityStatus } from "../labels";
+import { ScreenHeader } from "@/components/screen-header";
+import { WorkStatusBanner } from "@/features/work-status";
 import { QueryErrorState } from "@/components/ui/query-error-state";
+import { useInnerToolBack } from "@/hooks/use-inner-tool-back";
 import { alertMutationError } from "@/lib/alert-mutation-error";
 import { screenStyles } from "@/theme/screen-styles";
 import { homeTheme } from "../theme";
 
-const TAB_ROUTES = {
-  orders: "/(app)/(tabs)/orders",
-  earnings: "/(app)/(tabs)/earnings",
-  tracking: "/(app)/(tabs)/tracking",
-  notifications: "/(app)/(tabs)/notifications",
-  profile: "/(app)/(tabs)/profile",
-} as const satisfies Record<QuickActionId, Href>;
-
 export function HomeScreen() {
   const router = useRouter();
+  const goBack = useInnerToolBack();
   const { isAuthenticated } = useAuth();
 
   const meQuery = useCaptainMe({
@@ -66,17 +60,12 @@ export function HomeScreen() {
     [updateAv],
   );
 
-  const onQuickAction = useCallback(
-    (id: QuickActionId) => {
-      router.push(TAB_ROUTES[id]);
-    },
-    [router],
-  );
-
   const refreshing = meQuery.isFetching && !meQuery.isLoading;
 
   return (
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+      <WorkStatusBanner />
+      <ScreenHeader title="لوحة الكابتن" onBack={goBack} />
       <View style={styles.accentBar} />
 
       <ScrollView
@@ -96,8 +85,7 @@ export function HomeScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.greet}>مرحبًا</Text>
-          <Text style={styles.title}>لوحة الكابتن</Text>
-          <Text style={styles.sub}>نظرة سريعة على حالتك وآخر التنبيهات</Text>
+          <Text style={styles.sub}>نظرة سريعة على حالتك — التنفيذ من «الطلبات المتاحة»</Text>
         </View>
 
         {meQuery.isLoading ? (
@@ -135,9 +123,11 @@ export function HomeScreen() {
               onOpenNotifications={() => router.push("/(app)/(tabs)/notifications")}
             />
 
-            <View style={styles.sectionGap} />
-
-            <QuickActions onAction={onQuickAction} />
+            <View style={styles.hintBox}>
+              <Text style={styles.hintText}>
+                لتنفيذ الطلبات والعروض استخدم «الطلبات المتاحة». للإعدادات والأرباح والتتبع: «الإعدادات».
+              </Text>
+            </View>
           </>
         ) : null}
 
@@ -164,13 +154,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
     marginBottom: 4,
   },
-  title: {
-    color: homeTheme.text,
-    fontSize: 26,
-    fontWeight: "900",
-    textAlign: "right",
-    letterSpacing: -0.5,
-  },
   sub: {
     color: homeTheme.textSubtle,
     fontSize: 14,
@@ -185,4 +168,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loaderText: { color: homeTheme.textMuted, fontSize: 14 },
+  hintBox: {
+    marginTop: 8,
+    padding: 14,
+    borderRadius: homeTheme.radiusMd,
+    backgroundColor: homeTheme.neutralSoft,
+    borderWidth: 1,
+    borderColor: homeTheme.border,
+  },
+  hintText: {
+    color: homeTheme.textSubtle,
+    fontSize: 13,
+    lineHeight: 21,
+    textAlign: "right",
+  },
 });
