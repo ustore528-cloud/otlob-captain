@@ -52,11 +52,18 @@ export const paths = {
   activity: {
     root: `${API_V1}/activity`,
   },
+  dashboardSettings: {
+    root: `${API_V1}/dashboard-settings`,
+  },
+  geocode: {
+    place: `${API_V1}/geocode/place`,
+  },
   /** مسارات مستقرة لتطبيق الكابتن (موبايل) — JWT نفس `/auth` */
   mobileCaptain: {
     login: `${API_V1}/mobile/captain/auth/login`,
     refresh: `${API_V1}/mobile/captain/auth/refresh`,
     me: `${API_V1}/mobile/captain/me`,
+    workStatus: `${API_V1}/mobile/captain/me/work-status`,
     assignment: `${API_V1}/mobile/captain/me/assignment`,
     availability: `${API_V1}/mobile/captain/me/availability`,
     location: `${API_V1}/mobile/captain/me/location`,
