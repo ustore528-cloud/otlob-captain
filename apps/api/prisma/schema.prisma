@@ -225,3 +225,16 @@ model ActivityLog {
   @@index([userId, createdAt])
   @@map("activity_logs")
 }
+
+/** صف واحد (id = default) — إعدادات لوحة الإدارة (خريطة افتراضية، إلخ). */
+model DashboardSettings {
+  id             String  @id @default("default")
+  mapCountry     String? @map("map_country") @db.VarChar(160)
+  mapCityRegion  String? @map("map_city_region") @db.VarChar(200)
+  mapDefaultLat  Float?  @map("map_default_lat")
+  mapDefaultLng  Float?  @map("map_default_lng")
+  mapDefaultZoom Int?    @map("map_default_zoom")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("dashboard_settings")
+}
