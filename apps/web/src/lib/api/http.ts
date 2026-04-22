@@ -3,11 +3,12 @@ import { paths } from "@captain/shared";
 let unauthorizedHandler: (() => void) | null = null;
 
 /**
- * `VITE_API_URL` must be the server **origin** only (e.g. `https://api.example.com`, empty for same-origin + Vite proxy).
+ * `VITE_API_BASE_URL` must be the server **origin** only (e.g. `https://api.example.com`, empty for same-origin + Vite proxy).
+ * `VITE_API_URL` remains supported as a legacy fallback.
  * If someone sets `…/api` or `…/api/v1`, requests would become `/api/api/v1/...` and return **404**.
  */
 export function resolveApiBase(): string {
-  let base = (import.meta.env.VITE_API_URL ?? "").trim();
+  let base = (import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "").trim();
   if (!base) return "";
   base = base.replace(/\/+$/, "");
   if (/\/api\/v1$/i.test(base)) {
