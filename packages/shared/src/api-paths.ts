@@ -31,6 +31,8 @@ export const paths = {
   orders: {
     root: `${API_V1}/orders`,
     byId: (id: string) => `${API_V1}/orders/${id}`,
+    archive: (id: string) => `${API_V1}/orders/${id}/archive`,
+    unarchive: (id: string) => `${API_V1}/orders/${id}/unarchive`,
     status: (id: string) => `${API_V1}/orders/${id}/status`,
     reassign: (id: string) => `${API_V1}/orders/${id}/reassign`,
     distributionAuto: (id: string) => `${API_V1}/orders/${id}/distribution/auto`,
@@ -38,6 +40,8 @@ export const paths = {
     distributionManual: (id: string) => `${API_V1}/orders/${id}/distribution/manual`,
     distributionDragDrop: (id: string) => `${API_V1}/orders/${id}/distribution/drag-drop`,
     distributionCancelCaptain: (id: string) => `${API_V1}/orders/${id}/distribution/cancel-captain`,
+    /** مسار إشرافي — ADMIN/DISPATCHER فقط (`POST` body: `{ status }`) */
+    adminOverrideStatus: (id: string) => `${API_V1}/orders/${id}/override-status`,
   },
   tracking: {
     activeMap: `${API_V1}/tracking/captains/active-map`,
@@ -58,13 +62,21 @@ export const paths = {
   geocode: {
     place: `${API_V1}/geocode/place`,
   },
+  /** طلبات حساب العميل (JWT بدور CUSTOMER) */
+  customer: {
+    orders: `${API_V1}/customer/orders`,
+  },
   /** مسارات مستقرة لتطبيق الكابتن (موبايل) — JWT نفس `/auth` */
   mobileCaptain: {
     login: `${API_V1}/mobile/captain/auth/login`,
     refresh: `${API_V1}/mobile/captain/auth/refresh`,
     me: `${API_V1}/mobile/captain/me`,
     workStatus: `${API_V1}/mobile/captain/me/work-status`,
+    /** Singular live snapshot (NONE | one OFFER | one ACTIVE) — not a multi-order queue. */
     assignment: `${API_V1}/mobile/captain/me/assignment`,
+    /** Secondary assignable / in-flight orders not shown on the primary assignment card (Option C). */
+    assignmentOverflow: `${API_V1}/mobile/captain/me/assignment/overflow`,
+    pushToken: `${API_V1}/mobile/captain/me/push-token`,
     availability: `${API_V1}/mobile/captain/me/availability`,
     location: `${API_V1}/mobile/captain/me/location`,
     orderById: (orderId: string) => `${API_V1}/mobile/captain/orders/${orderId}`,

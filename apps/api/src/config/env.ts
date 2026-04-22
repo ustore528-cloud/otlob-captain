@@ -15,6 +15,7 @@ const EnvSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(16),
   JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
+  EXPO_PUSH_ACCESS_TOKEN: z.string().optional(),
   /** افتراضيًا مفتوح للتطوير (موبايل على LAN، Expo). للإنتاج حدّد دومينات الويب صراحةً. */
   CORS_ORIGIN: z.string().default("*"),
   /**

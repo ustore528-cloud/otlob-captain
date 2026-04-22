@@ -18,6 +18,10 @@ export type CaptainsListQuery = {
   availabilityStatus?: string;
 };
 
+export function getCaptain(token: string, id: string): Promise<CaptainListItem> {
+  return apiFetch<CaptainListItem>(paths.captains.byId(id), { token });
+}
+
 export function listCaptains(token: string, q: CaptainsListQuery = {}): Promise<Paginated<CaptainListItem>> {
   const p = new URLSearchParams();
   p.set("page", String(q.page ?? 1));

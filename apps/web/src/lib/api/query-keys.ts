@@ -28,7 +28,8 @@ export const queryKeys = {
 
   tracking: {
     root: ["tracking"] as const,
-    activeMap: () => ["tracking", "active-map"] as const,
+    /** v2: يتضمّن `userId` / `user.id` — غيّر المفتاح عند تغيير شكل الـ payload لإبطال كاش قديم */
+    activeMap: () => ["tracking", "active-map", "v2"] as const,
     latestLocations: (captainIds: string[]) => ["tracking", "latest", [...captainIds].sort().join(",")] as const,
   },
 

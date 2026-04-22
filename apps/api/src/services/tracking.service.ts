@@ -12,6 +12,7 @@ import { env } from "../config/env.js";
 import { emitCaptainLocation } from "../realtime/hub.js";
 import { clampOfferExpiredAtToConfiguredWindow } from "./distribution/clamp-offer-expired-at.js";
 import { logOfferPayloadTrackingMapDiagnostics } from "./distribution/offer-diagnostics.js";
+import { CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES } from "./distribution/eligibility.js";
 
 export const trackingService = {
   async updateLocation(userId: string, latitude: number, longitude: number) {
@@ -50,10 +51,12 @@ export const trackingService = {
       },
       select: {
         id: true,
+        userId: true,
         area: true,
         availabilityStatus: true,
         vehicleType: true,
-        user: { select: { fullName: true, phone: true } },
+        /** `id` يطابق `userId` — احتياطي للواجهة عند كاش قديم يفتقد `userId` */
+        user: { select: { id: true, fullName: true, phone: true } },
       },
     });
     const ids = captains.map((c) => c.id);
@@ -62,9 +65,7 @@ export const trackingService = {
     const assigned = await prisma.order.findMany({
       where: {
         assignedCaptainId: { in: ids },
-        status: {
-          in: [OrderStatus.ASSIGNED, OrderStatus.ACCEPTED, OrderStatus.PICKED_UP, OrderStatus.IN_TRANSIT],
-        },
+        status: { in: CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES },
       },
       select: { assignedCaptainId: true, orderNumber: true, status: true },
       orderBy: { createdAt: "desc" },

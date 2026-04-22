@@ -73,9 +73,13 @@ export type OrderHistoryScreenProps = {
   syncRefetchWithAssignment?: () => Promise<unknown>;
   /** تبويب الطلبات المتاحة: خلفية بيضاء، بدون إطارات زائدة */
   minimalChrome?: boolean;
+  /** تبويب الأرشيف: طلبات بحالة DELIVERED فقط + فلتر الفترة */
+  archiveMode?: boolean;
   /** بطاقة طلب العرض النشط: عدّاد إلغاء على البطاقة المطابقة */
   activeOfferOrderId?: string | null;
   activeOfferSecondsRemaining?: number;
+  /** يطابق الطلب المعروض في شريط التعيين — لتمييز الصف في السجل دون إخفاء */
+  workbenchOrderId?: string | null;
 };
 
 export function OrderHistoryScreen({
@@ -84,8 +88,10 @@ export function OrderHistoryScreen({
   inlineAssignmentBar,
   syncRefetchWithAssignment,
   minimalChrome = false,
+  archiveMode = false,
   activeOfferOrderId = null,
   activeOfferSecondsRemaining,
+  workbenchOrderId = null,
 }: OrderHistoryScreenProps = {}) {
   const router = useRouter();
   const { updateStatus } = useCaptainOrderMutations();
@@ -94,9 +100,12 @@ export function OrderHistoryScreen({
   const [refreshing, setRefreshing] = useState(false);
 
   const apiFilters = useMemo((): OrderHistoryFilters => {
+    if (archiveMode) {
+      return buildApiFilters("DELIVERED", rangePreset);
+    }
     if (minimalChrome) return {};
     return buildApiFilters(statusFilter, rangePreset);
-  }, [minimalChrome, statusFilter, rangePreset]);
+  }, [archiveMode, minimalChrome, statusFilter, rangePreset]);
 
   const query = useOrderHistoryInfinite(apiFilters, PAGE_SIZE, { staleTime: 30_000 });
 
@@ -155,6 +164,8 @@ export function OrderHistoryScreen({
         typeof activeOfferSecondsRemaining === "number"
           ? activeOfferSecondsRemaining
           : undefined;
+      const isWorkbenchLinked =
+        Boolean(minimalChrome && workbenchOrderId && item.id === workbenchOrderId);
       return (
         <CaptainOrderListCard
           item={item}
@@ -164,16 +175,55 @@ export function OrderHistoryScreen({
           flatVisual={minimalChrome}
           compactList={minimalChrome}
           compactOfferCountdownSeconds={offerCountdown}
+          isWorkbenchLinked={isWorkbenchLinked}
           onOpenDetail={() => router.push(routes.app.order(item.id))}
           onPrimary={() => void onCardPrimary(item)}
         />
       );
     },
-    [router, busyOrderId, onCardPrimary, minimalChrome, activeOfferOrderId, activeOfferSecondsRemaining],
+    [
+      router,
+      busyOrderId,
+      onCardPrimary,
+      minimalChrome,
+      activeOfferOrderId,
+      activeOfferSecondsRemaining,
+      workbenchOrderId,
+    ],
   );
 
   const listHeader = useMemo(() => {
     if (minimalChrome) return null;
+    if (archiveMode) {
+      return (
+        <View style={styles.filtersBlock}>
+          <Text style={styles.filterLabel}>الفترة</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsRow}
+          >
+            {RANGE_CHIPS.map((c) => {
+              const active = rangePreset === c.value;
+              return (
+                <Pressable
+                  key={c.label}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => setRangePreset(c.value)}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+          {query.isSuccess ? (
+            <Text style={styles.countLine}>
+              {totalCount === 0 ? "لا نتائج" : `${totalCount} طلب مُسلَّم`}
+            </Text>
+          ) : null}
+        </View>
+      );
+    }
     return (
       <View style={styles.filtersBlock}>
         {listHeaderTop ? (
@@ -227,31 +277,57 @@ export function OrderHistoryScreen({
         ) : null}
       </View>
     );
-  }, [minimalChrome, statusFilter, rangePreset, query.isSuccess, totalCount, listHeaderTop]);
+  }, [archiveMode, minimalChrome, statusFilter, rangePreset, query.isSuccess, totalCount, listHeaderTop]);
 
   const listHeaderMain = useMemo(
     () => (
       <View>
-        {minimalChrome ? (
+        {!archiveMode && minimalChrome ? (
           <View style={[styles.minimalScreenTitle, styles.minimalScreenTitleDense]}>
-            <Text style={styles.minimalScreenTitleTextDense}>الطلبات المتاحة</Text>
+            <Text style={styles.minimalScreenTitleTextDense}>الطلبات</Text>
+            <Text style={styles.minimalScreenSubtitle} numberOfLines={3}>
+              الأسفل: سجل الطلبات (الترتيب من الخادم). عند وجود عرض أو توصيل نشط، يظهر شريط الإجراءات
+              أدناه — القبول والرفض من الشريط وليس من البطاقة فقط.
+            </Text>
           </View>
         ) : null}
-        {minimalChrome && inlineAssignmentBar ? (
-          <View style={styles.inlineAssignmentSlot}>{inlineAssignmentBar}</View>
+        {!archiveMode && minimalChrome && inlineAssignmentBar ? (
+          <View style={styles.assignmentSection}>
+            <Text style={styles.assignmentSectionLabel}>التعيين الحالي</Text>
+            <View style={styles.assignmentSectionCard}>
+              {inlineAssignmentBar}
+            </View>
+          </View>
+        ) : null}
+        {!archiveMode && minimalChrome ? (
+          <View
+            style={[
+              styles.minimalListSectionHeader,
+              inlineAssignmentBar ? styles.minimalListSectionHeaderAfterAssignment : null,
+            ]}
+          >
+            <Text style={styles.minimalListSectionTitle}>سجل الطلبات</Text>
+            <Text style={styles.minimalListSectionHint} numberOfLines={2}>
+              بطاقات مستقلة — اضغط للتفاصيل. الصف المميز يربط بنفس الطلب في «التعيين الحالي» إن وُجد.
+            </Text>
+          </View>
         ) : null}
         {listHeaderTop ? (
           listHeaderTop
         ) : !minimalChrome ? (
           <View style={styles.hero}>
-            <Text style={styles.title}>الطلبات المتاحة</Text>
-            <Text style={styles.sub}>الطلبات المسندة والسجل — اضغط للتفاصيل والمسار</Text>
+            <Text style={styles.title}>{archiveMode ? "أرشيف الطلبات" : "الطلبات المتاحة"}</Text>
+            <Text style={styles.sub}>
+              {archiveMode
+                ? "طلبات اكتمل تسليمها فقط — اضغط للتفاصيل"
+                : "الطلبات المسندة والسجل — اضغط للتفاصيل والمسار"}
+            </Text>
           </View>
         ) : null}
         {listHeader}
       </View>
     ),
-    [listHeaderTop, listHeader, minimalChrome, inlineAssignmentBar],
+    [archiveMode, listHeaderTop, listHeader, minimalChrome, inlineAssignmentBar],
   );
 
   const safeStyle = screenStyles.safe;
@@ -278,7 +354,7 @@ export function OrderHistoryScreen({
             <>
               {listHeaderTop ?? (
                 <View style={styles.hero}>
-                  <Text style={styles.title}>الطلبات المتاحة</Text>
+                  <Text style={styles.title}>{archiveMode ? "أرشيف الطلبات" : "الطلبات المتاحة"}</Text>
                   <Text style={styles.sub}>جاري التحميل…</Text>
                 </View>
               )}
@@ -320,7 +396,7 @@ export function OrderHistoryScreen({
             <>
               {listHeaderTop ?? (
                 <View style={styles.hero}>
-                  <Text style={styles.title}>الطلبات المتاحة</Text>
+                  <Text style={styles.title}>{archiveMode ? "أرشيف الطلبات" : "الطلبات المتاحة"}</Text>
                   <Text style={styles.sub}>تعذّر تحميل القائمة</Text>
                 </View>
               )}
@@ -375,6 +451,16 @@ export function OrderHistoryScreen({
           ListEmptyComponent={
             minimalChrome ? (
               <Text style={styles.emptyMinimal}>لا توجد طلبات حاليًا.</Text>
+            ) : archiveMode ? (
+              <View style={styles.emptyWrap}>
+                <View style={styles.emptyIcon}>
+                  <Ionicons name="archive-outline" size={48} color={homeTheme.textSubtle} />
+                </View>
+                <Text style={styles.emptyTitle}>لا توجد طلبات مُسلَّمة</Text>
+                <Text style={styles.emptyBody}>
+                  جرّب توسيع الفترة أعلاه، أو عد لاحقًا بعد تسليم طلبات جديدة.
+                </Text>
+              </View>
             ) : (
               <View style={styles.emptyWrap}>
                 <View style={styles.emptyIcon}>
@@ -396,7 +482,7 @@ export function OrderHistoryScreen({
 
 const styles = StyleSheet.create({
   minimalScreenTitle: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingTop: 4,
     paddingBottom: 4,
   },
@@ -404,11 +490,6 @@ const styles = StyleSheet.create({
   minimalScreenTitleDense: {
     paddingTop: 2,
     paddingBottom: 2,
-  },
-  /** شريط قبول/رفض داخل القائمة — عرض كامل مثل الشريط السابق */
-  inlineAssignmentSlot: {
-    marginHorizontal: -16,
-    marginBottom: 4,
   },
   minimalScreenTitleText: {
     color: homeTheme.text,
@@ -423,6 +504,53 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textAlign: "right",
     letterSpacing: -0.35,
+  },
+  minimalScreenSubtitle: {
+    color: homeTheme.textSubtle,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: "right",
+    marginTop: 6,
+  },
+  assignmentSection: {
+    marginBottom: 4,
+  },
+  assignmentSectionLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: homeTheme.textMuted,
+    textAlign: "right",
+    marginBottom: 6,
+  },
+  assignmentSectionCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: homeTheme.borderStrong,
+    backgroundColor: homeTheme.cardWhite,
+    overflow: "hidden",
+  },
+  minimalListSectionHeader: {
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  minimalListSectionHeaderAfterAssignment: {
+    marginTop: 4,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: homeTheme.border,
+  },
+  minimalListSectionTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: homeTheme.text,
+    textAlign: "right",
+  },
+  minimalListSectionHint: {
+    fontSize: 11,
+    color: homeTheme.textMuted,
+    textAlign: "right",
+    marginTop: 4,
+    lineHeight: 16,
   },
   hero: {
     paddingHorizontal: 20,

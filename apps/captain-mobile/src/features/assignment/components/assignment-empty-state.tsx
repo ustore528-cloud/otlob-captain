@@ -1,33 +1,43 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { homeTheme } from "@/features/home/theme";
 
-/** Minimal copy-only empty state — no framed panels or decorative icons. */
+/** Centered motivational waiting state while polling continues in background. */
 export function AssignmentEmptyState() {
   return (
     <View style={styles.wrap}>
-      <Text style={styles.line}>خذ لك دقيقة راحة</Text>
-      <Text style={styles.sub}>والرزقة في الطريق</Text>
+      <Image source={require("../../../../assets/captain-waiting.png")} style={styles.heroImage} resizeMode="contain" />
+      <Text style={styles.line}>خذ لك دقيقة راحة، رزقك بالطريق</Text>
+      <Text style={styles.sub}>جاهزين نعرض أول طلب جديد لحظة وصوله</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    alignItems: "flex-end",
+    minHeight: 320,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  heroImage: {
+    width: "100%",
+    maxWidth: 340,
+    height: 190,
+    marginBottom: 16,
   },
   line: {
-    color: homeTheme.textMuted,
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "right",
+    color: homeTheme.text,
+    fontSize: 22,
+    fontWeight: "800",
+    textAlign: "center",
+    lineHeight: 34,
   },
   sub: {
-    marginTop: 4,
+    marginTop: 10,
     color: homeTheme.textSubtle,
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: "right",
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: "center",
   },
 });

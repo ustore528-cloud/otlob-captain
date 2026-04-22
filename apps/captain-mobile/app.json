@@ -35,6 +35,7 @@
       "package": "com.captain.mobile",
       "versionCode": 2,
       "permissions": [
+        "POST_NOTIFICATIONS",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -49,6 +50,14 @@
         {
           "locationWhenInUsePermission": "نستخدم موقعك لعرضك على خريطة التوزيع ولتتبع الطلبات النشطة.",
           "locationAlwaysAndWhenInUsePermission": "للتتبع أثناء التوصيل عند تفعيل الخلفية لاحقًا."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/adaptive-icon.png",
+          "color": "#B02432",
+          "defaultChannel": "captain-orders"
         }
       ],
       "expo-asset",

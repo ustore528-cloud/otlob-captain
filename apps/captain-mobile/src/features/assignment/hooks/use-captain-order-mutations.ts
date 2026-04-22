@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { CaptainOrderStatusBody, CurrentAssignmentResponse, MeResponse, OrderDetailDto } from "@/services/api/dto";
 import { ordersService } from "@/services/api/services/orders.service";
+import { captainService } from "@/services/api/services/captain.service";
 import { queryKeys } from "@/hooks/api/query-keys";
 import { deriveFromAssignment, deriveFromOrder } from "../utils/captain-order-actions";
 import { logCaptainOrderInteraction } from "@/lib/captain-assignment-debug";
@@ -12,13 +13,19 @@ async function assertOfferActionAllowed(
 ): Promise<void> {
   logCaptainOrderInteraction(`${action}_REFETCH`, { orderId });
   await queryClient.refetchQueries({ queryKey: queryKeys.captain.assignment });
+  await queryClient.refetchQueries({ queryKey: queryKeys.captain.assignmentOverflow });
   await queryClient.refetchQueries({ queryKey: queryKeys.orders.detail(orderId) });
-
-  const me = queryClient.getQueryData<MeResponse>(queryKeys.captain.me);
-  const captainId = me?.captain?.id;
+  const me =
+    queryClient.getQueryData<MeResponse>(queryKeys.captain.me) ??
+    (await queryClient.fetchQuery({
+      queryKey: queryKeys.captain.me,
+      queryFn: () => captainService.getMe(),
+      staleTime: 10_000,
+    }));
+  const captainId = me?.captain?.id ?? null;
   if (!captainId) {
-    logCaptainOrderInteraction(`${action}_BLOCKED`, { orderId, reason: "NO_CAPTAIN_SESSION" });
-    throw new Error("جاري تجهيز الجلسة.");
+    logCaptainOrderInteraction(`${action}_BLOCKED`, { orderId, reason: "NO_CAPTAIN_SESSION_AFTER_FETCH" });
+    throw new Error("تعذّر تجهيز الجلسة. جرّب تحديث الصفحة أو تسجيل الدخول مرة أخرى.");
   }
 
   const assignment = queryClient.getQueryData<CurrentAssignmentResponse>(queryKeys.captain.assignment);
@@ -57,6 +64,7 @@ export function useCaptainOrderMutations() {
 
   const invalidateOrder = (orderId: string) => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.captain.assignment });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.captain.assignmentOverflow });
     void queryClient.invalidateQueries({ queryKey: queryKeys.captain.me });
     void queryClient.invalidateQueries({ queryKey: queryKeys.orders.detail(orderId) });
     void queryClient.invalidateQueries({ queryKey: ["captain-mobile", "orders", "historyInfinite"] });
@@ -109,6 +117,17 @@ export function useCaptainOrderMutations() {
   });
 
   const pending = accept.isPending || reject.isPending || updateStatus.isPending;
+  const acceptPendingOrderId = accept.isPending ? accept.variables ?? null : null;
+  const rejectPendingOrderId = reject.isPending ? reject.variables ?? null : null;
+  const updatePendingOrderId = updateStatus.isPending ? updateStatus.variables?.orderId ?? null : null;
 
-  return { accept, reject, updateStatus, pending };
+  return {
+    accept,
+    reject,
+    updateStatus,
+    pending,
+    acceptPendingOrderId,
+    rejectPendingOrderId,
+    updatePendingOrderId,
+  };
 }

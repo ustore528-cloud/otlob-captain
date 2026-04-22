@@ -54,6 +54,20 @@ export const homeTheme = {
   dangerTextLight: "#D4A0A0",
   cardHeaderTint: "rgba(176, 36, 50, 0.06)",
   neutralSoft: "rgba(15, 23, 42, 0.06)",
+  /**
+   * Order status pills (captain list + detail) — one distinct treatment per delivery step.
+   * Offer / accepted / picked up / transit use separate hues so states are scannable at a glance.
+   */
+  statusOfferSoft: "rgba(124, 58, 237, 0.12)",
+  statusOfferBorder: "rgba(124, 58, 237, 0.32)",
+  statusOfferText: "#5B21B6",
+  statusAcceptedSoft: "rgba(13, 148, 136, 0.12)",
+  statusAcceptedBorder: "rgba(13, 148, 136, 0.30)",
+  statusAcceptedText: "#0F766E",
+  /** `IN_TRANSIT` — high-salience sky (on the way to customer); stronger than other steps for quick recognition */
+  statusTransitSoft: "rgba(14, 165, 233, 0.26)",
+  statusTransitBorder: "rgba(2, 132, 199, 0.58)",
+  statusTransitText: "#075985",
   radiusLg: 20,
   radiusMd: 14,
 } as const;

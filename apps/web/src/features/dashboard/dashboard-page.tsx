@@ -1,14 +1,22 @@
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Bell, Radio, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/layout/stat-card";
-import { DashboardActivityCard } from "@/features/dashboard/components/dashboard-activity-card";
-import { DashboardMapSettingsCard } from "@/features/dashboard/components/dashboard-map-settings-card";
-import { DashboardNotificationCard } from "@/features/dashboard/components/dashboard-notification-card";
 import { QueryErrorLine } from "@/features/dashboard/components/query-error-line";
 import { useActivityList, useDashboardStats, useNotifications, useSendQuickStatusAlert, type QuickStatusCode } from "@/hooks";
 import { useAuthStore } from "@/stores/auth-store";
+
+const DashboardMapSettingsCardLazy = lazy(() =>
+  import("./components/dashboard-map-settings-card").then((m) => ({ default: m.DashboardMapSettingsCard })),
+);
+const DashboardNotificationCardLazy = lazy(() =>
+  import("./components/dashboard-notification-card").then((m) => ({ default: m.DashboardNotificationCard })),
+);
+const DashboardActivityCardLazy = lazy(() =>
+  import("./components/dashboard-activity-card").then((m) => ({ default: m.DashboardActivityCard })),
+);
 
 function useDispatchRole() {
   const r = useAuthStore((s) => s.user?.role);
@@ -29,6 +37,12 @@ export function DashboardPage() {
   const notifications = useNotifications(1, 1);
   const activity = useActivityList(1, 8, { enabled: dispatch });
   const quickStatus = useSendQuickStatusAlert();
+  const [showDeferredSections, setShowDeferredSections] = useState(false);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setShowDeferredSections(true), 120);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const stats = dashboard.data;
   const latest = notifications.data?.items?.[0];
@@ -53,34 +67,53 @@ export function DashboardPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          label="إجمالي الطلبات (نطاقك)"
-          value={canListOrders ? (stats?.ordersTotal ?? "—") : "—"}
-          hint={canListOrders ? undefined : "غير متاح لدورك"}
-          icon={Truck}
-        />
-        {dispatch ? (
-          <StatCard label="كباتن نشطون" value={stats?.captainsActiveTotal ?? "—"} hint="حسب صلاحية الإدارة" />
-        ) : (
-          <StatCard label="الصلاحية" value={user?.role ?? "—"} hint="عرض الطلبات حسب دورك" />
-        )}
-        <StatCard
-          label="آخر تنبيه"
-          value={latest ? (latest.isRead ? "مقروء" : "جديد") : "—"}
-          hint={latest?.title ?? "لا توجد إشعارات"}
-          icon={Bell}
-        />
-      </div>
+      {dashboard.isLoading && !stats ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <SectionSkeleton />
+          <SectionSkeleton />
+          <SectionSkeleton />
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <StatCard
+            label="إجمالي الطلبات (نطاقك)"
+            value={canListOrders ? (stats?.ordersTotal ?? "—") : "—"}
+            hint={canListOrders ? undefined : "غير متاح لدورك"}
+            icon={Truck}
+          />
+          {dispatch ? (
+            <StatCard label="كباتن نشطون" value={stats?.captainsActiveTotal ?? "—"} hint="حسب صلاحية الإدارة" />
+          ) : (
+            <StatCard label="الصلاحية" value={user?.role ?? "—"} hint="عرض الطلبات حسب دورك" />
+          )}
+          <StatCard
+            label="آخر تنبيه"
+            value={latest ? (latest.isRead ? "مقروء" : "جديد") : "—"}
+            hint={latest?.title ?? "لا توجد إشعارات"}
+            icon={Bell}
+          />
+        </div>
+      )}
 
       {dispatch ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <StatCard label="بانتظار التوزيع" value={stats?.pendingOrders ?? "—"} />
-          <StatCard label="طلبات التجهيز" value={stats?.confirmedOrders ?? "—"} />
-        </div>
+        dashboard.isLoading && !stats ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SectionSkeleton />
+            <SectionSkeleton />
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <StatCard label="بانتظار التوزيع" value={stats?.pendingOrders ?? "—"} />
+            <StatCard label="طلبات التجهيز" value={stats?.confirmedOrders ?? "—"} />
+          </div>
+        )
       ) : null}
 
-      {dispatch ? <DashboardMapSettingsCard /> : null}
+      {dispatch ? (
+        <Suspense fallback={<SectionSkeleton />}>
+          {showDeferredSections ? <DashboardMapSettingsCardLazy /> : <SectionSkeleton />}
+        </Suspense>
+      ) : null}
 
       {dispatch ? (
         <Card className="border-card-border shadow-sm">
@@ -114,13 +147,25 @@ export function DashboardPage() {
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <DashboardNotificationCard loading={notifications.isLoading} latest={latest} />
-        <DashboardActivityCard
-          dispatch={dispatch}
-          loading={activity.isLoading}
-          items={activity.data?.items ?? []}
-        />
+        <Suspense fallback={<SectionSkeleton />}>
+          {showDeferredSections ? (
+            <DashboardNotificationCardLazy loading={notifications.isLoading} latest={latest} />
+          ) : (
+            <SectionSkeleton />
+          )}
+        </Suspense>
+        <Suspense fallback={<SectionSkeleton />}>
+          {showDeferredSections ? (
+            <DashboardActivityCardLazy dispatch={dispatch} loading={activity.isLoading} items={activity.data?.items ?? []} />
+          ) : (
+            <SectionSkeleton />
+          )}
+        </Suspense>
       </div>
     </div>
   );
+}
+
+function SectionSkeleton() {
+  return <div className="h-40 animate-pulse rounded-2xl border border-card-border bg-card/60" aria-hidden="true" />;
 }

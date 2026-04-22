@@ -44,3 +44,9 @@ export const MobileCaptainEarningsQuerySchema = z.object({
 export const MobileCaptainAvailabilityBodySchema = z.object({
   availabilityStatus: z.nativeEnum(CaptainAvailabilityStatus),
 });
+
+export const MobileCaptainPushTokenBodySchema = z.object({
+  token: z.string().min(20).max(300),
+  platform: z.union([z.literal("android"), z.literal("ios")]),
+  appVersion: z.string().max(40).optional(),
+});

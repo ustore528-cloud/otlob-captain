@@ -11,7 +11,7 @@ type Props = {
 export function OrdersTabBarLabel({ color, focused: _focused }: Props) {
   return (
     <Text
-      accessibilityLabel="الطلبات المتاحة"
+      accessibilityLabel="الطلب الحالي"
       accessibilityRole="text"
       allowFontScaling
       maxFontSizeMultiplier={1.15}
@@ -30,7 +30,7 @@ export function OrdersTabBarLabel({ color, focused: _focused }: Props) {
         ...(Platform.OS === "android" ? { includeFontPadding: false } : {}),
       }}
     >
-      {"الطلبات\nالمتاحة"}
+      {"الطلب\nالحالي"}
     </Text>
   );
 }

@@ -1,11 +1,14 @@
 import { useEffect, useRef } from "react";
-import { useQuery, type UseQueryOptions } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, type UseQueryOptions } from "@tanstack/react-query";
 import type { CurrentAssignmentResponse } from "@/services/api/dto";
 import { captainService } from "@/services/api/services/captain.service";
 import { logCaptainAssignment } from "@/lib/captain-assignment-debug";
 import { queryKeys } from "./query-keys";
 
-/** استطلاع خفيف حتى يظهر التعيين الجديد حتى لو تأخّر أو فات حدث Socket */
+/**
+ * Polls GET /mobile/captain/me/assignment — **one live snapshot** (NONE | OFFER | ACTIVE), not a multi-order queue.
+ * استطلاع خفيف حتى يظهر التعيين الجديد حتى لو تأخّر أو فات حدث Socket
+ */
 const ASSIGNMENT_REFETCH_INTERVAL_MS = 12_000;
 
 export function useCaptainAssignment(
@@ -30,6 +33,8 @@ export function useCaptainAssignment(
       }
     },
     ...options,
+    /** Keeps last successful snapshot visible during refetch/invalidate (applied after caller `options` so it is not stripped by spread). */
+    placeholderData: keepPreviousData,
     /** يضمن وصول التعيين من الخادم حتى مع بقاء المستخدم على نفس الشاشة أو تأخّر Socket */
     refetchInterval: options?.refetchInterval ?? ASSIGNMENT_REFETCH_INTERVAL_MS,
     refetchIntervalInBackground: options?.refetchIntervalInBackground ?? false,

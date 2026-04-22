@@ -18,6 +18,7 @@ export function UsersPageView() {
 
   const users = useUsers({ page: 1, pageSize: 80, role });
   const toggle = useToggleUserActive();
+  const togglePendingUserId = toggle.isPending ? toggle.variables?.id ?? null : null;
 
   const isAdmin = me?.role === "ADMIN";
   const canEditCustomerProfile = isAdmin || me?.role === "DISPATCHER";
@@ -80,7 +81,7 @@ export function UsersPageView() {
                 user={u}
                 canToggleActive={isAdmin}
                 canEditCustomerProfile={canEditCustomerProfile}
-                togglePending={toggle.isPending}
+                togglePending={togglePendingUserId === u.id}
                 onToggleActive={(id, next) => toggle.mutate({ id, isActive: next })}
               />
             ))

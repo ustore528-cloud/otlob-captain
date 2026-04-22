@@ -53,10 +53,11 @@ export function mockCaptainListItem(over: Partial<CaptainListItem> = {}): Captai
 export function mockActiveMapCaptain(over: Partial<ActiveMapCaptain> = {}): ActiveMapCaptain {
   return {
     id: over.id ?? "cap-map-1",
+    userId: over.userId ?? "user-captain-map-1",
     area: over.area ?? "الرياض",
     availabilityStatus: over.availabilityStatus ?? "AVAILABLE",
     vehicleType: over.vehicleType ?? "بسكليت",
-    user: over.user ?? { fullName: "كابتن", phone: "+966511111111" },
+    user: over.user ?? { id: "user-captain-map-1", fullName: "كابتن", phone: "+966511111111" },
     lastLocation: over.lastLocation ?? {
       captainId: over.id ?? "cap-map-1",
       latitude: 24.7136,

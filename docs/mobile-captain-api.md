@@ -278,6 +278,46 @@ Authorization: Bearer <accessToken>
 
 - `404 NOT_FOUND` — لا يوجد ملف كابتن.
 
+### 4.2 طلبات إضافية غير الظاهرة في البطاقة الرئيسية (overflow)
+
+عندما يكون للكابتن أكثر من عرض أو طلب جارٍ، يبقى `GET /me/assignment` **لقطة واحدة** فقط (نفس قواعد الأولوية: عرض معلّق أولًا، ثم أحدث طلب نشط). لمعرفة بقية الطلبات المعروضة/الجارية التي **لا** تظهر في تلك اللقطة:
+
+- **Method**: `GET`
+- **URL**: `/api/v1/mobile/captain/me/assignment/overflow`
+- **Auth required**: نعم (CAPTAIN)
+
+#### Response (200)
+
+```json
+{
+  "success": true,
+  "data": {
+    "primaryOrderId": "order-id-shown-on-main-card-or-null",
+    "items": [
+      {
+        "orderId": "other-order-id",
+        "orderNumber": "ORD-2025-0002",
+        "kind": "OFFER",
+        "status": "ASSIGNED",
+        "offerExpiresAt": "2025-01-01T12:35:26.000Z"
+      },
+      {
+        "orderId": "other-order-id-2",
+        "orderNumber": "ORD-2025-0003",
+        "kind": "ACTIVE",
+        "status": "IN_TRANSIT",
+        "offerExpiresAt": null
+      }
+    ]
+  }
+}
+```
+
+- **`primaryOrderId`**: يطابق الطلب الظاهر في `GET /me/assignment` عندما `state` ليس `NONE`؛ وإلا `null`.
+- **`items`**: طلبات أخرى قابلة للتعامل (عرض `OFFER` أو تسليم `ACTIVE`) لا تُعرَض كبطاقة رئيسية.
+
+See also: [Overflow Behavior Spec](./overflow-behavior-spec.md)
+
 ---
 
 ## 5. الطلبات (Orders)

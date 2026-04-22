@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ActiveMapCaptain } from "@/types/api";
 import {
   assignmentOfferSecondsLeft,
@@ -8,10 +8,19 @@ import {
 type Props = {
   captains: ActiveMapCaptain[];
   onDropOrderOnCaptain: (orderId: string, captainId: string) => void;
+  pendingOrderIds?: string[];
+  pendingCaptainIds?: string[];
 };
 
-export function CaptainQuickDropPanel({ captains, onDropOrderOnCaptain }: Props) {
+export function CaptainQuickDropPanel({
+  captains,
+  onDropOrderOnCaptain,
+  pendingOrderIds = [],
+  pendingCaptainIds = [],
+}: Props) {
   const [, setCountdownTick] = useState(0);
+  const pendingOrderSet = useMemo(() => new Set(pendingOrderIds), [pendingOrderIds]);
+  const pendingCaptainSet = useMemo(() => new Set(pendingCaptainIds), [pendingCaptainIds]);
 
   useEffect(() => {
     const id = window.setInterval(() => setCountdownTick((t) => t + 1), 1000);
@@ -28,6 +37,7 @@ export function CaptainQuickDropPanel({ captains, onDropOrderOnCaptain }: Props)
       <div className="mt-1 grid max-h-[min(420px,50vh)] gap-2 overflow-y-auto pe-1">
         {captains.map((c) => {
           const vis = captainMapVisual(c);
+          const isCaptainTargetPending = pendingCaptainSet.has(c.id);
           const secLeft =
             c.waitingOffers > 0 && c.assignmentOfferExpiresAt
               ? assignmentOfferSecondsLeft(c.assignmentOfferExpiresAt)
@@ -46,9 +56,15 @@ export function CaptainQuickDropPanel({ captains, onDropOrderOnCaptain }: Props)
               onDrop={(e) => {
                 e.preventDefault();
                 const orderId = e.dataTransfer.getData("application/x-order-id") || e.dataTransfer.getData("text/plain");
-                if (orderId) onDropOrderOnCaptain(orderId, c.id);
+                if (!orderId || pendingOrderSet.has(orderId)) return;
+                onDropOrderOnCaptain(orderId, c.id);
               }}
             >
+              {isCaptainTargetPending ? (
+                <div className="mb-1 inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                  استقبال تعيين...
+                </div>
+              ) : null}
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="font-medium text-foreground">{c.user.fullName}</div>
                 <span

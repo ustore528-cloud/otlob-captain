@@ -1,8 +1,10 @@
 import { apiFetch, paths } from "@/lib/api/http";
-import type { OrderListItem, Paginated } from "@/types/api";
+import type { OrderListItem, OrderStatus, Paginated } from "@/types/api";
 
 export type CreateOrderPayload = {
   storeId?: string;
+  /** ربط بحساب عميل — اختياري؛ وإلا يُستنتج من الهاتف في الخادم */
+  customerUserId?: string;
   customerName: string;
   customerPhone: string;
   pickupAddress: string;
@@ -70,5 +72,26 @@ export function distributionCancelCaptain(token: string, orderId: string) {
   return apiFetch<unknown>(paths.orders.distributionCancelCaptain(orderId), {
     method: "POST",
     token,
+  });
+}
+
+export function archiveOrder(token: string, orderId: string): Promise<unknown> {
+  return apiFetch<unknown>(paths.orders.archive(orderId), { method: "POST", token });
+}
+
+export function unarchiveOrder(token: string, orderId: string): Promise<unknown> {
+  return apiFetch<unknown>(paths.orders.unarchive(orderId), { method: "POST", token });
+}
+
+/** مسار إشرافي — الحالات المسموحة محددة في الخادم */
+export function adminOverrideOrderStatus(
+  token: string,
+  orderId: string,
+  status: Extract<OrderStatus, "PENDING" | "CONFIRMED" | "CANCELLED" | "DELIVERED">,
+): Promise<unknown> {
+  return apiFetch<unknown>(paths.orders.adminOverrideStatus(orderId), {
+    method: "POST",
+    token,
+    body: JSON.stringify({ status }),
   });
 }

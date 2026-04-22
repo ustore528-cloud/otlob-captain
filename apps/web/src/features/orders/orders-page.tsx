@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
 import { Radio } from "lucide-react";
 import {
+  useAdminOverrideOrderStatus,
+  useArchiveOrder,
   useAssignOrderToCaptain,
   useCancelOrderCaptainAssignment,
   useCaptains,
   useOrders,
   useResendOrderToDistribution,
   useStartOrderAutoDistribution,
+  type AdminOverrideTargetStatus,
 } from "@/hooks";
 import { ManualAssignModal } from "@/features/shared/manual-assign-modal";
 import { Button } from "@/components/ui/button";
@@ -21,6 +24,9 @@ export function OrdersPageView() {
   const [status, setStatus] = useState(ORDERS_PAGE_INITIAL_LIST_PARAMS.status);
   const [q, setQ] = useState("");
   const [manualOrder, setManualOrder] = useState<OrderListItem | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<OrderListItem | null>(null);
+  const [statusOverrideOrder, setStatusOverrideOrder] = useState<OrderListItem | null>(null);
+  const [statusOverrideTarget, setStatusOverrideTarget] = useState<AdminOverrideTargetStatus>("PENDING");
 
   const canDispatch = role === "ADMIN" || role === "DISPATCHER";
 
@@ -45,7 +51,17 @@ export function OrdersPageView() {
   const auto = useStartOrderAutoDistribution();
   const resend = useResendOrderToDistribution();
   const cancelCaptain = useCancelOrderCaptainAssignment();
+  const archiveOrder = useArchiveOrder();
+  const adminOverrideStatus = useAdminOverrideOrderStatus();
   const assign = useAssignOrderToCaptain();
+  const autoPendingOrderId = auto.isPending ? auto.variables : null;
+  const resendPendingOrderId =
+    resend.isPending && resend.variables
+      ? typeof resend.variables === "string"
+        ? resend.variables
+        : resend.variables.orderId
+      : null;
+  const cancelPendingOrderId = cancelCaptain.isPending ? cancelCaptain.variables : null;
 
   const rows = orders.data?.items ?? [];
 
@@ -81,11 +97,37 @@ export function OrdersPageView() {
         canDispatch={canDispatch}
         onAuto={(id) => auto.mutate(id)}
         onManual={setManualOrder}
-        onResend={(id) => resend.mutate(id)}
+        onResend={(id) => resend.mutate({ orderId: id, clickAtMs: performance.now(), source: "orders-table-resend" })}
         onCancelCaptain={(id) => cancelCaptain.mutate(id)}
-        autoPending={auto.isPending}
-        resendPending={resend.isPending}
-        cancelPending={cancelCaptain.isPending}
+        autoPendingOrderId={autoPendingOrderId}
+        resendPendingOrderId={resendPendingOrderId}
+        cancelPendingOrderId={cancelPendingOrderId}
+        archivePending={archiveOrder.isPending}
+        onArchive={canDispatch ? (o) => setArchiveTarget(o) : undefined}
+        archiveConfirmOrder={archiveTarget}
+        onArchiveConfirmClose={() => setArchiveTarget(null)}
+        onArchiveConfirm={() => {
+          if (!archiveTarget) return;
+          archiveOrder.mutate(archiveTarget.id, {
+            onSuccess: () => setArchiveTarget(null),
+          });
+        }}
+        adminOverrideOrder={statusOverrideOrder}
+        adminOverrideTarget={statusOverrideTarget}
+        onAdminOverrideTargetChange={setStatusOverrideTarget}
+        onAdminOverrideOpen={(o) => {
+          setStatusOverrideTarget("PENDING");
+          setStatusOverrideOrder(o);
+        }}
+        onAdminOverrideClose={() => setStatusOverrideOrder(null)}
+        onAdminOverrideConfirm={() => {
+          if (!statusOverrideOrder) return;
+          adminOverrideStatus.mutate(
+            { orderId: statusOverrideOrder.id, status: statusOverrideTarget },
+            { onSuccess: () => setStatusOverrideOrder(null) },
+          );
+        }}
+        adminOverridePending={adminOverrideStatus.isPending}
       />
 
       <ManualAssignModal
@@ -97,7 +139,13 @@ export function OrdersPageView() {
         onSubmit={(captainId) => {
           if (manualOrder)
             assign.mutate(
-              { orderId: manualOrder.id, captainId, mode: "manual" },
+              {
+                orderId: manualOrder.id,
+                captainId,
+                mode: "manual",
+                clickAtMs: performance.now(),
+                source: "orders-manual-assign-modal",
+              },
               { onSuccess: () => setManualOrder(null) },
             );
         }}

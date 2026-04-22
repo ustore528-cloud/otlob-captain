@@ -11,6 +11,7 @@ import {
   ReassignBodySchema,
   ManualAssignBodySchema,
   DragDropAssignBodySchema,
+  AdminOverrideOrderStatusBodySchema,
 } from "../../validators/orders.schemas.js";
 import { ordersController } from "../../controllers/orders.controller.js";
 
@@ -29,6 +30,38 @@ router.get(
   requireRoles("ADMIN", "DISPATCHER", "STORE"),
   validate("query", ListOrdersQuerySchema),
   asyncHandler(ordersController.list.bind(ordersController)),
+);
+
+router.post(
+  "/:id/archive",
+  requireRoles("ADMIN", "DISPATCHER"),
+  validate("params", OrderIdParamSchema),
+  asyncHandler(ordersController.archiveOrder.bind(ordersController)),
+);
+
+router.post(
+  "/:id/unarchive",
+  requireRoles("ADMIN", "DISPATCHER"),
+  validate("params", OrderIdParamSchema),
+  asyncHandler(ordersController.unarchiveOrder.bind(ordersController)),
+);
+
+/** Canonical manual override — must match `paths.orders.adminOverrideStatus` in `@captain/shared`. */
+router.post(
+  "/:id/override-status",
+  requireRoles("ADMIN", "DISPATCHER"),
+  validate("params", OrderIdParamSchema),
+  validate("body", AdminOverrideOrderStatusBodySchema),
+  asyncHandler(ordersController.adminOverrideOrderStatus.bind(ordersController)),
+);
+
+/** Legacy alias — same handler (older clients / docs). */
+router.post(
+  "/:id/admin-override-status",
+  requireRoles("ADMIN", "DISPATCHER"),
+  validate("params", OrderIdParamSchema),
+  validate("body", AdminOverrideOrderStatusBodySchema),
+  asyncHandler(ordersController.adminOverrideOrderStatus.bind(ordersController)),
 );
 
 router.get(

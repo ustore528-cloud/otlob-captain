@@ -1,13 +1,24 @@
 import { useCallback } from "react";
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { homeTheme } from "@/features/home/theme";
 import { screenStyles } from "@/theme/screen-styles";
 import { WorkStatusBanner } from "@/features/work-status";
 import { useCaptainAssignmentWorkbench } from "../hooks/use-captain-assignment-workbench";
+import { AssignmentEmptyState } from "../components/assignment-empty-state";
 
+/** Hidden tab route: renders current orders from backend assignment + overflow snapshot. */
 export function CurrentAssignmentScreen() {
-  const { bodyContent, dock, refreshing, onRefresh } = useCaptainAssignmentWorkbench();
+  const {
+    orders,
+    renderOrderCard,
+    isLoading,
+    isError,
+    errorMessage,
+    retryLoadAssignment,
+    refreshing,
+    onRefresh,
+  } = useCaptainAssignmentWorkbench();
 
   const refresh = useCallback(async () => {
     await onRefresh();
@@ -27,11 +38,34 @@ export function CurrentAssignmentScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>الطلب الحالي</Text>
-          <Text style={styles.sub}>التعيين النشط من الخادم — يتبع دورة حياة الطلب</Text>
-          {bodyContent}
+          <Text style={styles.title}>الطلبات الحالية</Text>
+          <Text style={styles.sub}>تعرض الشاشة الطلبات الحالية كما يعيدها الخادم، وكل طلب في بطاقة مستقلة.</Text>
+          <View style={styles.assignmentBlock}>
+            {isLoading ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color={homeTheme.accent} />
+                <Text style={styles.muted}>Loading…</Text>
+              </View>
+            ) : null}
+
+            {isError && errorMessage ? (
+              <View style={styles.inlineError}>
+                <Text style={styles.inlineErrorText}>{errorMessage}</Text>
+                <Pressable onPress={retryLoadAssignment} style={styles.inlineRetry}>
+                  <Text style={styles.inlineRetryText}>Retry</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {!isLoading && !isError ? (
+              orders.length > 0 ? (
+                <View style={styles.cardsStack}>{orders.map((item) => renderOrderCard(item))}</View>
+              ) : (
+                <AssignmentEmptyState />
+              )
+            ) : null}
+          </View>
         </ScrollView>
-        {dock}
       </View>
     </SafeAreaView>
   );
@@ -57,13 +91,46 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "900",
     textAlign: "right",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   sub: {
     color: homeTheme.textSubtle,
     fontSize: 12,
     lineHeight: 18,
     textAlign: "right",
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  assignmentBlock: {
+    gap: 10,
+  },
+  cardsStack: {
+    gap: 12,
+  },
+  loadingRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 10,
+    paddingVertical: 8,
+  },
+  muted: { color: homeTheme.textMuted, fontSize: 13 },
+  inlineError: {
+    paddingVertical: 8,
+    gap: 8,
+    alignItems: "flex-end",
+  },
+  inlineErrorText: {
+    color: homeTheme.dangerText,
+    fontSize: 13,
+    textAlign: "right",
+    lineHeight: 20,
+  },
+  inlineRetry: {
+    paddingVertical: 4,
+  },
+  inlineRetryText: {
+    color: homeTheme.accent,
+    fontWeight: "800",
+    fontSize: 14,
   },
 });

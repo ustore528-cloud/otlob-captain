@@ -12,6 +12,7 @@ import {
   MobileCaptainOrderHistoryQuerySchema,
   MobileCaptainEarningsQuerySchema,
   MobileCaptainAvailabilityBodySchema,
+  MobileCaptainPushTokenBodySchema,
 } from "../../../validators/mobile-captain.schemas.js";
 import { mobileCaptainController } from "../../../controllers/mobile-captain.controller.js";
 
@@ -38,15 +39,28 @@ captainMobileRoutes.get(
   asyncHandler(mobileCaptainController.workStatus.bind(mobileCaptainController)),
 );
 
+/** Singular live assignment for the app (not a list) — see `captainMobileService.getCurrentAssignment`. */
 captainMobileRoutes.get(
   "/me/assignment",
   asyncHandler(mobileCaptainController.currentAssignment.bind(mobileCaptainController)),
+);
+
+/** Hidden concurrent offers / actives — see `captainMobileService.getAssignmentOverflow`. */
+captainMobileRoutes.get(
+  "/me/assignment/overflow",
+  asyncHandler(mobileCaptainController.assignmentOverflow.bind(mobileCaptainController)),
 );
 
 captainMobileRoutes.patch(
   "/me/availability",
   validate("body", MobileCaptainAvailabilityBodySchema),
   asyncHandler(mobileCaptainController.updateAvailability.bind(mobileCaptainController)),
+);
+
+captainMobileRoutes.post(
+  "/me/push-token",
+  validate("body", MobileCaptainPushTokenBodySchema),
+  asyncHandler(mobileCaptainController.registerPushToken.bind(mobileCaptainController)),
 );
 
 captainMobileRoutes.get(

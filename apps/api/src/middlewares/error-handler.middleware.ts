@@ -18,6 +18,11 @@ export function errorHandlerMiddleware(err: unknown, _req: Request, res: Respons
     if (err.code === "P2025") {
       return res.status(404).json(fail("NOT_FOUND", "Record not found"));
     }
+    if (err.code === "P2028") {
+      return res.status(503).json(
+        fail("TRANSACTION_TIMEOUT", "Database transaction timed out. Retry the action or check server load."),
+      );
+    }
   }
   console.error(err);
   return res.status(500).json(fail("INTERNAL", "Internal server error"));

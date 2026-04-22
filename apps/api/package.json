@@ -14,7 +14,11 @@
     "db:push": "node scripts/run-prisma.mjs db push",
     "db:studio": "node scripts/run-prisma.mjs studio",
     "db:seed": "node scripts/run-prisma.mjs db seed",
-    "db:demo-reset": "tsx scripts/distribution-demo-reset.ts"
+    "db:demo-reset": "tsx scripts/distribution-demo-reset.ts",
+    "validate:auto-default-single-order": "tsx scripts/validate-default-auto-single-order.ts",
+    "validate:auto-override-model": "tsx scripts/validate-override-only-model.ts",
+    "verify:e2e-assigned-semantics": "tsx scripts/e2e-verify-assigned-semantics.ts",
+    "verify:order-financial-inference": "tsx scripts/verify-order-financial-inference.ts"
   },
   "dependencies": {
     "@captain/shared": "0.1.0",

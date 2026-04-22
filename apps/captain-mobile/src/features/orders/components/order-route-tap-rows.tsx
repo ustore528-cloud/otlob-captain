@@ -1,31 +1,40 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { homeTheme } from "@/features/home/theme";
 import { ORDER_DROPOFF_LOCATION_LABEL, ORDER_PICKUP_LOCATION_LABEL } from "@/lib/order-location-labels";
 import { openMapSearch } from "@/lib/open-external";
 
 type RowProps = {
-  icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
+  tone?: "pickup" | "dropoff";
   compact?: boolean;
+  dense?: boolean;
 };
 
-function LocationTapRow({ icon, label, value, compact }: RowProps) {
+function LocationTapRow({ label, value, tone = "pickup", compact, dense }: RowProps) {
   const v = value.trim();
   if (!v) return null;
+  const pickupTone = tone === "pickup";
   return (
     <Pressable
       onPress={() => void openMapSearch(v)}
-      style={({ pressed }) => [styles.row, compact && styles.rowCompact, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        pickupTone ? styles.rowPickup : styles.rowDropoff,
+        compact && styles.rowCompact,
+        dense && styles.rowDense,
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="link"
       accessibilityLabel={`${label}: ${v}`}
       accessibilityHint="فتح الخريطة"
     >
-      <Ionicons name={icon} size={compact ? 15 : 18} color={homeTheme.accent} />
       <View style={styles.textCol}>
-        <Text style={[styles.label, compact && styles.labelCompact]}>{label}</Text>
-        <Text style={[styles.value, compact && styles.valueCompact]} numberOfLines={compact ? 1 : 4}>
+        <Text style={[styles.label, compact && styles.labelCompact, dense && styles.labelDense]}>{label}</Text>
+        <Text
+          style={[styles.value, compact && styles.valueCompact, dense && styles.valueDense]}
+          numberOfLines={compact || dense ? 2 : 4}
+        >
           {v}
         </Text>
       </View>
@@ -38,68 +47,101 @@ type Props = {
   dropoffAddress: string;
   /** إذا كان العنوان الفارغ — عرض المنطقة كاحتياطي للتسليم */
   areaFallback?: string;
-  /** أقل ارتفاعًا — قوائم متعددة على الشاشة */
+  /** أقل ارتفاعًا — بطاقة مضغوطة أو شريط سفلي يقتسمان الشاشة */
   compact?: boolean;
+  /** أخفّ ضمن بطاقة تشغيل حيّة (نصف شاشة تقريبًا) */
+  dense?: boolean;
 };
 
-export function OrderRouteTapRows({ pickupAddress, dropoffAddress, areaFallback, compact }: Props) {
+export function OrderRouteTapRows({ pickupAddress, dropoffAddress, areaFallback, compact, dense }: Props) {
   const drop = dropoffAddress.trim() || areaFallback?.trim() || "";
+  const tight = Boolean(compact || dense);
   return (
-    <View style={[styles.block, compact && styles.blockCompact]}>
+    <View style={[styles.block, compact && styles.blockCompact, dense && styles.blockDense]}>
       <LocationTapRow
-        icon="arrow-up-circle-outline"
         label={ORDER_PICKUP_LOCATION_LABEL}
         value={pickupAddress}
-        compact={compact}
+        tone="pickup"
+        compact={tight}
+        dense={dense}
       />
-      <LocationTapRow icon="flag-outline" label={ORDER_DROPOFF_LOCATION_LABEL} value={drop} compact={compact} />
+      <LocationTapRow
+        label={ORDER_DROPOFF_LOCATION_LABEL}
+        value={drop}
+        tone="dropoff"
+        compact={tight}
+        dense={dense}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   block: { gap: 8 },
-  blockCompact: { gap: 3 },
+  blockCompact: { gap: 4 },
+  blockDense: { gap: 3 },
   row: {
     flexDirection: "row-reverse",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 0,
     paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
     borderRadius: homeTheme.radiusMd,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: homeTheme.border,
-    backgroundColor: homeTheme.neutralSoft,
+    borderWidth: 1,
+  },
+  rowPickup: {
+    borderColor: homeTheme.accentMuted,
+    backgroundColor: "rgba(176, 36, 50, 0.07)",
+  },
+  rowDropoff: {
+    borderColor: homeTheme.goldMuted,
+    backgroundColor: "rgba(180, 83, 9, 0.08)",
   },
   rowCompact: {
+    paddingVertical: 5,
+    paddingHorizontal: 7,
+    gap: 4,
+  },
+  rowDense: {
     paddingVertical: 4,
-    paddingHorizontal: 8,
-    gap: 6,
+    paddingHorizontal: 7,
+    gap: 3,
   },
   pressed: { opacity: 0.9 },
   textCol: { flex: 1, alignItems: "flex-end" },
   label: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: homeTheme.accent,
+    fontSize: 12,
+    fontWeight: "900",
+    color: homeTheme.textMuted,
     textAlign: "right",
     marginBottom: 4,
+    lineHeight: 16,
   },
   labelCompact: {
-    fontSize: 9,
+    fontSize: 11,
+    marginBottom: 3,
+    lineHeight: 14,
+  },
+  labelDense: {
+    fontSize: 10,
     marginBottom: 2,
+    lineHeight: 13,
   },
   value: {
-    fontSize: 13,
+    fontSize: 15,
     color: homeTheme.text,
-    lineHeight: 20,
+    lineHeight: 22,
     textAlign: "right",
-    fontWeight: "600",
+    fontWeight: "700",
     textDecorationLine: "underline",
     textDecorationColor: homeTheme.accentMuted,
   },
   valueCompact: {
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  valueDense: {
+    fontSize: 12,
+    lineHeight: 17,
   },
 });

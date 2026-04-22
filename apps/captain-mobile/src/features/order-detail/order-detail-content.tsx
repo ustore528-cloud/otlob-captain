@@ -4,12 +4,17 @@ import { orderStatusAr } from "@/lib/order-status-ar";
 import { formatLastSeenAr } from "@/features/home/utils/format";
 import { homeTheme } from "@/features/home/theme";
 import { ORDER_DROPOFF_LOCATION_LABEL, ORDER_PICKUP_LOCATION_LABEL } from "@/lib/order-location-labels";
+import { WhatsAppActionButton } from "@/components/ui/whatsapp-action-button";
+import { OrderFinancialSection } from "@/components/order/order-financial-section";
+import { shouldShowOrderFinancialSection } from "@/lib/order-payment-ui-visibility";
 import { openMapSearch, openPhoneDialer } from "@/lib/open-external";
 import { AssignmentLogsTimeline } from "./components/assignment-logs-timeline";
 import { DetailRow } from "./components/detail-row";
 import { OrderStatusProgress } from "./components/order-status-progress";
 import { SectionCard } from "./components/section-card";
 import { rtlLayout } from "@/theme/rtl";
+import { formatOrderSerial } from "@/lib/order-serial";
+import { orderStatusAccent } from "@/features/orders/utils/order-status-accent";
 
 export type OrderDetailContentProps = {
   order: OrderDetailDto;
@@ -22,6 +27,7 @@ export type OrderDetailContentProps = {
  */
 export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true }: OrderDetailContentProps) {
   const statusLabel = orderStatusAr[order.status] ?? order.status;
+  const statusAccent = orderStatusAccent(order.status);
   const created = formatLastSeenAr(order.createdAt);
   const updated = formatLastSeenAr(order.updatedAt);
 
@@ -29,10 +35,15 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
     <View style={styles.stack}>
       {/* بطاقة 1: رقم الطلب + الحالة + الوقت + ملخص سريع */}
       <SectionCard title="الطلب" icon="receipt-outline" compact>
-        <Text style={styles.orderNo}>{order.orderNumber}</Text>
+        <Text style={styles.orderNo}>{formatOrderSerial(order.orderNumber)}</Text>
         <View style={styles.pillRow}>
-          <View style={styles.pill}>
-            <Text style={styles.pillText}>{statusLabel}</Text>
+          <View
+            style={[
+              styles.pill,
+              { backgroundColor: statusAccent.bg, borderColor: statusAccent.border },
+            ]}
+          >
+            <Text style={[styles.pillText, { color: statusAccent.text }]}>{statusLabel}</Text>
           </View>
         </View>
         <Text style={styles.timeLine} numberOfLines={2}>
@@ -50,15 +61,18 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
             العميل: {order.customerName}
             {" · "}
           </Text>
-          <Pressable
-            onPress={() => void openPhoneDialer(order.customerPhone)}
-            hitSlop={8}
-            accessibilityRole="link"
-            accessibilityLabel={`اتصال ${order.customerPhone}`}
-            style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
-          >
-            <Text style={styles.phoneLink}>{order.customerPhone}</Text>
-          </Pressable>
+          <View style={styles.phoneActionsRow}>
+            <WhatsAppActionButton phone={order.customerPhone} variant="pill" />
+            <Pressable
+              onPress={() => void openPhoneDialer(order.customerPhone)}
+              hitSlop={8}
+              accessibilityRole="link"
+              accessibilityLabel={`اتصال ${order.customerPhone}`}
+              style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
+            >
+              <Text style={styles.phoneLink}>{order.customerPhone}</Text>
+            </Pressable>
+          </View>
         </View>
         <Text style={styles.inlineMeta} numberOfLines={1}>
           المنطقة: {order.area}
@@ -69,11 +83,19 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
         <OrderStatusProgress status={order.status} compact />
       </SectionCard>
 
-      {/* بطاقة 2: السعر */}
-      <SectionCard title="السعر" icon="cash-outline" compact>
-        <DetailRow compact isFirst label="قيمة الطلب" value={`${order.amount} ر.س`} />
-        <DetailRow compact label="المطلوب تحصيله" value={`${order.cashCollection} ر.س`} />
-      </SectionCard>
+      {/* بطاقة 2: المالية والتحصيل + حاسبة نقد — تظهر من مرحلة التوصيل للعميل فقط */}
+      {shouldShowOrderFinancialSection(order.status) ? (
+        <SectionCard title="المالية والتحصيل" icon="cash-outline" compact>
+          <OrderFinancialSection
+            amount={order.amount}
+            cashCollection={order.cashCollection}
+            orderStatus={order.status}
+            financialBreakdown={order.financialBreakdown}
+            variant="default"
+            hideTitle
+          />
+        </SectionCard>
+      ) : null}
 
       {/* بطاقة 3: العناوين */}
       <SectionCard title="العناوين" icon="map-outline" compact>
@@ -82,6 +104,7 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
           isFirst
           label={ORDER_PICKUP_LOCATION_LABEL}
           value={order.pickupAddress}
+          addressEmphasis
           hint="من المتجر"
           onPressValue={() => void openMapSearch(order.pickupAddress)}
           valueAccessibilityHint="فتح الخريطة على عنوان الاستلام"
@@ -90,6 +113,7 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
           compact
           label={ORDER_DROPOFF_LOCATION_LABEL}
           value={order.dropoffAddress}
+          addressEmphasis
           hint="عنوان العميل"
           onPressValue={() => void openMapSearch(order.dropoffAddress)}
           valueAccessibilityHint="فتح الخريطة على عنوان التسليم"
@@ -126,15 +150,12 @@ const styles = StyleSheet.create({
   },
   pill: {
     alignSelf: "flex-end",
-    backgroundColor: homeTheme.accentSoft,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: homeTheme.accentMuted,
   },
   pillText: {
-    color: homeTheme.accent,
     fontSize: 12,
     fontWeight: "800",
   },
@@ -172,6 +193,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end",
     marginBottom: 4,
+  },
+  phoneActionsRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
   },
   customerNameLine: {
     color: homeTheme.textSubtle,

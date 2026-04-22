@@ -1,4 +1,4 @@
-import type { OrderDetailDto } from "./orders.dto";
+import type { OrderDetailDto, OrderStatusDto } from "./orders.dto";
 
 export type CaptainAvailabilityStatus =
   | "OFFLINE"
@@ -54,13 +54,16 @@ export type WorkStatusResponse =
       updatedAt: string;
     };
 
-/** GET /mobile/captain/me/assignment */
 export type AssignmentLogDto = {
   id: string;
   assignedAt: string;
   expiresAt: string | null;
 };
 
+/**
+ * GET /mobile/captain/me/assignment — **intentionally singular**: NONE, one OFFER, or one ACTIVE order per response.
+ * Not a list of concurrent live orders unless the API contract changes.
+ */
 export type CurrentAssignmentResponse =
   | { state: "NONE" }
   | {
@@ -73,3 +76,23 @@ export type CurrentAssignmentResponse =
       state: "ACTIVE";
       order: OrderDetailDto;
     };
+
+/** GET /mobile/captain/me/assignment/overflow — not the primary card; see `CurrentAssignmentResponse`. */
+export type AssignmentOverflowItemDto = {
+  orderId: string;
+  orderNumber: string;
+  kind: "OFFER" | "ACTIVE";
+  status: OrderStatusDto;
+  customerPhone: string;
+  amount: string;
+  cashCollection: string;
+  pickupAddress: string;
+  dropoffAddress: string;
+  storeName: string;
+  offerExpiresAt: string | null;
+};
+
+export type AssignmentOverflowResponse = {
+  primaryOrderId: string | null;
+  items: AssignmentOverflowItemDto[];
+};

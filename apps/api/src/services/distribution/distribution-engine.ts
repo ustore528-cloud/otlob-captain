@@ -6,40 +6,94 @@ import { activityService } from "../activity.service.js";
 import { notificationService } from "../notifications.service.js";
 import {
   ASSIGNMENT_TIMEOUT_NOTE,
-  AUTO_CAPTAIN_MAX_ACTIVE_ORDERS,
   DISTRIBUTION_MAX_AUTO_ATTEMPTS,
   DISTRIBUTION_TIMEOUT_SECONDS,
   OFFER_CONFIRMATION_WINDOW_SECONDS,
 } from "./constants.js";
 import { logOfferCreationDiagnostics } from "./offer-diagnostics.js";
 import { logDistributionTimeout } from "./distribution-timeout-log.js";
-import { eligibleCaptainsForAutoDistribution, captainEligibleForManualOverride } from "./eligibility.js";
-import { lockOrderDistributionTx } from "./order-lock.js";
+import {
+  type AutomaticMultiOrderOverrideGateInput,
+  type AutoDistributionPolicy,
+  CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES,
+  canBypassAutomaticSingleOrderRule,
+  canCaptainReceiveAutomaticOrder,
+  captainEligibleForManualOverride,
+  eligibleCaptainsForAutoDistribution,
+} from "./eligibility.js";
+import { lockCaptainDistributionTx, lockOrderDistributionTx } from "./order-lock.js";
 import { countCompletedAutoRounds, pickCaptainForAutoOffer } from "./round-robin.js";
+
+/**
+ * Default Prisma interactive transaction timeout is 5s. Distribution txs run several writes + notifications
+ * against a remote DB — latency can exceed 5s → P2028 "Transaction already closed" and HTTP 500.
+ */
+const DISTRIBUTION_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 30_000 } as const;
+type DistributionRequestContext = { requestId?: string };
+type AssignmentPath = "automatic" | "manual";
+
+function logEngineTiming(
+  action: "manual_assign" | "resend_distribution" | "reassign",
+  phase: string,
+  meta: Record<string, unknown>,
+): void {
+  // eslint-disable-next-line no-console
+  console.info("[orders-action-timing]", {
+    layer: "distribution_engine",
+    action,
+    phase,
+    at: new Date().toISOString(),
+    ...meta,
+  });
+}
+
+function logAssignmentDecision(
+  phase: string,
+  meta: {
+    requestId?: string;
+    orderId: string;
+    captainId: string | null;
+    assignmentPath: AssignmentPath;
+    activeBlockingOrderCount: number | null;
+    eligibilityResult: boolean;
+    exclusionReason: string | null;
+    overrideEnabled: boolean;
+  },
+): void {
+  // eslint-disable-next-line no-console
+  console.info("[distribution-decision]", {
+    phase,
+    at: new Date().toISOString(),
+    requestId: meta.requestId ?? null,
+    orderId: meta.orderId,
+    captainId: meta.captainId,
+    assignmentPath: meta.assignmentPath,
+    activeBlockingOrderCount: meta.activeBlockingOrderCount,
+    eligibilityResult: meta.eligibilityResult,
+    exclusionReason: meta.exclusionReason,
+    overrideEnabled: meta.overrideEnabled,
+  });
+}
 
 function expiredAtFromNow(): Date {
   return new Date(Date.now() + OFFER_CONFIRMATION_WINDOW_SECONDS * 1000);
 }
 
-async function logOfferRowInsertedDiagnostics(
-  tx: Prisma.TransactionClient,
+/** Uses the row returned from `orderAssignmentLog.create` — avoids an extra `findFirst` round-trip per offer. */
+function logOfferRowInsertedDiagnostics(
   phase: string,
   orderId: string,
   captainId: string,
-): Promise<void> {
-  const row = await tx.orderAssignmentLog.findFirst({
-    where: { orderId, captainId, responseStatus: AssignmentResponseStatus.PENDING },
-    orderBy: { assignedAt: "desc" },
+  created: { assignedAt: Date; expiredAt: Date | null },
+): void {
+  if (!created.expiredAt) return;
+  logOfferCreationDiagnostics({
+    phase,
+    orderId,
+    captainId,
+    assignedAt: created.assignedAt,
+    expiredAt: created.expiredAt,
   });
-  if (row?.expiredAt) {
-    logOfferCreationDiagnostics({
-      phase,
-      orderId,
-      captainId,
-      assignedAt: row.assignedAt,
-      expiredAt: row.expiredAt,
-    });
-  }
 }
 
 function logAssignmentCreated(
@@ -64,6 +118,15 @@ const orderInclude = {
 
 async function loadOrder(tx: Prisma.TransactionClient, orderId: string) {
   return tx.order.findUnique({ where: { id: orderId } });
+}
+
+function assertOrderOperationalForDistribution<T extends { archivedAt?: Date | null }>(
+  order: T | null,
+): asserts order is T {
+  if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
+  if (order.archivedAt) {
+    throw new AppError(409, "الطلب مؤرشف — لا يمكن تشغيل التوزيع عليه", "ORDER_ARCHIVED");
+  }
 }
 
 /**
@@ -167,7 +230,7 @@ export class DistributionEngine {
             });
           }
           return true;
-        });
+        }, DISTRIBUTION_TRANSACTION_OPTIONS);
 
         if (processed) {
           emitHints.push({ orderId: row.orderId, expiredCaptainId: row.captainId });
@@ -191,6 +254,7 @@ export class DistributionEngine {
     await lockOrderDistributionTx(tx, orderId);
     const order = await loadOrder(tx, orderId);
     if (!order) return;
+    if (order.archivedAt) return;
     if (order.distributionMode === DistributionMode.AUTO) {
       await this.offerNextAutoCaptainTx(tx, orderId, actorUserId);
     } else {
@@ -203,15 +267,43 @@ export class DistributionEngine {
 
   /**
    * يعرض طلبًا على الكابتن التالي بالدور (AUTO).
+   * الاستثناء multi-order في AUTO لا يعمل إلا عبر overrideGate صريح وصالح.
    * يُفترض أن المعاملة تحتفظ بقفل order مسبقًا عند الاستدعاء من الداخل بعد timeout.
    */
   async offerNextAutoCaptainTx(
     tx: Prisma.TransactionClient,
     orderId: string,
     actorUserId: string | null,
+    overrideGate?: AutomaticMultiOrderOverrideGateInput,
+    requestId?: string,
   ): Promise<{ captainId: string } | null> {
+    const policy: AutoDistributionPolicy = overrideGate
+      ? "OVERRIDE_MULTI_ORDER"
+      : "DEFAULT_SINGLE_ORDER";
+    if (overrideGate && !canBypassAutomaticSingleOrderRule(overrideGate)) {
+      logAssignmentDecision("AUTO_OVERRIDE_GATE_REJECTED", {
+        requestId,
+        orderId,
+        captainId: null,
+        assignmentPath: "automatic",
+        activeBlockingOrderCount: null,
+        eligibilityResult: false,
+        exclusionReason: "INVALID_OVERRIDE_GATE",
+        overrideEnabled: true,
+      });
+      throw new AppError(
+        400,
+        "Invalid automatic multi-order override gate; explicit enablement and overrideSource are required",
+        "INVALID_OVERRIDE_GATE",
+      );
+    }
     const order = await loadOrder(tx, orderId);
-    if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
+    assertOrderOperationalForDistribution(order);
+    if (policy === "OVERRIDE_MULTI_ORDER") {
+      await activityService.logTx(tx, actorUserId, "DISTRIBUTION_AUTO_OVERRIDE_GATE_USED", "order", orderId, {
+        overrideSource: overrideGate?.overrideSource ?? null,
+      });
+    }
 
     const pool = await tx.captain.findMany({
       where: eligibleCaptainsForAutoDistribution(),
@@ -222,25 +314,60 @@ export class DistributionEngine {
       by: ["assignedCaptainId"],
       where: {
         assignedCaptainId: { not: null },
-        distributionMode: DistributionMode.AUTO,
-        status: { in: [OrderStatus.ASSIGNED, OrderStatus.ACCEPTED, OrderStatus.PICKED_UP, OrderStatus.IN_TRANSIT] },
+        /** Auto-offer capacity guard counts all active captain orders, regardless of how they were assigned. */
+        status: { in: CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES },
       },
       _count: { _all: true },
     });
     const loadByCaptain = new Map(
       capacityRows
         .filter((r) => r.assignedCaptainId)
-        .map((r) => [r.assignedCaptainId as string, r._count._all]),
+        .map((r) => {
+          const count =
+            typeof r._count === "number"
+              ? r._count
+              : typeof r._count === "object" && r._count
+                ? (r._count._all ?? 0)
+                : 0;
+          return [r.assignedCaptainId as string, count] as const;
+        }),
     );
-    const availablePool = pool.filter((c) => (loadByCaptain.get(c.id) ?? 0) < AUTO_CAPTAIN_MAX_ACTIVE_ORDERS);
+    const availablePool = pool.filter((c) =>
+      canCaptainReceiveAutomaticOrder(loadByCaptain.get(c.id) ?? 0, policy),
+    );
+    for (const captain of pool) {
+      const activeBlockingOrderCount = loadByCaptain.get(captain.id) ?? 0;
+      const eligibilityResult = canCaptainReceiveAutomaticOrder(activeBlockingOrderCount, policy);
+      logAssignmentDecision("AUTO_POOL_EVALUATED", {
+        requestId,
+        orderId,
+        captainId: captain.id,
+        assignmentPath: "automatic",
+        activeBlockingOrderCount,
+        eligibilityResult,
+        exclusionReason: eligibilityResult ? null : "AUTO_CAPACITY_REACHED",
+        overrideEnabled: policy === "OVERRIDE_MULTI_ORDER",
+      });
+    }
 
     if (availablePool.length === 0) {
+      logAssignmentDecision("AUTO_NO_ELIGIBLE_POOL", {
+        requestId,
+        orderId,
+        captainId: null,
+        assignmentPath: "automatic",
+        activeBlockingOrderCount: null,
+        eligibilityResult: false,
+        exclusionReason: "AUTO_CAPACITY_REACHED_OR_NO_AVAILABLE",
+        overrideEnabled: policy === "OVERRIDE_MULTI_ORDER",
+      });
       await tx.order.update({
         where: { id: orderId },
         data: { status: OrderStatus.PENDING, assignedCaptainId: null },
       });
       await activityService.logTx(tx, actorUserId, "DISTRIBUTION_NO_ELIGIBLE_CAPTAINS", "order", orderId, {
         reason: "AUTO_CAPACITY_REACHED_OR_NO_AVAILABLE",
+        policy,
       });
       return null;
     }
@@ -257,23 +384,76 @@ export class DistributionEngine {
       return null;
     }
 
-    const captain = pickCaptainForAutoOffer(availablePool, orderId, rounds);
-    if (!captain) return null;
+    const candidatePool = [...availablePool];
+    let selectedCaptain: (typeof candidatePool)[number] | null = null;
+    while (candidatePool.length > 0) {
+      const captain = pickCaptainForAutoOffer(candidatePool, orderId, rounds);
+      if (!captain) break;
 
-    const offerExpiresAt = expiredAtFromNow();
-    await tx.orderAssignmentLog.create({
-      data: {
+      // Hard gate before offer creation/assignment: serialize + recheck captain load in this transaction.
+      await lockCaptainDistributionTx(tx, captain.id);
+      const activeWorkingOrdersCount = await tx.order.count({
+        where: {
+          assignedCaptainId: captain.id,
+          status: { in: CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES },
+        },
+      });
+      const eligibilityResult = canCaptainReceiveAutomaticOrder(activeWorkingOrdersCount, policy);
+      logAssignmentDecision("AUTO_CANDIDATE_RECHECK", {
+        requestId,
         orderId,
         captainId: captain.id,
+        assignmentPath: "automatic",
+        activeBlockingOrderCount: activeWorkingOrdersCount,
+        eligibilityResult,
+        exclusionReason: eligibilityResult ? null : "AUTO_CAPACITY_RECHECK_BLOCKED",
+        overrideEnabled: policy === "OVERRIDE_MULTI_ORDER",
+      });
+      if (eligibilityResult) {
+        selectedCaptain = captain;
+        break;
+      }
+
+      const blockedCaptainId = captain.id;
+      const idx = candidatePool.findIndex((c) => c.id === blockedCaptainId);
+      if (idx >= 0) candidatePool.splice(idx, 1);
+    }
+    if (!selectedCaptain) {
+      logAssignmentDecision("AUTO_NO_ELIGIBLE_AFTER_RECHECK", {
+        requestId,
+        orderId,
+        captainId: null,
+        assignmentPath: "automatic",
+        activeBlockingOrderCount: null,
+        eligibilityResult: false,
+        exclusionReason: "AUTO_CAPACITY_RECHECK_BLOCKED_ALL",
+        overrideEnabled: policy === "OVERRIDE_MULTI_ORDER",
+      });
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: OrderStatus.PENDING, assignedCaptainId: null },
+      });
+      await activityService.logTx(tx, actorUserId, "DISTRIBUTION_NO_ELIGIBLE_CAPTAINS", "order", orderId, {
+        reason: "AUTO_CAPACITY_RECHECK_BLOCKED_ALL",
+        policy,
+      });
+      return null;
+    }
+
+    const offerExpiresAt = expiredAtFromNow();
+    const createdOfferLog = await tx.orderAssignmentLog.create({
+      data: {
+        orderId,
+        captainId: selectedCaptain.id,
         assignmentType: $Enums.AssignmentType.AUTO,
         responseStatus: AssignmentResponseStatus.PENDING,
         expiredAt: offerExpiresAt,
       },
     });
-    await logOfferRowInsertedDiagnostics(tx, "AUTO_OFFER", orderId, captain.id);
+    logOfferRowInsertedDiagnostics("AUTO_OFFER", orderId, selectedCaptain.id, createdOfferLog);
     logAssignmentCreated("AUTO_OFFER", {
       orderId,
-      captainId: captain.id,
+      captainId: selectedCaptain.id,
       expiredAt: offerExpiresAt,
       assignmentType: "AUTO",
     });
@@ -282,25 +462,35 @@ export class DistributionEngine {
       where: { id: orderId },
       data: {
         status: OrderStatus.ASSIGNED,
-        assignedCaptainId: captain.id,
+        assignedCaptainId: selectedCaptain.id,
       },
     });
 
     await notificationService.notifyCaptainTx(
       tx,
-      captain.userId,
+      selectedCaptain.userId,
       "ORDER_ASSIGNMENT_OFFER",
       "طلب — بانتظار قبولك",
       `طلب ${order.orderNumber}: لديك ${DISTRIBUTION_TIMEOUT_SECONDS} ثانية للقبول أو الانتقال للكابتن التالي.`,
     );
 
     await activityService.logTx(tx, actorUserId, "DISTRIBUTION_AUTO_OFFER", "order", orderId, {
-      captainId: captain.id,
+      captainId: selectedCaptain.id,
       roundIndex: rounds,
-      poolSize: availablePool.length,
+      poolSize: candidatePool.length,
     });
+      logAssignmentDecision("AUTO_CAPTAIN_SELECTED", {
+        requestId,
+        orderId,
+        captainId: selectedCaptain.id,
+        assignmentPath: "automatic",
+        activeBlockingOrderCount: loadByCaptain.get(selectedCaptain.id) ?? 0,
+        eligibilityResult: true,
+        exclusionReason: null,
+        overrideEnabled: policy === "OVERRIDE_MULTI_ORDER",
+      });
 
-    return { captainId: captain.id };
+    return { captainId: selectedCaptain.id };
   }
 
   async startAutoDistribution(orderId: string, actorUserId: string | null) {
@@ -308,7 +498,7 @@ export class DistributionEngine {
       await lockOrderDistributionTx(tx, orderId);
 
       const order = await loadOrder(tx, orderId);
-      if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
+      assertOrderOperationalForDistribution(order);
       if (order.distributionMode !== DistributionMode.AUTO) {
         throw new AppError(400, "Order distribution mode is not AUTO", "INVALID_STATE");
       }
@@ -332,15 +522,44 @@ export class DistributionEngine {
       await this.offerNextAutoCaptainTx(tx, orderId, actorUserId);
 
       return tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
-    });
+    }, DISTRIBUTION_TRANSACTION_OPTIONS);
   }
 
-  async resendToDistribution(orderId: string, actorUserId: string | null) {
-    return prisma.$transaction(async (tx) => {
+  async resendToDistribution(orderId: string, actorUserId: string | null, ctx: DistributionRequestContext = {}) {
+    const t0 = Date.now();
+    logEngineTiming("resend_distribution", "engine_enter", { requestId: ctx.requestId, orderId, actorUserId });
+    try {
+      return await prisma.$transaction(async (tx) => {
+      logEngineTiming("resend_distribution", "transaction_enter", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
+      const txnStart = Date.now();
       await lockOrderDistributionTx(tx, orderId);
+      logEngineTiming("resend_distribution", "advisory_lock_acquired", {
+        requestId: ctx.requestId,
+        orderId,
+        txnMs: Date.now() - txnStart,
+        totalMs: Date.now() - t0,
+      });
+      logEngineTiming("resend_distribution", "lock_acquired", {
+        requestId: ctx.requestId,
+        orderId,
+        txnMs: Date.now() - txnStart,
+        totalMs: Date.now() - t0,
+      });
 
       const order = await loadOrder(tx, orderId);
-      if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
+      assertOrderOperationalForDistribution(order);
+      logEngineTiming("resend_distribution", "order_lookup_and_checks_done", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        orderStatus: order.status,
+        totalMs: Date.now() - t0,
+      });
 
       await tx.orderAssignmentLog.updateMany({
         where: { orderId, responseStatus: AssignmentResponseStatus.PENDING },
@@ -348,6 +567,12 @@ export class DistributionEngine {
           responseStatus: AssignmentResponseStatus.CANCELLED,
           notes: "Cancelled: resend to distribution",
         },
+      });
+      logEngineTiming("resend_distribution", "pending_logs_cancelled", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        totalMs: Date.now() - t0,
       });
 
       await tx.order.update({
@@ -359,20 +584,55 @@ export class DistributionEngine {
           lastDistributionResetAt: new Date(),
         },
       });
+      logEngineTiming("resend_distribution", "order_reset_written", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
 
       await activityService.logTx(tx, actorUserId, "ORDER_RESEND_DISTRIBUTION", "order", orderId, {});
+      logEngineTiming("resend_distribution", "activity_log_written", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
 
-      await this.offerNextAutoCaptainTx(tx, orderId, actorUserId);
+      await this.offerNextAutoCaptainTx(tx, orderId, actorUserId, undefined, ctx.requestId);
+      logEngineTiming("resend_distribution", "offer_next_auto_done", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
 
-      return tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
-    });
+      const finalOrder = await tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
+      logEngineTiming("resend_distribution", "final_order_loaded", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
+      return finalOrder;
+      }, DISTRIBUTION_TRANSACTION_OPTIONS);
+    } catch (error) {
+      logEngineTiming("resend_distribution", "engine_error", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
   async cancelCaptainAssignment(orderId: string, actorUserId: string | null) {
     return prisma.$transaction(async (tx) => {
       await lockOrderDistributionTx(tx, orderId);
       const order = await loadOrder(tx, orderId);
-      if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
+      assertOrderOperationalForDistribution(order);
 
       if (!order.assignedCaptainId) {
         throw new AppError(409, "Order has no assigned captain", "INVALID_STATE");
@@ -421,7 +681,7 @@ export class DistributionEngine {
 
       const nextOrder = await tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
       return { order: nextOrder, cancelledCaptainUserId };
-    });
+    }, DISTRIBUTION_TRANSACTION_OPTIONS);
   }
 
   /**
@@ -433,12 +693,61 @@ export class DistributionEngine {
     captainId: string,
     assignmentType: Extract<AssignmentType, "MANUAL" | "DRAG_DROP">,
     actorUserId: string | null,
+    ctx: DistributionRequestContext = {},
   ) {
-    return prisma.$transaction(async (tx) => {
+    const tAssign0 = Date.now();
+    const profileAssign = process.env.ASSIGN_TIMING_PROFILE === "1";
+    logEngineTiming("manual_assign", "engine_enter", {
+      requestId: ctx.requestId,
+      orderId,
+      captainId,
+      actorUserId,
+      assignmentType,
+    });
+    try {
+      return await prisma.$transaction(async (tx) => {
+      logEngineTiming("manual_assign", "transaction_enter", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        assignmentType,
+        totalMs: Date.now() - tAssign0,
+      });
+      if (profileAssign) {
+        // eslint-disable-next-line no-console
+        console.info("[assign-timing-profile] txn entered", { orderId, deltaMs: Date.now() - tAssign0 });
+      }
       await lockOrderDistributionTx(tx, orderId);
+      logEngineTiming("manual_assign", "advisory_lock_acquired", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - tAssign0,
+      });
+      logEngineTiming("manual_assign", "lock_acquired", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - tAssign0,
+      });
+      if (profileAssign) {
+        // eslint-disable-next-line no-console
+        console.info("[assign-timing-profile] after pg_advisory_xact_lock", { orderId, deltaMs: Date.now() - tAssign0 });
+      }
 
       const order = await loadOrder(tx, orderId);
-      if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
+      assertOrderOperationalForDistribution(order);
+      logEngineTiming("manual_assign", "order_lookup_and_checks_done", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        orderStatus: order.status,
+        totalMs: Date.now() - tAssign0,
+      });
       if (
         order.status !== OrderStatus.PENDING &&
         order.status !== OrderStatus.CONFIRMED &&
@@ -451,9 +760,39 @@ export class DistributionEngine {
         where: { id: captainId },
         include: { user: true },
       });
-      if (!captain || !captainEligibleForManualOverride(captain)) {
+      const manualEligible = Boolean(captain && captainEligibleForManualOverride(captain));
+      const activeBlockingOrderCount = captain
+        ? await tx.order.count({
+            where: {
+              assignedCaptainId: captain.id,
+              status: { in: CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES },
+            },
+          })
+        : null;
+      logAssignmentDecision("MANUAL_CAPTAIN_ELIGIBILITY", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        assignmentPath: "manual",
+        activeBlockingOrderCount,
+        eligibilityResult: manualEligible,
+        exclusionReason: manualEligible ? null : "CAPTAIN_UNAVAILABLE_FOR_MANUAL_OVERRIDE",
+        overrideEnabled: true,
+      });
+      if (!manualEligible) {
         throw new AppError(400, "Captain not eligible for manual assignment", "CAPTAIN_UNAVAILABLE");
       }
+      if (!captain) {
+        throw new AppError(400, "Captain not eligible for manual assignment", "CAPTAIN_UNAVAILABLE");
+      }
+      const targetCaptain = captain;
+      logEngineTiming("manual_assign", "captain_lookup_and_checks_done", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - tAssign0,
+      });
 
       await tx.orderAssignmentLog.updateMany({
         where: { orderId, responseStatus: AssignmentResponseStatus.PENDING },
@@ -462,70 +801,193 @@ export class DistributionEngine {
           notes: `Cancelled: ${String(assignmentType).toLowerCase()} override`,
         },
       });
+      logEngineTiming("manual_assign", "pending_logs_cancelled", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - tAssign0,
+      });
 
       const manualExpiresAt = expiredAtFromNow();
-      await tx.orderAssignmentLog.create({
+      const createdManualLog = await tx.orderAssignmentLog.create({
         data: {
           orderId,
-          captainId: captain.id,
+          captainId: targetCaptain.id,
           assignmentType,
           responseStatus: AssignmentResponseStatus.PENDING,
           expiredAt: manualExpiresAt,
         },
       });
-      await logOfferRowInsertedDiagnostics(
-        tx,
+      logOfferRowInsertedDiagnostics(
         assignmentType === $Enums.AssignmentType.DRAG_DROP ? "DRAG_DROP" : "MANUAL",
         orderId,
-        captain.id,
+        targetCaptain.id,
+        createdManualLog,
       );
       logAssignmentCreated(assignmentType === $Enums.AssignmentType.DRAG_DROP ? "DRAG_DROP" : "MANUAL", {
         orderId,
-        captainId: captain.id,
+        captainId: targetCaptain.id,
         expiredAt: manualExpiresAt,
         assignmentType: String(assignmentType),
+      });
+      logEngineTiming("manual_assign", "assignment_log_created", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - tAssign0,
       });
 
       await tx.order.update({
         where: { id: orderId },
         data: {
           status: OrderStatus.ASSIGNED,
-          assignedCaptainId: captain.id,
+          assignedCaptainId: targetCaptain.id,
           distributionMode: DistributionMode.MANUAL,
         },
+      });
+      logEngineTiming("manual_assign", "order_updated_assigned", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - tAssign0,
       });
 
       await notificationService.notifyCaptainTx(
         tx,
-        captain.userId,
+        targetCaptain.userId,
         "ORDER_ASSIGNMENT_OFFER",
         assignmentType === $Enums.AssignmentType.DRAG_DROP ? "تعيين (سحب وإفلات)" : "تعيين يدوي",
         `تم تعيينك للطلب ${order.orderNumber}. يرجى الرد خلال ${DISTRIBUTION_TIMEOUT_SECONDS} ثانية.`,
       );
+      logEngineTiming("manual_assign", "notification_written", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - tAssign0,
+      });
 
       await activityService.logTx(tx, actorUserId, "ORDER_MANUAL_ASSIGN", "order", orderId, {
         captainId,
         assignmentType,
       });
+      logEngineTiming("manual_assign", "activity_log_written", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - tAssign0,
+      });
 
-      return tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
-    });
+      if (profileAssign) {
+        // eslint-disable-next-line no-console
+        console.info("[assign-timing-profile] before final order.findUnique", { orderId, deltaMs: Date.now() - tAssign0 });
+      }
+      const finalOrder = await tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
+      logEngineTiming("manual_assign", "final_order_loaded", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - tAssign0,
+      });
+      return finalOrder;
+      }, DISTRIBUTION_TRANSACTION_OPTIONS);
+    } catch (error) {
+      logEngineTiming("manual_assign", "engine_error", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - tAssign0,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
-  async reassign(orderId: string, captainId: string, actorUserId: string | null) {
-    return prisma.$transaction(async (tx) => {
+  async reassign(orderId: string, captainId: string, actorUserId: string | null, ctx: DistributionRequestContext = {}) {
+    const t0 = Date.now();
+    logEngineTiming("reassign", "engine_enter", { requestId: ctx.requestId, orderId, captainId, actorUserId });
+    try {
+      return await prisma.$transaction(async (tx) => {
+      logEngineTiming("reassign", "transaction_enter", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
+      const txnStart = Date.now();
       await lockOrderDistributionTx(tx, orderId);
+      logEngineTiming("reassign", "advisory_lock_acquired", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        txnMs: Date.now() - txnStart,
+        totalMs: Date.now() - t0,
+      });
+      logEngineTiming("reassign", "lock_acquired", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        txnMs: Date.now() - txnStart,
+        totalMs: Date.now() - t0,
+      });
 
       const order = await loadOrder(tx, orderId);
-      if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
+      assertOrderOperationalForDistribution(order);
+      logEngineTiming("reassign", "order_lookup_and_checks_done", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        orderStatus: order.status,
+        totalMs: Date.now() - t0,
+      });
 
       const captain = await tx.captain.findUnique({
         where: { id: captainId },
         include: { user: true },
       });
-      if (!captain || !captainEligibleForManualOverride(captain)) {
+      const reassignEligible = Boolean(captain && captainEligibleForManualOverride(captain));
+      const activeBlockingOrderCount = captain
+        ? await tx.order.count({
+            where: {
+              assignedCaptainId: captain.id,
+              status: { in: CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES },
+            },
+          })
+        : null;
+      logAssignmentDecision("REASSIGN_CAPTAIN_ELIGIBILITY", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        assignmentPath: "manual",
+        activeBlockingOrderCount,
+        eligibilityResult: reassignEligible,
+        exclusionReason: reassignEligible ? null : "CAPTAIN_UNAVAILABLE_FOR_REASSIGN",
+        overrideEnabled: true,
+      });
+      if (!reassignEligible) {
         throw new AppError(400, "Captain not eligible for reassignment", "CAPTAIN_UNAVAILABLE");
       }
+      if (!captain) {
+        throw new AppError(400, "Captain not eligible for reassignment", "CAPTAIN_UNAVAILABLE");
+      }
+      const targetCaptain = captain;
+      logEngineTiming("reassign", "captain_lookup_and_checks_done", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
 
       await tx.orderAssignmentLog.updateMany({
         where: { orderId, responseStatus: AssignmentResponseStatus.PENDING },
@@ -534,45 +996,99 @@ export class DistributionEngine {
           notes: "Cancelled: reassign",
         },
       });
+      logEngineTiming("reassign", "pending_logs_cancelled", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
 
       const reassignExpiresAt = expiredAtFromNow();
-      await tx.orderAssignmentLog.create({
+      const createdReassignLog = await tx.orderAssignmentLog.create({
         data: {
           orderId,
-          captainId: captain.id,
+          captainId: targetCaptain.id,
           assignmentType: $Enums.AssignmentType.REASSIGN,
           responseStatus: AssignmentResponseStatus.PENDING,
           expiredAt: reassignExpiresAt,
         },
       });
-      await logOfferRowInsertedDiagnostics(tx, "REASSIGN", orderId, captain.id);
+      logOfferRowInsertedDiagnostics("REASSIGN", orderId, targetCaptain.id, createdReassignLog);
       logAssignmentCreated("REASSIGN", {
         orderId,
-        captainId: captain.id,
+        captainId: targetCaptain.id,
         expiredAt: reassignExpiresAt,
         assignmentType: "REASSIGN",
+      });
+      logEngineTiming("reassign", "assignment_log_created", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - t0,
       });
 
       await tx.order.update({
         where: { id: orderId },
         data: {
           status: OrderStatus.ASSIGNED,
-          assignedCaptainId: captain.id,
+          assignedCaptainId: targetCaptain.id,
         },
+      });
+      logEngineTiming("reassign", "order_updated_assigned", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - t0,
       });
 
       await notificationService.notifyCaptainTx(
         tx,
-        captain.userId,
+        targetCaptain.userId,
         "ORDER_REASSIGNED",
         "إعادة تعيين",
         `تم إعادة تعيينك للطلب ${order.orderNumber}.`,
       );
+      logEngineTiming("reassign", "notification_written", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
 
       await activityService.logTx(tx, actorUserId, "ORDER_REASSIGNED", "order", orderId, { captainId });
+      logEngineTiming("reassign", "activity_log_written", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
 
-      return tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
-    });
+      const finalOrder = await tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
+      logEngineTiming("reassign", "final_order_loaded", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+      });
+      return finalOrder;
+      }, DISTRIBUTION_TRANSACTION_OPTIONS);
+    } catch (error) {
+      logEngineTiming("reassign", "engine_error", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalMs: Date.now() - t0,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 import type { PaginationDto } from "./pagination.dto";
+import type { OrderFinancialBreakdownDto } from "@captain/shared";
 
 export type OrderStatusDto =
   | "PENDING"
@@ -41,6 +42,8 @@ export type OrderDetailDto = {
   area: string;
   amount: string;
   cashCollection: string;
+  /** Snapshot aligned with API `toOrderDetailDto` — inferred fees until explicit backend fields exist. */
+  financialBreakdown?: OrderFinancialBreakdownDto;
   notes: string | null;
   store: StoreSummaryDto;
   createdAt: string;

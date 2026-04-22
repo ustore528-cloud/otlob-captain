@@ -59,6 +59,11 @@ export function deriveFromAssignment(res: CurrentAssignmentResponse): CaptainAct
     };
   }
   if (res.state === "ACTIVE") {
+    /** اكتمال التسليم — لا يُعرض كطلب «حي» في شاشة العمليات (ينتقل للأرشيف). */
+    if (res.order.status === "DELIVERED") {
+      /** Keep `order` + readOnly so workbench does not fall through to `AssignmentEmptyState` while DTO/API are briefly inconsistent. */
+      return { mode: "none", readOnly: true, order: res.order };
+    }
     const step = nextDeliveryStep(res.order.status);
     if (!step) {
       return { mode: "none", readOnly: true, order: res.order };

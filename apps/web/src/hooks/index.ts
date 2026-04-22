@@ -7,6 +7,12 @@ export { useResendOrderToDistribution } from "./orders/use-resend-order-to-distr
 export { useAssignOrderToCaptain, type AssignOrderMode, type AssignOrderToCaptainVariables } from "./orders/use-assign-order-to-captain";
 export { useStartOrderAutoDistribution } from "./orders/use-start-order-auto-distribution";
 export { useCancelOrderCaptainAssignment } from "./orders/use-cancel-order-captain-assignment";
+export { useArchiveOrder } from "./orders/use-archive-order";
+export {
+  useAdminOverrideOrderStatus,
+  ADMIN_OVERRIDE_TARGET_STATUSES,
+  type AdminOverrideTargetStatus,
+} from "./orders/use-admin-override-order-status";
 
 export { useCaptains, DEFAULT_CAPTAINS_LIST } from "./captains/use-captains";
 export { useToggleCaptain } from "./captains/use-toggle-captain";

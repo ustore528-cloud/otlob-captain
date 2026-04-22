@@ -47,7 +47,10 @@ export const orderRepository = {
     page: number;
     pageSize: number;
   }) {
-    const where: Prisma.OrderWhereInput = {};
+    const where: Prisma.OrderWhereInput = {
+      /** قوائم التشغيل واللوحة: لا تعرض الطلبات المؤرشفة */
+      archivedAt: null,
+    };
     if (params.storeId) where.storeId = params.storeId;
     if (params.status) where.status = params.status;
     if (params.area) where.area = { contains: params.area, mode: "insensitive" };
@@ -69,6 +72,38 @@ export const orderRepository = {
             include: { user: { select: { fullName: true, phone: true } } },
           },
           /** للوحة التوزيع: مهلة قبول العرض الحالي (PENDING لنفس الكابتن المعيّن) */
+          assignmentLogs: {
+            where: { responseStatus: AssignmentResponseStatus.PENDING },
+            orderBy: { assignedAt: "desc" },
+            take: 5,
+            select: {
+              captainId: true,
+              assignedAt: true,
+              expiredAt: true,
+              responseStatus: true,
+            },
+          },
+        },
+      }),
+    ]);
+  },
+
+  /** سجل طلبات العميل — يشمل المؤرشفة للمراجعة الشخصية */
+  listForCustomerAccount(params: { customerUserId: string; page: number; pageSize: number }) {
+    const where: Prisma.OrderWhereInput = { customerUserId: params.customerUserId };
+    const { skip, take } = normalizePaginationForPrisma(params);
+    return prisma.$transaction([
+      prisma.order.count({ where }),
+      prisma.order.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take,
+        include: {
+          store: { select: { id: true, name: true, area: true } },
+          assignedCaptain: {
+            include: { user: { select: { fullName: true, phone: true } } },
+          },
           assignmentLogs: {
             where: { responseStatus: AssignmentResponseStatus.PENDING },
             orderBy: { assignedAt: "desc" },

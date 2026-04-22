@@ -78,10 +78,13 @@ export type UserListItem = {
 
 export type ActiveMapCaptain = {
   id: string;
+  /** حساب المستخدم المرتبط بالكابتن — مطلوب لإنشاء إشعارات تصل لتطبيق الكابتن */
+  userId?: string;
   area: string;
   availabilityStatus: string;
   vehicleType: string;
-  user: { fullName: string; phone: string };
+  /** `user.id` يطابق `userId` عندما يكون الحقل العلوي غائباً (كاش قديم) */
+  user: { id?: string; fullName: string; phone: string };
   lastLocation: null | {
     captainId: string;
     latitude: number;

@@ -47,4 +47,8 @@ for (const atRn of [atRnRoot, atRnProject]) {
 }
 config.resolver.extraNodeModules = extra;
 
+// expo-notifications pulls `@ide/backoff`, whose published build imports Node `assert`.
+// React Native runtime does not ship Node core modules, so map it to a tiny RN-safe shim.
+extra["@ide/backoff"] = path.resolve(projectRoot, "shims", "ide-backoff");
+
 module.exports = config;

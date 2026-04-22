@@ -8,6 +8,8 @@ export const OrderIdParamSchema = z.object({
 
 export const CreateOrderBodySchema = z.object({
   storeId: z.string().cuid().optional(),
+  /** ربط اختياري بحساب عميل — وإلا يُستنتج من تطابق رقم الهاتف مع مستخدم CUSTOMER */
+  customerUserId: z.string().cuid().optional(),
   customerName: z.string().min(1).max(200),
   customerPhone: z.string().min(5).max(32),
   pickupAddress: z.string().min(1).max(500),
@@ -53,4 +55,9 @@ export const ManualAssignBodySchema = z
 
 export const DragDropAssignBodySchema = z.object({
   captainId: z.string().cuid(),
+});
+
+/** حالات مسموح بها لمسار الإشراف فقط — لا ASSIGNED/ACCEPTED/… (تستخدم مسارات التوزيع والكابتن) */
+export const AdminOverrideOrderStatusBodySchema = z.object({
+  status: z.enum(["PENDING", "CONFIRMED", "CANCELLED", "DELIVERED"]),
 });

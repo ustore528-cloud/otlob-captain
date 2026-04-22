@@ -12,10 +12,45 @@ const actor = (req: Request) => ({
   storeId: req.user!.storeId,
 });
 
+function logOrderActionControllerTiming(
+  action: "manual_assign" | "resend_distribution" | "reassign",
+  phase: string,
+  meta: Record<string, unknown>,
+): void {
+  // eslint-disable-next-line no-console
+  console.info("[orders-action-timing]", {
+    layer: "orders_controller",
+    action,
+    phase,
+    at: new Date().toISOString(),
+    ...meta,
+  });
+}
+
+function createRequestId(action: "manual_assign" | "resend_distribution" | "reassign"): string {
+  return `${action}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export const ordersController = {
   create: async (req: Request, res: Response) => {
     const data = await ordersService.create(req.body as Parameters<typeof ordersService.create>[0], actor(req));
     return res.status(201).json(ok(data));
+  },
+
+  archiveOrder: async (req: Request, res: Response) => {
+    const data = await ordersService.archiveOrder(pathParam(req, "id"), actor(req));
+    return res.json(ok(data));
+  },
+
+  unarchiveOrder: async (req: Request, res: Response) => {
+    const data = await ordersService.unarchiveOrder(pathParam(req, "id"), actor(req));
+    return res.json(ok(data));
+  },
+
+  adminOverrideOrderStatus: async (req: Request, res: Response) => {
+    const body = req.body as { status: import("@prisma/client").OrderStatus };
+    const data = await ordersService.adminOverrideOrderStatus(pathParam(req, "id"), body.status, actor(req));
+    return res.json(ok(data));
   },
 
   list: async (req: Request, res: Response) => {
@@ -57,9 +92,37 @@ export const ordersController = {
   },
 
   reassign: async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const orderId = pathParam(req, "id");
     const body = req.body as { captainId: string };
-    const data = await distributionService.reassign(pathParam(req, "id"), body.captainId, req.user!.id);
-    return res.json(ok(data));
+    const requestId = createRequestId("reassign");
+    logOrderActionControllerTiming("reassign", "endpoint_entry", {
+      requestId,
+      orderId,
+      captainId: body.captainId,
+      actorUserId: req.user?.id ?? null,
+      actorRole: req.user?.role ?? null,
+      note: "auth+rbac+validation already passed",
+    });
+    try {
+      const data = await distributionService.reassign(orderId, body.captainId, req.user!.id, { requestId });
+      logOrderActionControllerTiming("reassign", "response_ready", {
+        requestId,
+        orderId,
+        captainId: body.captainId,
+        msFromEntry: Date.now() - startedAt,
+      });
+      return res.json(ok(data));
+    } catch (error) {
+      logOrderActionControllerTiming("reassign", "endpoint_error", {
+        requestId,
+        orderId,
+        captainId: body.captainId,
+        msFromEntry: Date.now() - startedAt,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   },
 
   startAutoDistribution: async (req: Request, res: Response) => {
@@ -68,8 +131,33 @@ export const ordersController = {
   },
 
   resendDistribution: async (req: Request, res: Response) => {
-    const data = await distributionService.resendToDistribution(pathParam(req, "id"), req.user!.id);
-    return res.json(ok(data));
+    const startedAt = Date.now();
+    const orderId = pathParam(req, "id");
+    const requestId = createRequestId("resend_distribution");
+    logOrderActionControllerTiming("resend_distribution", "endpoint_entry", {
+      requestId,
+      orderId,
+      actorUserId: req.user?.id ?? null,
+      actorRole: req.user?.role ?? null,
+      note: "auth+rbac+validation already passed",
+    });
+    try {
+      const data = await distributionService.resendToDistribution(orderId, req.user!.id, { requestId });
+      logOrderActionControllerTiming("resend_distribution", "response_ready", {
+        requestId,
+        orderId,
+        msFromEntry: Date.now() - startedAt,
+      });
+      return res.json(ok(data));
+    } catch (error) {
+      logOrderActionControllerTiming("resend_distribution", "endpoint_error", {
+        requestId,
+        orderId,
+        msFromEntry: Date.now() - startedAt,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   },
 
   cancelCaptainAssignment: async (req: Request, res: Response) => {
@@ -78,23 +166,56 @@ export const ordersController = {
   },
 
   manualAssign: async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const orderId = pathParam(req, "id");
+    const requestId = createRequestId("manual_assign");
     const body = req.body as { captainId: string; assignmentType?: AssignmentType };
     const mode =
       body.assignmentType === $Enums.AssignmentType.DRAG_DROP
         ? $Enums.AssignmentType.DRAG_DROP
         : $Enums.AssignmentType.MANUAL;
-    const data = await distributionService.assignManual(pathParam(req, "id"), body.captainId, req.user!.id, mode);
-    return res.json(ok(data));
+    logOrderActionControllerTiming("manual_assign", "endpoint_entry", {
+      requestId,
+      orderId,
+      captainId: body.captainId,
+      assignmentType: mode,
+      actorUserId: req.user?.id ?? null,
+      actorRole: req.user?.role ?? null,
+      note: "auth+rbac+validation already passed",
+    });
+    try {
+      const data = await distributionService.assignManual(orderId, body.captainId, req.user!.id, mode, { requestId });
+      logOrderActionControllerTiming("manual_assign", "response_ready", {
+        requestId,
+        orderId,
+        captainId: body.captainId,
+        assignmentType: mode,
+        msFromEntry: Date.now() - startedAt,
+      });
+      return res.json(ok(data));
+    } catch (error) {
+      logOrderActionControllerTiming("manual_assign", "endpoint_error", {
+        requestId,
+        orderId,
+        captainId: body.captainId,
+        assignmentType: mode,
+        msFromEntry: Date.now() - startedAt,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   },
 
   /** تعيين من لوحة السحب والإفلات — يسجل DRAG_DROP في OrderAssignmentLog */
   dragDropAssign: async (req: Request, res: Response) => {
+    const requestId = createRequestId("manual_assign");
     const body = req.body as { captainId: string };
     const data = await distributionService.assignManual(
       pathParam(req, "id"),
       body.captainId,
       req.user!.id,
       $Enums.AssignmentType.DRAG_DROP,
+      { requestId },
     );
     return res.json(ok(data));
   },

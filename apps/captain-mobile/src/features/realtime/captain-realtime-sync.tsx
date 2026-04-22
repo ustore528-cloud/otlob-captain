@@ -7,6 +7,7 @@ import { queryKeys } from "@/hooks/api/query-keys";
 import { getCaptainSocket } from "@/services/socket/socket-client";
 import { attachCaptainRealtimeListeners } from "./captain-realtime-subscriptions";
 import { useAssignmentFallbackPolling } from "./hooks/use-assignment-fallback-polling";
+import { useInAppTopBannerStore } from "@/store/in-app-top-banner-store";
 
 /**
  * مستمعات Socket.IO + احتياطي الاستطلاع — يُضاف بعد تسجيل الدخول.
@@ -15,6 +16,7 @@ export function CaptainRealtimeSync() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const captain = useAuthStore((s) => s.captain);
   const isOn = Boolean(accessToken && captain);
+  const showBanner = useInAppTopBannerStore((s) => s.showBanner);
 
   useAssignmentFallbackPolling(isOn);
 
@@ -44,7 +46,32 @@ export function CaptainRealtimeSync() {
       const s = getCaptainSocket();
       if (!s) return false;
       detach?.();
-      detach = attachCaptainRealtimeListeners(s, queryClient);
+      detach = attachCaptainRealtimeListeners(s, queryClient, (event) => {
+        if (event.type === "assignment") {
+          const p = event.payload as { orderNumber?: string; timeoutSeconds?: number } | null;
+          const digits = p?.orderNumber?.replace(/\D+/g, "") ?? "";
+          const serial = digits ? digits.slice(-2).padStart(2, "0") : "";
+          showBanner({
+            kind: "order",
+            title: "طلب جديد وصل",
+            message: serial ? `طلب رقم ${serial} بانتظار قبولك` : "لديك طلب جديد بانتظار القبول",
+          });
+          return;
+        }
+        if (event.type === "order_updated") {
+          showBanner({
+            kind: "info",
+            title: "تحديث على الطلب",
+            message: "تم تحديث حالة أحد الطلبات لديك",
+          });
+          return;
+        }
+        showBanner({
+          kind: "alert",
+          title: "انتهى التعيين الحالي",
+          message: "يمكنك انتظار عرض جديد أو تحديث القائمة",
+        });
+      });
       return true;
     };
 
@@ -61,7 +88,7 @@ export function CaptainRealtimeSync() {
       if (poll) clearInterval(poll);
       detach?.();
     };
-  }, [isOn, accessToken]);
+  }, [isOn, accessToken, showBanner]);
 
   return null;
 }

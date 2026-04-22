@@ -1,4 +1,5 @@
 import type { OrderDetailDto, OrderListItemDto, OrderStatusDto } from "@/services/api/dto";
+import { formatOrderAmountAr, formatOrderAmountEnLine } from "@/lib/order-currency";
 
 export type ListPrimaryKind =
   | "navigate_detail"
@@ -46,32 +47,32 @@ export function paymentSummaryLine(item: OrderListItemDto): string {
   const cash = parseFloat(item.cashCollection || "0");
   const amt = parseFloat(item.amount || "0");
   if (cash > 0) {
-    return `Cash on delivery · collect ${item.cashCollection} SAR`;
+    return formatOrderAmountEnLine("Cash on delivery · collect", item.cashCollection);
   }
-  return `Order amount · ${amt.toFixed(2)} SAR`;
+  return formatOrderAmountEnLine("Order amount ·", amt.toFixed(2));
 }
 
 export function paymentSummaryLineAr(item: OrderListItemDto): string {
   const cash = parseFloat(item.cashCollection || "0");
   if (cash > 0) {
-    return `نقد عند التسليم · تحصيل ${item.cashCollection} ر.س`;
+    return `نقد عند التسليم · تحصيل ${formatOrderAmountAr(item.cashCollection)}`;
   }
-  return `قيمة الطلب · ${item.amount} ر.س`;
+  return `قيمة الطلب · ${formatOrderAmountAr(item.amount)}`;
 }
 
 export function paymentSummaryLineFromDetail(order: OrderDetailDto): string {
   const cash = parseFloat(order.cashCollection || "0");
   const amt = parseFloat(order.amount || "0");
   if (cash > 0) {
-    return `Cash on delivery · collect ${order.cashCollection} SAR`;
+    return formatOrderAmountEnLine("Cash on delivery · collect", order.cashCollection);
   }
-  return `Order amount · ${amt.toFixed(2)} SAR`;
+  return formatOrderAmountEnLine("Order amount ·", amt.toFixed(2));
 }
 
 export function paymentSummaryLineArFromDetail(order: OrderDetailDto): string {
   const cash = parseFloat(order.cashCollection || "0");
   if (cash > 0) {
-    return `نقد عند التسليم · تحصيل ${order.cashCollection} ر.س`;
+    return `نقد عند التسليم · تحصيل ${formatOrderAmountAr(order.cashCollection)}`;
   }
-  return `قيمة الطلب · ${order.amount} ر.س`;
+  return `قيمة الطلب · ${formatOrderAmountAr(order.amount)}`;
 }

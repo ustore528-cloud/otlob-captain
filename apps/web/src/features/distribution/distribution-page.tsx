@@ -17,8 +17,40 @@ import { CaptainQuickDropPanel } from "@/features/distribution/components/captai
 import { ASSIGNED_LIST_PARAMS, CONFIRMED_LIST_PARAMS, PENDING_LIST_PARAMS } from "@/features/distribution/constants";
 import { DistributionMap } from "@/features/distribution/distribution-map";
 import { DraggableOrderCard } from "@/features/distribution/draggable-order-card";
+import { formatDistributionQueueSerial } from "@/features/distribution/distribution-queue-serial";
 import { useAuthStore } from "@/stores/auth-store";
+import type { ActiveMapCaptain } from "@/types/api";
 import type { OrderListItem } from "@/types/api";
+
+type PendingAssignmentUi = {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  customerName: string;
+  captainId: string;
+  captainName: string;
+  mode: "manual" | "drag-drop";
+};
+
+/** Same order can briefly appear in more than one status query during refetch — dedupe so list keys stay unique. */
+function dedupeOrdersById(orders: OrderListItem[]): OrderListItem[] {
+  const seen = new Set<string>();
+  const out: OrderListItem[] = [];
+  for (const o of orders) {
+    if (seen.has(o.id)) continue;
+    seen.add(o.id);
+    out.push(o);
+  }
+  return out;
+}
+
+function dedupeCaptainsById(captains: ActiveMapCaptain[]): ActiveMapCaptain[] {
+  const map = new Map<string, ActiveMapCaptain>();
+  for (const c of captains) {
+    if (!map.has(c.id)) map.set(c.id, c);
+  }
+  return [...map.values()];
+}
 
 function useDispatchRole() {
   const role = useAuthStore((s) => s.user?.role);
@@ -30,6 +62,7 @@ export function DistributionPageView() {
   const canDispatch = useDispatchRole();
   const [dragOrderId, setDragOrderId] = useState<string | null>(null);
   const [manualOrder, setManualOrder] = useState<OrderListItem | null>(null);
+  const [pendingAssignments, setPendingAssignments] = useState<PendingAssignmentUi[]>([]);
 
   /** تحديث دوري لرؤية انتقال عرض الطلب (الإطار الأصفر) بين الكباتن على الخريطة دون إعادة تحميل الصفحة */
   const distributionPollMs = 4000;
@@ -51,14 +84,7 @@ export function DistributionPageView() {
     activeMapRefetchInterval: distributionPollMs,
   });
 
-  const statsPending = useOrders(
-    { page: 1, pageSize: 1, status: "PENDING", orderNumber: "", customerPhone: "" },
-    { enabled: Boolean(token) && canDispatch, refetchInterval: distributionPollMs },
-  );
-  const statsConfirmed = useOrders(
-    { page: 1, pageSize: 1, status: "CONFIRMED", orderNumber: "", customerPhone: "" },
-    { enabled: Boolean(token) && canDispatch, refetchInterval: distributionPollMs },
-  );
+  /** Totals for PENDING / CONFIRMED stat cards: same filters as pendingQ / confirmedQ — use their `total` (no extra pageSize:1 pollers). */
   const statsCaptains = useCaptains(
     { page: 1, pageSize: 1, isActive: true },
     { enabled: Boolean(token) && canDispatch, refetchInterval: distributionPollMs },
@@ -80,25 +106,81 @@ export function DistributionPageView() {
     const a = pendingQ.data?.items ?? [];
     const b = confirmedQ.data?.items ?? [];
     const c = assignedQ.data?.items ?? [];
-    return [...c, ...a, ...b].sort((x, y) => (x.createdAt < y.createdAt ? 1 : -1));
+    const combined = [...c, ...a, ...b].sort((x, y) => (x.createdAt < y.createdAt ? 1 : -1));
+    return dedupeOrdersById(combined);
   }, [assignedQ.data?.items, pendingQ.data?.items, confirmedQ.data?.items]);
+
+  const mapCaptainsDeduped = useMemo(
+    () => dedupeCaptainsById(mapCaptains.data ?? []),
+    [mapCaptains.data],
+  );
+  const pendingOrderIds = useMemo(() => new Set(pendingAssignments.map((x) => x.orderId)), [pendingAssignments]);
+  const pendingAssignmentsByOrderId = useMemo(
+    () => new Map(pendingAssignments.map((x) => [x.orderId, x])),
+    [pendingAssignments],
+  );
+  const pendingCaptainIds = useMemo(() => [...new Set(pendingAssignments.map((x) => x.captainId))], [pendingAssignments]);
+  const ordersById = useMemo(() => new Map(mergedOrders.map((o) => [o.id, o])), [mergedOrders]);
+  const captainNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of mapCaptainsDeduped) map.set(c.id, c.user.fullName);
+    const pool = captainPool.data?.items ?? [];
+    for (const c of pool) {
+      if (!map.has(c.id)) map.set(c.id, c.user.fullName);
+    }
+    return map;
+  }, [mapCaptainsDeduped, captainPool.data?.items]);
+
+  const manualOrderLabel = useMemo(() => {
+    if (!manualOrder) return "";
+    const i = mergedOrders.findIndex((o) => o.id === manualOrder.id);
+    if (i < 0) return manualOrder.orderNumber;
+    return `${formatDistributionQueueSerial(i, mergedOrders.length)} · ${manualOrder.orderNumber}`;
+  }, [manualOrder, mergedOrders]);
 
   const resend = useResendOrderToDistribution();
   const assign = useAssignOrderToCaptain();
+  const removePendingAssignment = useCallback((id: string) => {
+    setPendingAssignments((prev) => prev.filter((x) => x.id !== id));
+  }, []);
 
   const onAssignDrop = useCallback(
     (orderId: string, captainId: string) => {
-      assign.mutate({ orderId, captainId, mode: "drag-drop" });
+      if (pendingOrderIds.has(orderId)) return;
+      const order = ordersById.get(orderId);
+      if (!order) return;
+      const captainName = captainNameById.get(captainId) ?? "كابتن محدد";
+      const optimisticId = `${order.id}:${captainId}:${Date.now()}`;
+      setPendingAssignments((prev) => [
+        ...prev,
+        {
+          id: optimisticId,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          captainId,
+          captainName,
+          mode: "drag-drop",
+        },
+      ]);
+      assign.mutate(
+        { orderId, captainId, mode: "drag-drop", source: "distribution-map-drag-drop" },
+        {
+          onSettled: () => {
+            removePendingAssignment(optimisticId);
+          },
+        },
+      );
     },
-    [assign],
+    [assign, captainNameById, ordersById, pendingOrderIds, removePendingAssignment],
   );
 
   if (!token) return null;
   if (!canDispatch) return <Navigate to="/" replace />;
 
   const activeCaptainsTotal = statsCaptains.data?.total ?? "—";
-  const pendingTotal = statsPending.data?.total ?? "—";
-  const confirmedTotal = statsConfirmed.data?.total ?? "—";
+  const pendingTotal = pendingQ.data?.total ?? "—";
+  const confirmedTotal = confirmedQ.data?.total ?? "—";
 
   return (
     <div className="grid gap-6">
@@ -118,7 +200,7 @@ export function DistributionPageView() {
         <div className="flex min-w-0 flex-col gap-4 [direction:rtl]">
           <div className="min-h-[min(52vh,520px)] min-w-0 lg:min-h-[min(60vh,560px)]">
             <DistributionMap
-              captains={mapCaptains.data ?? []}
+              captains={mapCaptainsDeduped}
               onAssignDrop={onAssignDrop}
               draggingOrderId={dragOrderId}
               defaultCenter={distributionMapView.center}
@@ -127,7 +209,12 @@ export function DistributionPageView() {
           </div>
           <div className="min-w-0">
             <h2 className="mb-2 text-base font-semibold leading-tight">الكباتن (إسقاط بالاسم)</h2>
-            <CaptainQuickDropPanel captains={mapCaptains.data ?? []} onDropOrderOnCaptain={onAssignDrop} />
+            <CaptainQuickDropPanel
+              captains={mapCaptainsDeduped}
+              onDropOrderOnCaptain={onAssignDrop}
+              pendingOrderIds={[...pendingOrderIds]}
+              pendingCaptainIds={pendingCaptainIds}
+            />
           </div>
         </div>
 
@@ -156,14 +243,22 @@ export function DistributionPageView() {
               <p className="text-sm text-muted">لا توجد طلبات قيد التوزيع حالياً.</p>
             ) : (
               <ul className="flex list-none flex-col gap-2 p-0" aria-label="قائمة الطلبات قيد التوزيع">
-                {mergedOrders.map((o) => (
+                {mergedOrders.map((o, index) => (
                   <li key={o.id}>
                     <DraggableOrderCard
                       order={o}
+                      queueSerial={formatDistributionQueueSerial(index, mergedOrders.length)}
                       onDragState={setDragOrderId}
                       onManual={setManualOrder}
-                      onResend={(ord) => resend.mutate(ord.id)}
-                      busy={resend.isPending || assign.isPending}
+                      onResend={(ord) =>
+                        resend.mutate({
+                          orderId: ord.id,
+                          clickAtMs: performance.now(),
+                          source: "distribution-queue-resend",
+                        })
+                      }
+                      busy={resend.isPending || assign.isPending || pendingOrderIds.has(o.id)}
+                      pendingAssignment={pendingAssignmentsByOrderId.get(o.id)}
                     />
                   </li>
                 ))}
@@ -176,15 +271,41 @@ export function DistributionPageView() {
       <ManualAssignModal
         open={Boolean(manualOrder)}
         onClose={() => setManualOrder(null)}
-        orderLabel={manualOrder?.orderNumber ?? ""}
+        orderLabel={manualOrderLabel}
         captains={captainPool.data?.items ?? []}
         isPending={assign.isPending}
         onSubmit={(captainId) => {
-          if (manualOrder)
+          if (manualOrder && !pendingOrderIds.has(manualOrder.id)) {
+            const optimisticId = `${manualOrder.id}:${captainId}:${Date.now()}`;
+            const captainName = captainNameById.get(captainId) ?? "كابتن محدد";
+            setPendingAssignments((prev) => [
+              ...prev,
+              {
+                id: optimisticId,
+                orderId: manualOrder.id,
+                orderNumber: manualOrder.orderNumber,
+                customerName: manualOrder.customerName,
+                captainId,
+                captainName,
+                mode: "manual",
+              },
+            ]);
             assign.mutate(
-              { orderId: manualOrder.id, captainId, mode: "manual" },
-              { onSuccess: () => setManualOrder(null) },
+              {
+                orderId: manualOrder.id,
+                captainId,
+                mode: "manual",
+                clickAtMs: performance.now(),
+                source: "distribution-manual-assign-modal",
+              },
+              {
+                onSuccess: () => setManualOrder(null),
+                onSettled: () => {
+                  removePendingAssignment(optimisticId);
+                },
+              },
             );
+          }
         }}
       />
 

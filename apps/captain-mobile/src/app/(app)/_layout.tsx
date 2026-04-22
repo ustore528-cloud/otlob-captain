@@ -1,6 +1,7 @@
 import { Redirect, Stack } from "expo-router";
 import { View } from "react-native";
-import { CaptainRealtimeSync } from "@/features/realtime";
+import { CaptainRealtimeSync, InAppTopBanner } from "@/features/realtime";
+import { CaptainPushSync } from "@/features/notifications/push/captain-push-sync";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function AppLayout() {
@@ -17,8 +18,10 @@ export default function AppLayout() {
   return (
     <>
       <CaptainRealtimeSync />
+      <CaptainPushSync />
       <View style={{ flex: 1 }}>
         <Stack screenOptions={{ headerShown: false }} />
+        <InAppTopBanner />
       </View>
     </>
   );

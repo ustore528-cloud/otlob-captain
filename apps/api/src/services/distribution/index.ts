@@ -2,11 +2,13 @@ import { $Enums, OrderStatus } from "@prisma/client";
 import type { AssignmentType, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { distributionEngine } from "./distribution-engine.js";
+import { AppError } from "../../utils/errors.js";
 import { emitOrderUpdated, emitToCaptain } from "../../realtime/hub.js";
 import { CAPTAIN_SOCKET_EVENTS } from "../../realtime/captain-events.js";
 import { DISTRIBUTION_TIMEOUT_SECONDS } from "./constants.js";
 import { emitCaptainAssignmentEnded } from "../../realtime/order-emits.js";
 import { logDistributionTimeout } from "./distribution-timeout-log.js";
+import { pushNotificationService } from "../push-notification.service.js";
 
 type OrderCaptainEmit = {
   id: string;
@@ -14,6 +16,96 @@ type OrderCaptainEmit = {
   status: OrderStatus;
   assignedCaptain: { userId: string } | null;
 } | null;
+type DistributionRequestContext = { requestId?: string };
+
+function logActionTiming(
+  action: "manual_assign" | "resend_distribution" | "reassign",
+  phase: string,
+  meta: Record<string, unknown>,
+): void {
+  // eslint-disable-next-line no-console
+  console.info("[orders-action-timing]", {
+    action,
+    phase,
+    at: new Date().toISOString(),
+    ...meta,
+  });
+}
+
+function canManualAssignFromStatus(status: OrderStatus): boolean {
+  return status === OrderStatus.PENDING || status === OrderStatus.CONFIRMED || status === OrderStatus.ASSIGNED;
+}
+
+function canResendFromStatus(_status: OrderStatus): boolean {
+  // Keep existing business behavior: resend path currently accepts operational orders regardless of status.
+  return true;
+}
+
+function canReassignFromStatus(_status: OrderStatus): boolean {
+  // Keep existing business behavior: reassignment path currently accepts operational orders regardless of status.
+  return true;
+}
+
+async function runFastOrderPrecheck(
+  action: "manual_assign" | "resend_distribution" | "reassign",
+  params: {
+    orderId: string;
+    t0: number;
+    captainId?: string;
+    actorUserId?: string | null;
+    requestId?: string;
+    isStatusAllowed: (status: OrderStatus) => boolean;
+    invalidStatusErrorMessage: string;
+  },
+): Promise<void> {
+  const precheckStart = Date.now();
+  const pre = await prisma.order.findUnique({
+    where: { id: params.orderId },
+    select: { id: true, status: true, archivedAt: true },
+  });
+  logActionTiming(action, "fast_precheck_read_done", {
+    requestId: params.requestId,
+    orderId: params.orderId,
+    actorUserId: params.actorUserId ?? null,
+    ...(params.captainId ? { captainId: params.captainId } : {}),
+    ms: Date.now() - precheckStart,
+    found: Boolean(pre),
+    status: pre?.status ?? null,
+    archived: Boolean(pre?.archivedAt),
+  });
+  if (!pre) {
+    logActionTiming(action, "fast_precheck_rejected_not_found", {
+      requestId: params.requestId,
+      orderId: params.orderId,
+      actorUserId: params.actorUserId ?? null,
+      ...(params.captainId ? { captainId: params.captainId } : {}),
+      totalServiceMs: Date.now() - params.t0,
+    });
+    throw new AppError(404, "Order not found", "NOT_FOUND");
+  }
+  if (pre.archivedAt) {
+    logActionTiming(action, "fast_precheck_rejected_archived", {
+      requestId: params.requestId,
+      orderId: params.orderId,
+      actorUserId: params.actorUserId ?? null,
+      ...(params.captainId ? { captainId: params.captainId } : {}),
+      status: pre.status,
+      totalServiceMs: Date.now() - params.t0,
+    });
+    throw new AppError(409, "الطلب مؤرشف — لا يمكن تشغيل التوزيع عليه", "ORDER_ARCHIVED");
+  }
+  if (!params.isStatusAllowed(pre.status)) {
+    logActionTiming(action, "fast_precheck_rejected_invalid_status", {
+      requestId: params.requestId,
+      orderId: params.orderId,
+      actorUserId: params.actorUserId ?? null,
+      ...(params.captainId ? { captainId: params.captainId } : {}),
+      status: pre.status,
+      totalServiceMs: Date.now() - params.t0,
+    });
+    throw new AppError(409, params.invalidStatusErrorMessage, "INVALID_STATE");
+  }
+}
 
 function emitCaptainDistributionSocket(order: OrderCaptainEmit, kind: "OFFER" | "REASSIGNED"): void {
   if (!order?.assignedCaptain?.userId) return;
@@ -25,6 +117,18 @@ function emitCaptainDistributionSocket(order: OrderCaptainEmit, kind: "OFFER" | 
     timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
   });
   emitOrderUpdated({ id: order.id, orderNumber: order.orderNumber, status: order.status });
+  void pushNotificationService.sendToCaptainUser(order.assignedCaptain.userId, {
+    title: kind === "REASSIGNED" ? "إعادة تعيين طلب" : "طلب جديد بانتظار قبولك",
+    body:
+      kind === "REASSIGNED"
+        ? `تمت إعادة تعيين الطلب ${order.orderNumber} لك.`
+        : `تم عرض الطلب ${order.orderNumber} عليك. اضغط للقبول أو الرفض.`,
+    data: {
+      orderId: order.id,
+      kind,
+      status: order.status,
+    },
+  });
 }
 
 /**
@@ -93,10 +197,51 @@ export const distributionService = {
     return order;
   },
 
-  resendToDistribution: async (orderId: string, actorUserId: string | null) => {
-    const order = await distributionEngine.resendToDistribution(orderId, actorUserId);
-    emitCaptainDistributionSocket(order, "OFFER");
-    return order;
+  resendToDistribution: async (orderId: string, actorUserId: string | null, ctx: DistributionRequestContext = {}) => {
+    const t0 = Date.now();
+    logActionTiming("resend_distribution", "service_enter", { requestId: ctx.requestId, orderId, actorUserId });
+    await runFastOrderPrecheck("resend_distribution", {
+      orderId,
+      t0,
+      actorUserId,
+      requestId: ctx.requestId,
+      isStatusAllowed: canResendFromStatus,
+      invalidStatusErrorMessage: "Order cannot be resent to distribution in current status",
+    });
+    logActionTiming("resend_distribution", "transaction_enter", {
+      requestId: ctx.requestId,
+      orderId,
+      actorUserId,
+      msFromEnter: Date.now() - t0,
+    });
+    try {
+      const order = await distributionEngine.resendToDistribution(orderId, actorUserId, ctx);
+      const afterEngine = Date.now();
+      logActionTiming("resend_distribution", "engine_done", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        orderStatus: order?.status ?? null,
+        msFromEnter: afterEngine - t0,
+      });
+      emitCaptainDistributionSocket(order, "OFFER");
+      logActionTiming("resend_distribution", "socket_emit_and_push_enqueue_done", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        totalServiceMs: Date.now() - t0,
+      });
+      return order;
+    } catch (error) {
+      logActionTiming("resend_distribution", "service_error", {
+        requestId: ctx.requestId,
+        orderId,
+        actorUserId,
+        totalServiceMs: Date.now() - t0,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   },
 
   assignManual: async (
@@ -104,16 +249,115 @@ export const distributionService = {
     captainId: string,
     actorUserId: string | null,
     assignmentType: Extract<AssignmentType, "MANUAL" | "DRAG_DROP"> = $Enums.AssignmentType.MANUAL,
+    ctx: DistributionRequestContext = {},
   ) => {
-    const order = await distributionEngine.assignManualOverride(orderId, captainId, assignmentType, actorUserId);
-    emitCaptainDistributionSocket(order, "OFFER");
-    return order;
+    const t0 = Date.now();
+    logActionTiming("manual_assign", "service_enter", {
+      requestId: ctx.requestId,
+      orderId,
+      captainId,
+      actorUserId,
+      assignmentType,
+    });
+    await runFastOrderPrecheck("manual_assign", {
+      orderId,
+      captainId,
+      t0,
+      actorUserId,
+      requestId: ctx.requestId,
+      isStatusAllowed: canManualAssignFromStatus,
+      invalidStatusErrorMessage: "Cannot assign order in current status",
+    });
+    logActionTiming("manual_assign", "transaction_enter", {
+      requestId: ctx.requestId,
+      orderId,
+      captainId,
+      actorUserId,
+      assignmentType,
+      msFromEnter: Date.now() - t0,
+    });
+    try {
+      const order = await distributionEngine.assignManualOverride(orderId, captainId, assignmentType, actorUserId, ctx);
+      const afterEngine = Date.now();
+      logActionTiming("manual_assign", "engine_done", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        orderStatus: order?.status ?? null,
+        msFromEnter: afterEngine - t0,
+      });
+      emitCaptainDistributionSocket(order, "OFFER");
+      logActionTiming("manual_assign", "socket_emit_and_push_enqueue_done", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalServiceMs: Date.now() - t0,
+      });
+      return order;
+    } catch (error) {
+      logActionTiming("manual_assign", "service_error", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalServiceMs: Date.now() - t0,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   },
 
-  reassign: async (orderId: string, captainId: string, actorUserId: string | null) => {
-    const order = await distributionEngine.reassign(orderId, captainId, actorUserId);
-    emitCaptainDistributionSocket(order, "REASSIGNED");
-    return order;
+  reassign: async (orderId: string, captainId: string, actorUserId: string | null, ctx: DistributionRequestContext = {}) => {
+    const t0 = Date.now();
+    logActionTiming("reassign", "service_enter", { requestId: ctx.requestId, orderId, captainId, actorUserId });
+    await runFastOrderPrecheck("reassign", {
+      orderId,
+      captainId,
+      t0,
+      actorUserId,
+      requestId: ctx.requestId,
+      isStatusAllowed: canReassignFromStatus,
+      invalidStatusErrorMessage: "Cannot reassign order in current status",
+    });
+    logActionTiming("reassign", "transaction_enter", {
+      requestId: ctx.requestId,
+      orderId,
+      captainId,
+      actorUserId,
+      msFromEnter: Date.now() - t0,
+    });
+    try {
+      const order = await distributionEngine.reassign(orderId, captainId, actorUserId, ctx);
+      logActionTiming("reassign", "engine_done", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        orderStatus: order?.status ?? null,
+        msFromEnter: Date.now() - t0,
+      });
+      emitCaptainDistributionSocket(order, "REASSIGNED");
+      logActionTiming("reassign", "socket_emit_and_push_enqueue_done", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalServiceMs: Date.now() - t0,
+      });
+      return order;
+    } catch (error) {
+      logActionTiming("reassign", "service_error", {
+        requestId: ctx.requestId,
+        orderId,
+        captainId,
+        actorUserId,
+        totalServiceMs: Date.now() - t0,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   },
 
   cancelCaptainAssignment: async (orderId: string, actorUserId: string | null) => {
@@ -132,18 +376,31 @@ export const distributionService = {
 };
 
 export { distributionEngine } from "./distribution-engine.js";
-export { eligibleCaptainsForAutoDistribution, captainEligibleForManualOverride } from "./eligibility.js";
+export {
+  type AutomaticMultiOrderOverrideGateInput,
+  type AutoDistributionPolicy,
+  CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES,
+  canBypassAutomaticSingleOrderRule,
+  captainHasActiveWorkingOrder,
+  canCaptainReceiveAutomaticOrder,
+  captainEligibleForManualOverride,
+  eligibleCaptainsForAutoDistribution,
+  isManualMultiOrderOverrideEnabled,
+  isCaptainBusyForAutomaticDistribution,
+  maxActiveOrdersForAutoDistributionPolicy,
+} from "./eligibility.js";
 export {
   countCompletedAutoRounds,
   pickCaptainAtRoundIndex,
   pickCaptainForAutoOffer,
   stablePoolIndexFromOrderId,
 } from "./round-robin.js";
-export { lockOrderDistributionTx } from "./order-lock.js";
+export { lockCaptainDistributionTx, lockOrderDistributionTx } from "./order-lock.js";
 export {
   DISTRIBUTION_TIMEOUT_SECONDS,
   OFFER_CONFIRMATION_WINDOW_SECONDS,
   DISTRIBUTION_MAX_AUTO_ATTEMPTS,
-  AUTO_CAPTAIN_MAX_ACTIVE_ORDERS,
+  DEFAULT_AUTO_CAPTAIN_MAX_ACTIVE_ORDERS,
+  OVERRIDE_AUTO_CAPTAIN_MAX_ACTIVE_ORDERS,
   ASSIGNMENT_TIMEOUT_NOTE,
 } from "./constants.js";

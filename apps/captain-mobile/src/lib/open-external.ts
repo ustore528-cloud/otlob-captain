@@ -1,4 +1,7 @@
 import { Alert, Linking } from "react-native";
+import { normalizePhoneForWhatsApp } from "@/lib/phone-whatsapp-normalize";
+
+export { normalizePhoneForWhatsApp };
 
 /** Digits and leading + for tel: — strips spaces and dashes */
 export function sanitizePhoneForDial(phone: string): string {
@@ -21,6 +24,23 @@ export async function openPhoneDialer(phone: string): Promise<void> {
     await Linking.openURL(url);
   } catch {
     Alert.alert("تعذّر الاتصال", "حاول مرة أخرى.");
+  }
+}
+
+export async function openWhatsAppChat(phone: string): Promise<void> {
+  const d = normalizePhoneForWhatsApp(phone);
+  if (!d) {
+    Alert.alert(
+      "لا يمكن فتح واتساب",
+      "يلزم رقم جوال دولي كامل لفلسطين (+970) أو إسرائيل (+972)، بصيغة واضحة (مثال: +9725… أو +97059…). الأرقام المحلية التي تبدأ بـ 05… غير كافية بدون كود الدولة.",
+    );
+    return;
+  }
+  const url = `https://wa.me/${d}`;
+  try {
+    await Linking.openURL(url);
+  } catch {
+    Alert.alert("تعذّر فتح واتساب", "تأكد من تثبيت واتساب أو أن الرقم يتضمّن كود الدولة.");
   }
 }
 

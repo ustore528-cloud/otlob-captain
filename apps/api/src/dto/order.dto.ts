@@ -1,5 +1,6 @@
 import type { OrderStatus, AssignmentResponseStatus, AssignmentType } from "@prisma/client";
 import type { Decimal } from "@prisma/client/runtime/library";
+import { inferOrderFinancialBreakdown, type OrderFinancialBreakdownDto } from "@captain/shared";
 
 function dec(v: Decimal | null | undefined): string {
   if (v == null) return "0";
@@ -31,6 +32,11 @@ export type OrderDetailDto = {
   area: string;
   amount: string;
   cashCollection: string;
+  /**
+   * Single server-side snapshot of captain-facing money lines (aligned with mobile).
+   * Until explicit DB columns exist, `deliveryFee` is **inferred** — see `@captain/shared` `inferOrderFinancialBreakdown`.
+   */
+  financialBreakdown: OrderFinancialBreakdownDto;
   notes: string | null;
   store: StoreSummaryDto;
   createdAt: string;
@@ -82,6 +88,8 @@ type OrderWithStore = {
 };
 
 export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
+  const amountStr = dec(order.amount);
+  const cashStr = dec(order.cashCollection);
   return {
     id: order.id,
     orderNumber: order.orderNumber,
@@ -92,8 +100,9 @@ export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
     pickupAddress: order.pickupAddress,
     dropoffAddress: order.dropoffAddress,
     area: order.area,
-    amount: dec(order.amount),
-    cashCollection: dec(order.cashCollection),
+    amount: amountStr,
+    cashCollection: cashStr,
+    financialBreakdown: inferOrderFinancialBreakdown(amountStr, cashStr),
     notes: order.notes,
     store: {
       id: order.store.id,

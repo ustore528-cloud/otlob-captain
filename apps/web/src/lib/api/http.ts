@@ -49,6 +49,18 @@ function parseJson(text: string): unknown {
   }
 }
 
+function utf8ByteLength(input: string): number {
+  return new TextEncoder().encode(input).length;
+}
+
+function shouldTraceDistributionTiming(path: string): boolean {
+  return (
+    path.includes("/distribution/manual") ||
+    path.includes("/distribution/drag-drop") ||
+    path.includes("/distribution/resend")
+  );
+}
+
 /**
  * طبقة HTTP خام — يمكن استخدامها لتسجيل الدخول دون `ApiClient`.
  */
@@ -57,6 +69,10 @@ export async function apiFetch<T>(
   init: RequestInit & { token?: string | null } = {},
 ): Promise<T> {
   const { token, headers, ...rest } = init;
+  const requestBodyText = typeof rest.body === "string" ? rest.body : "";
+  const trace = shouldTraceDistributionTiming(path);
+  const t0 = trace ? performance.now() : 0;
+
   const res = await fetch(`${apiBaseUrl}${path}`, {
     ...rest,
     headers: {
@@ -65,8 +81,25 @@ export async function apiFetch<T>(
       ...headers,
     },
   });
+  const headersAt = trace ? performance.now() : 0;
   const text = await res.text();
+  const bodyAt = trace ? performance.now() : 0;
   const json = parseJson(text);
+
+  if (trace) {
+    // eslint-disable-next-line no-console
+    console.info("[otlob:http-timing]", {
+      method: rest.method ?? "GET",
+      path,
+      requestSentAtMs: t0,
+      ttfbMs: headersAt - t0,
+      totalDurationMs: bodyAt - t0,
+      requestPayloadBytes: requestBodyText ? utf8ByteLength(requestBodyText) : 0,
+      responsePayloadBytes: text ? utf8ByteLength(text) : 0,
+      contentLengthHeader: res.headers.get("content-length"),
+      status: res.status,
+    });
+  }
 
   if (!res.ok) {
     if (res.status === 401 && unauthorizedHandler) {

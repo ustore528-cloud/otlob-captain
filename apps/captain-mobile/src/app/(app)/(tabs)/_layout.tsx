@@ -35,16 +35,30 @@ export default function TabsLayout() {
         tabBarItemStyle: { paddingVertical: 2 },
       }}
     >
+      {/* Tab icon (tray) is decorative; GET /me/assignment remains one live snapshot. */}
       <Tabs.Screen
         name="orders"
         options={{
-          title: "الطلبات المتاحة",
+          title: "الطلب الحالي",
           tabBarLabel: ({ color, focused }) => (
             <OrdersTabBarLabel color={color} focused={focused} />
           ),
           tabBarIcon: ({ color, focused, size }) => (
             <Ionicons
               name={focused ? "file-tray-stacked" : "file-tray-stacked-outline"}
+              color={color}
+              size={focused ? size + TAB_ICON_FOCUS_BUMP : size}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="archive"
+        options={{
+          title: "أرشيف الطلبات",
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons
+              name={focused ? "archive" : "archive-outline"}
               color={color}
               size={focused ? size + TAB_ICON_FOCUS_BUMP : size}
             />

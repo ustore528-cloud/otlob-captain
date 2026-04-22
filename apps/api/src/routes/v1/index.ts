@@ -10,6 +10,7 @@ import { activityRoutes } from "./activity.routes.js";
 import { dashboardSettingsRoutes } from "./dashboard-settings.routes.js";
 import { geocodeRoutes } from "./geocode.routes.js";
 import { mobileRoutes } from "./mobile/index.js";
+import { customerRoutes } from "./customer.routes.js";
 
 const v1Router = Router();
 
@@ -24,5 +25,6 @@ v1Router.use("/activity", activityRoutes);
 v1Router.use("/dashboard-settings", dashboardSettingsRoutes);
 v1Router.use("/geocode", geocodeRoutes);
 v1Router.use("/mobile", mobileRoutes);
+v1Router.use("/customer", customerRoutes);
 
 export { v1Router };

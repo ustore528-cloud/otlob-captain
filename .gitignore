@@ -25,6 +25,7 @@ apps/web/dist/
 
 # Logs
 *.log
+build-log.txt
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -50,6 +51,7 @@ Desktop.ini
 .expo/
 **/.expo/
 expo-env.d.ts.local
+apps/captain-mobile/com.facebook.react.fabric.mounting.SurfaceMountingManager
 
 # Metro
 .metro-health-check*

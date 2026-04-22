@@ -25,19 +25,32 @@ export async function loadDashboardStats(opts: {
   };
 
   try {
+    const jobs: Array<Promise<void>> = [];
+
     if (opts.canListOrders) {
-      const o = await api.orders.list({ page: 1, pageSize: 1 });
-      out.ordersTotal = o.total;
+      jobs.push(
+        api.orders.list({ page: 1, pageSize: 1 }).then((o) => {
+          out.ordersTotal = o.total;
+        }),
+      );
     }
+
     if (opts.isDispatch) {
-      const [c, p, cf] = await Promise.all([
-        api.captains.list({ page: 1, pageSize: 1, isActive: true }),
-        api.orders.list({ page: 1, pageSize: 1, status: "PENDING" }),
-        api.orders.list({ page: 1, pageSize: 1, status: "CONFIRMED" }),
-      ]);
-      out.captainsActiveTotal = c.total;
-      out.pendingOrders = p.total;
-      out.confirmedOrders = cf.total;
+      jobs.push(
+        Promise.all([
+          api.captains.list({ page: 1, pageSize: 1, isActive: true }),
+          api.orders.list({ page: 1, pageSize: 1, status: "PENDING" }),
+          api.orders.list({ page: 1, pageSize: 1, status: "CONFIRMED" }),
+        ]).then(([c, p, cf]) => {
+          out.captainsActiveTotal = c.total;
+          out.pendingOrders = p.total;
+          out.confirmedOrders = cf.total;
+        }),
+      );
+    }
+
+    if (jobs.length > 0) {
+      await Promise.all(jobs);
     }
     return out;
   } catch {

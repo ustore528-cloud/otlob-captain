@@ -89,7 +89,10 @@ model User {
   ownedStores   Store[]  @relation("StoreOwner")
   captain       Captain?
   ordersCreated Order[]  @relation("OrderCreatedBy")
+  /** طلبات مرتبطة بحساب عميل (سجل الطلبات في التطبيق) */
+  ordersAsCustomer Order[] @relation("OrderCustomerAccount")
   notifications Notification[]
+  pushTokens    CaptainPushToken[]
   activityLogs  ActivityLog[]
 
   @@index([role, isActive])
@@ -153,9 +156,14 @@ model Order {
   lastDistributionResetAt DateTime?          @map("last_distribution_reset_at")
   createdByUserId    String?            @map("created_by_user_id")
   createdBy          User?              @relation("OrderCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  /** حساب عميل التطبيق المرتبط بالطلب — للسجل والإشعارات؛ يُستنتج من الهاتف أو يُمرَّر صراحة */
+  customerUserId     String?            @map("customer_user_id")
+  customerUser       User?              @relation("OrderCustomerAccount", fields: [customerUserId], references: [id], onDelete: SetNull)
   assignedCaptainId  String?            @map("assigned_captain_id")
   assignedCaptain    Captain?           @relation("OrderAssignedCaptain", fields: [assignedCaptainId], references: [id], onDelete: SetNull)
   assignmentLogs     OrderAssignmentLog[]
+  /** إخفاء من قوائم التشغيل دون حذف الصف — قابل للاسترجاع */
+  archivedAt         DateTime?          @map("archived_at")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
@@ -163,6 +171,8 @@ model Order {
   @@index([assignedCaptainId])
   @@index([area, status])
   @@index([createdAt])
+  @@index([customerUserId])
+  @@index([archivedAt])
   @@map("orders")
 }
 
@@ -209,6 +219,22 @@ model Notification {
 
   @@index([userId, isRead, createdAt])
   @@map("notifications")
+}
+
+model CaptainPushToken {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  platform   String   @default("android")
+  appVersion String?  @map("app_version")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at")
+
+  @@index([userId, isActive, updatedAt])
+  @@map("captain_push_tokens")
 }
 
 model ActivityLog {

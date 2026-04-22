@@ -3,41 +3,49 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { OrderDetailDto } from "@/services/api/dto";
 import { homeTheme } from "@/features/home/theme";
 import { orderStatusAr } from "@/lib/order-status-ar";
+import { WhatsAppActionButton } from "@/components/ui/whatsapp-action-button";
 import { openPhoneDialer } from "@/lib/open-external";
 import { orderStatusAccent, type StatusAccent } from "../utils/order-status-accent";
-import {
-  paymentSummaryLineArFromDetail,
-  paymentSummaryLineFromDetail,
-} from "../utils/order-list-primary-action";
 import { OrderRouteTapRows } from "./order-route-tap-rows";
+import { formatOrderSerial } from "@/lib/order-serial";
 
 type Props = {
   order: OrderDetailDto;
   offerHint?: string | null;
-  /** أقصر ارتفاعًا — يُستخدم في رأس تبويب الطلبات مع قائمة طلبات أخرى */
+  /** أقصر ارتفاعًا — تبويب الطلب الحالي */
   compact?: boolean;
+  /** تخطيط أخفّ للشاشة الحية (لا يعني عدة طلبات حيّة؛ الـ API لقطة واحدة). */
+  visualDensity?: "default" | "liveOperations";
   onOpenDetail: () => void;
 };
 
 /**
- * Single focused block for the active assignment on the Orders tab — matches list card info density without nested section cards.
+ * One card for the **single** live assignment from `/me/assignment` (not one row in a multi-order list).
  */
-export function CaptainWorkbenchOrderCard({ order, offerHint, compact, onOpenDetail }: Props) {
+export function CaptainWorkbenchOrderCard({
+  order,
+  offerHint,
+  compact,
+  visualDensity = "default",
+  onOpenDetail,
+}: Props) {
   const accent: StatusAccent = orderStatusAccent(order.status);
   const statusLabel = orderStatusAr[order.status] ?? order.status;
+  const liveOps = visualDensity === "liveOperations";
+  const compactEffective = Boolean(compact || liveOps);
 
   return (
-    <View style={[styles.card, compact && styles.cardCompact]}>
+    <View style={[styles.card, compact && styles.cardCompact, liveOps && styles.cardLiveOps]}>
       <Pressable
         onPress={onOpenDetail}
-        style={({ pressed }) => [styles.headerRow, pressed && styles.pressed]}
+        style={({ pressed }) => [styles.headerRow, liveOps && styles.headerRowLiveOps, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`Order ${order.orderNumber}, open details`}
+        accessibilityLabel={`Order ${formatOrderSerial(order.orderNumber)}, open details`}
       >
         <View style={styles.headerText}>
-          <Text style={styles.serialLabel}>Order #</Text>
-          <Text style={styles.serial} numberOfLines={1}>
-            {order.orderNumber}
+          <Text style={[styles.serialLabel, liveOps && styles.serialLabelLiveOps]}>Order #</Text>
+          <Text style={[styles.serial, liveOps && styles.serialLiveOps]} numberOfLines={1}>
+            {formatOrderSerial(order.orderNumber)}
           </Text>
         </View>
         <View style={[styles.badge, { backgroundColor: accent.bg, borderColor: accent.border }]}>
@@ -48,7 +56,7 @@ export function CaptainWorkbenchOrderCard({ order, offerHint, compact, onOpenDet
       </Pressable>
 
       {offerHint ? (
-        <Text style={[styles.hintLine, compact && styles.hintLineCompact]} numberOfLines={2}>
+        <Text style={[styles.hintLine, compact && styles.hintLineCompact, liveOps && styles.hintLineLiveOps]} numberOfLines={2}>
           {offerHint}
         </Text>
       ) : null}
@@ -57,44 +65,34 @@ export function CaptainWorkbenchOrderCard({ order, offerHint, compact, onOpenDet
         pickupAddress={order.pickupAddress}
         dropoffAddress={order.dropoffAddress}
         areaFallback={order.area}
-        compact={compact}
+        compact={compactEffective}
+        dense={liveOps}
       />
 
-      <View style={styles.customerRow}>
-        <Text style={styles.customerName} numberOfLines={1}>
-          {order.customerName}
-          {" · "}
-        </Text>
+      <View style={styles.divider} />
+
+      <View style={[styles.actionsRow, liveOps && styles.actionsRowLiveOps]}>
         <Pressable
           onPress={() => void openPhoneDialer(order.customerPhone)}
-          hitSlop={8}
-          accessibilityRole="link"
+          style={({ pressed }) => [styles.iconBtn, styles.callBtn, pressed && styles.pressed]}
+          hitSlop={10}
+          accessibilityRole="button"
           accessibilityLabel={`اتصال ${order.customerPhone}`}
-          style={({ pressed }) => [pressed && styles.pressed]}
         >
-          <Text style={styles.phoneLink}>{order.customerPhone}</Text>
+          <Ionicons name="call-outline" size={liveOps ? 18 : 20} color={homeTheme.accent} />
         </Pressable>
-      </View>
-
-      <View style={[styles.moneyRow, compact && styles.moneyRowCompact]}>
-        <Ionicons name="cash-outline" size={compact ? 16 : 18} color={homeTheme.accent} />
-        <View style={styles.moneyText}>
-          <Text style={[styles.paymentEn, compact && styles.paymentEnCompact]}>
-            {paymentSummaryLineFromDetail(order)}
+        <WhatsAppActionButton phone={order.customerPhone} variant="icon" size={compactEffective ? "default" : "large"} />
+        <Pressable
+          onPress={onOpenDetail}
+          style={({ pressed }) => [styles.detailBtn, liveOps && styles.detailBtnLiveOps, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Order details"
+        >
+          <Text style={[styles.detailBtnText, liveOps && styles.detailBtnTextLiveOps]}>
+            {compactEffective ? "التفاصيل" : "Details"}
           </Text>
-          {!compact ? <Text style={styles.paymentAr}>{paymentSummaryLineArFromDetail(order)}</Text> : null}
-        </View>
+        </Pressable>
       </View>
-
-      {!compact ? (
-        <Pressable onPress={onOpenDetail} style={({ pressed }) => [styles.footerTap, pressed && styles.pressed]}>
-          <Text style={styles.tapHint}>Tap for full details</Text>
-        </Pressable>
-      ) : (
-        <Pressable onPress={onOpenDetail} style={({ pressed }) => [styles.footerTapCompact, pressed && styles.pressed]}>
-          <Text style={styles.tapHintCompact}>التفاصيل</Text>
-        </Pressable>
-      )}
     </View>
   );
 }
@@ -103,22 +101,29 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: homeTheme.cardWhite,
     borderRadius: homeTheme.radiusMd,
-    padding: 14,
+    padding: 11,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: homeTheme.border,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   cardCompact: {
-    padding: 8,
-    marginBottom: 4,
+    padding: 6,
+    marginBottom: 3,
+  },
+  cardLiveOps: {
+    padding: 5,
+    marginBottom: 0,
   },
   pressed: { opacity: 0.96 },
   headerRow: {
     flexDirection: "row-reverse",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 4,
+    gap: 8,
+    marginBottom: 3,
+  },
+  headerRowLiveOps: {
+    marginBottom: 1,
   },
   headerText: { flex: 1, alignItems: "flex-end" },
   serialLabel: {
@@ -128,17 +133,24 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
+  serialLabelLiveOps: {
+    fontSize: 9,
+  },
   serial: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "900",
     color: homeTheme.text,
     textAlign: "right",
-    marginTop: 2,
+    marginTop: 1,
+  },
+  serialLiveOps: {
+    fontSize: 15,
+    marginTop: 0,
   },
   badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
     maxWidth: "44%",
   },
@@ -147,73 +159,65 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: homeTheme.textSubtle,
     textAlign: "right",
-    lineHeight: 16,
-    marginBottom: 10,
+    lineHeight: 15,
+    marginBottom: 7,
   },
   hintLineCompact: {
     fontSize: 12,
     fontWeight: "800",
     color: homeTheme.text,
+    marginBottom: 3,
+  },
+  hintLineLiveOps: {
+    marginBottom: 2,
+    fontSize: 10,
+    lineHeight: 14,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: homeTheme.border,
+    marginTop: 2,
     marginBottom: 4,
   },
-  customerRow: {
+  actionsRow: {
     flexDirection: "row-reverse",
-    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "flex-end",
-    marginTop: 4,
-    marginBottom: 4,
+    gap: 6,
   },
-  customerName: {
-    fontSize: 12,
-    color: homeTheme.textMuted,
-    textAlign: "right",
-  },
-  phoneLink: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: homeTheme.accent,
-    textDecorationLine: "underline",
-    textDecorationColor: homeTheme.accentMuted,
-    textAlign: "right",
-  },
-  moneyRow: {
-    flexDirection: "row-reverse",
-    alignItems: "flex-start",
-    gap: 8,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: homeTheme.border,
-  },
-  moneyRowCompact: {
-    paddingTop: 4,
+  actionsRowLiveOps: {
     gap: 4,
+    marginBottom: 0,
   },
-  moneyText: { flex: 1, alignItems: "flex-end" },
-  paymentEn: { fontSize: 12, color: homeTheme.text, fontWeight: "700", textAlign: "right" },
-  paymentEnCompact: { fontSize: 11 },
-  paymentAr: { fontSize: 11, color: homeTheme.textMuted, textAlign: "right", marginTop: 2 },
-  footerTap: {
-    marginTop: 8,
+  iconBtn: {
+    padding: 2,
+  },
+  callBtn: {
+    minWidth: 40,
+    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: homeTheme.accentMuted,
+    backgroundColor: homeTheme.cardWhite,
+  },
+  detailBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginStart: 2,
+  },
+  detailBtnLiveOps: {
     paddingVertical: 4,
-    alignSelf: "stretch",
-    alignItems: "flex-end",
+    paddingHorizontal: 8,
   },
-  footerTapCompact: {
-    marginTop: 2,
-    paddingVertical: 2,
-    alignSelf: "flex-end",
-  },
-  tapHint: {
-    fontSize: 11,
-    color: homeTheme.textSubtle,
-    textAlign: "right",
-    fontWeight: "600",
-  },
-  tapHintCompact: {
-    fontSize: 11,
+  detailBtnText: {
+    fontSize: 12,
     color: homeTheme.accent,
     fontWeight: "800",
     textAlign: "right",
+  },
+  detailBtnTextLiveOps: {
+    fontSize: 11,
   },
 });

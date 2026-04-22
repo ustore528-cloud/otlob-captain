@@ -3,9 +3,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { orderStatusBadgeVariant, orderStatusLabel } from "@/lib/order-status";
 import { ORDER_STATUS_FILTER_OPTIONS } from "@/features/orders/constants";
-import type { OrderListItem } from "@/types/api";
+import { ADMIN_OVERRIDE_TARGET_STATUSES, type AdminOverrideTargetStatus } from "@/hooks";
+import type { OrderListItem, OrderStatus } from "@/types/api";
+
+function canArchiveOrderStatus(status: OrderStatus): boolean {
+  return !["ACCEPTED", "PICKED_UP", "IN_TRANSIT"].includes(status);
+}
 
 const selectClass =
   "h-10 rounded-lg border border-card-border bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
@@ -24,9 +30,21 @@ type Props = {
   onManual: (order: OrderListItem) => void;
   onResend: (orderId: string) => void;
   onCancelCaptain: (orderId: string) => void;
-  autoPending: boolean;
-  resendPending: boolean;
-  cancelPending: boolean;
+  autoPendingOrderId: string | null;
+  resendPendingOrderId: string | null;
+  cancelPendingOrderId: string | null;
+  archivePending?: boolean;
+  onArchive?: (order: OrderListItem) => void;
+  archiveConfirmOrder: OrderListItem | null;
+  onArchiveConfirmClose: () => void;
+  onArchiveConfirm: () => void;
+  adminOverrideOrder: OrderListItem | null;
+  adminOverrideTarget: AdminOverrideTargetStatus;
+  onAdminOverrideTargetChange: (v: AdminOverrideTargetStatus) => void;
+  onAdminOverrideOpen: (order: OrderListItem) => void;
+  onAdminOverrideClose: () => void;
+  onAdminOverrideConfirm: () => void;
+  adminOverridePending: boolean;
 };
 
 export function OrdersListSection({
@@ -43,9 +61,21 @@ export function OrdersListSection({
   onManual,
   onResend,
   onCancelCaptain,
-  autoPending,
-  resendPending,
-  cancelPending,
+  autoPendingOrderId,
+  resendPendingOrderId,
+  cancelPendingOrderId,
+  archivePending = false,
+  onArchive,
+  archiveConfirmOrder,
+  onArchiveConfirmClose,
+  onArchiveConfirm,
+  adminOverrideOrder,
+  adminOverrideTarget,
+  onAdminOverrideTargetChange,
+  onAdminOverrideOpen,
+  onAdminOverrideClose,
+  onAdminOverrideConfirm,
+  adminOverridePending,
 }: Props) {
   return (
     <Card className="border-card-border shadow-sm">
@@ -84,6 +114,63 @@ export function OrdersListSection({
         ) : error ? (
           <p className="text-sm text-red-600">{error.message}</p>
         ) : (
+          <>
+          <Modal
+            open={Boolean(adminOverrideOrder)}
+            onClose={onAdminOverrideClose}
+            title="تعديل الحالة — إجراء إشرافي"
+            description="يغيّر حالة الطلب مباشرة (للمشرفين فقط). عند اختيار «بانتظار التوزيع» أو «تجهيز» أو «ملغى» يُلغى تعيين الكابتن الحالي وتُلغى عروض التوزيع المعلّقة. لا يُستخدم بديلاً عن مسارات التوزيع العادية."
+          >
+            <div className="grid gap-3">
+              {adminOverrideOrder ? (
+                <p className="text-sm text-muted">
+                  الطلب{" "}
+                  <span className="font-mono" dir="ltr">
+                    {adminOverrideOrder.orderNumber}
+                  </span>{" "}
+                  — الحالة الحالية:{" "}
+                  <span className="font-medium">{orderStatusLabel(adminOverrideOrder.status)}</span>
+                </p>
+              ) : null}
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted">الحالة المستهدفة</Label>
+                <select
+                  className={selectClass}
+                  value={adminOverrideTarget}
+                  onChange={(e) => onAdminOverrideTargetChange(e.target.value as AdminOverrideTargetStatus)}
+                >
+                  {ADMIN_OVERRIDE_TARGET_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {orderStatusLabel(s)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-wrap justify-end gap-2 pt-1">
+                <Button type="button" variant="secondary" onClick={onAdminOverrideClose}>
+                  إلغاء
+                </Button>
+                <Button type="button" variant="default" disabled={adminOverridePending} onClick={onAdminOverrideConfirm}>
+                  تأكيد التعديل الإشرافي
+                </Button>
+              </div>
+            </div>
+          </Modal>
+          <Modal
+            open={Boolean(archiveConfirmOrder)}
+            onClose={onArchiveConfirmClose}
+            title="إزالة الطلب من القائمة التشغيلية؟"
+            description="لن يُحذف الصف من قاعدة البيانات — يُخفى من قوائم التشغيل والإحصاءات الافتراضية (بما فيها بعد التسليم). الطلبات المرتبطة بحساب عميل تبقى في سجل العميل. يمكن استرجاع العرض لاحقاً عبر واجهة الإدارة (إلغاء الأرشفة)."
+          >
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={onArchiveConfirmClose}>
+                إلغاء
+              </Button>
+              <Button type="button" variant="default" disabled={archivePending} onClick={onArchiveConfirm}>
+                تأكيد الإزالة
+              </Button>
+            </div>
+          </Modal>
           <table className="w-full min-w-[920px] border-separate border-spacing-0 text-sm">
             <thead>
               <tr className="text-muted">
@@ -119,7 +206,12 @@ export function OrdersListSection({
                   <td className="border-b border-card-border px-3 py-3 align-top">
                     <div className="flex flex-wrap gap-2">
                       {canDispatch && (o.status === "PENDING" || o.status === "CONFIRMED") ? (
-                        <Button size="sm" variant="secondary" disabled={autoPending} onClick={() => onAuto(o.id)}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={autoPendingOrderId === o.id}
+                          onClick={() => onAuto(o.id)}
+                        >
                           توزيع تلقائي
                         </Button>
                       ) : null}
@@ -129,15 +221,49 @@ export function OrdersListSection({
                         </Button>
                       ) : null}
                       {canDispatch && o.status !== "DELIVERED" && o.status !== "CANCELLED" ? (
-                        <Button size="sm" variant="default" disabled={resendPending} onClick={() => onResend(o.id)}>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          disabled={resendPendingOrderId === o.id}
+                          onClick={() => onResend(o.id)}
+                        >
                           إعادة توزيع
                         </Button>
                       ) : null}
                       {canDispatch &&
                       o.assignedCaptain &&
                       (o.status === "ASSIGNED" || o.status === "ACCEPTED" || o.status === "PICKED_UP") ? (
-                        <Button size="sm" variant="secondary" disabled={cancelPending} onClick={() => onCancelCaptain(o.id)}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={cancelPendingOrderId === o.id}
+                          onClick={() => onCancelCaptain(o.id)}
+                        >
                           إلغاء الطلب للكابتن
+                        </Button>
+                      ) : null}
+                      {canDispatch ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="border-amber-200/80 text-amber-950 hover:bg-amber-50 dark:border-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-950/40"
+                          disabled={adminOverridePending}
+                          onClick={() => onAdminOverrideOpen(o)}
+                        >
+                          تعديل الحالة (إشراف)
+                        </Button>
+                      ) : null}
+                      {canDispatch && onArchive && canArchiveOrderStatus(o.status) ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          className="border-red-200 text-red-800 hover:bg-red-50 dark:border-red-900/50 dark:text-red-200 dark:hover:bg-red-950/40"
+                          disabled={archivePending}
+                          onClick={() => onArchive(o)}
+                        >
+                          إزالة من القائمة
                         </Button>
                       ) : null}
                     </div>
@@ -146,6 +272,7 @@ export function OrdersListSection({
               ))}
             </tbody>
           </table>
+          </>
         )}
       </CardContent>
     </Card>

@@ -19,6 +19,12 @@ import { DISTRIBUTION_TIMEOUT_SECONDS } from "./distribution/constants.js";
 import { clampOfferExpiredAtToConfiguredWindow } from "./distribution/clamp-offer-expired-at.js";
 import { logOfferPayloadCaptainMobileDiagnostics } from "./distribution/offer-diagnostics.js";
 
+/** @see ./distribution/assigned-order-semantics.ts — ASSIGNED vs OFFER vs ACTIVE (ACCEPTED+). */
+
+/**
+ * Live assignment snapshot for the captain app — **intentionally singular** (not a list).
+ * At most one pending OFFER or one in-flight ACTIVE order; see `getCurrentAssignment`.
+ */
 export type CurrentAssignmentResponse =
   | { state: "NONE" }
   | {
@@ -28,6 +34,69 @@ export type CurrentAssignmentResponse =
       order: ReturnType<typeof toOrderDetailDto>;
     }
   | { state: "ACTIVE"; order: ReturnType<typeof toOrderDetailDto> };
+
+/**
+ * `GET /mobile/captain/me/assignment/overflow` — orders assignable or in-flight for this captain
+ * that are **not** the primary snapshot from `getCurrentAssignment` (same selection rules).
+ */
+export type AssignmentOverflowItemDto = {
+  orderId: string;
+  orderNumber: string;
+  kind: "OFFER" | "ACTIVE";
+  status: OrderStatus;
+  customerPhone: string;
+  amount: string;
+  cashCollection: string;
+  pickupAddress: string;
+  dropoffAddress: string;
+  storeName: string;
+  offerExpiresAt: string | null;
+};
+
+export type AssignmentOverflowResponse = {
+  /** Same order as the singular `/me/assignment` payload when state ≠ NONE; else null. */
+  primaryOrderId: string | null;
+  items: AssignmentOverflowItemDto[];
+};
+
+/**
+ * Captain current-working statuses for mobile current-orders.
+ * ASSIGNED is intentionally excluded here; ASSIGNED offers are sourced from pending assignment logs.
+ */
+const CAPTAIN_CURRENT_WORKING_STATUSES: OrderStatus[] = [
+  OrderStatus.ACCEPTED,
+  OrderStatus.PICKED_UP,
+  OrderStatus.IN_TRANSIT,
+];
+
+/** Mirrors `getCurrentAssignment` branch order — pending OFFER wins over newest ACTIVE-working order. */
+async function resolvePrimaryAssignmentOrderId(captainId: string): Promise<string | null> {
+  const now = new Date();
+  const pendingLog = await prisma.orderAssignmentLog.findFirst({
+    where: {
+      captainId,
+      responseStatus: AssignmentResponseStatus.PENDING,
+      OR: [{ expiredAt: null }, { expiredAt: { gt: now } }],
+      order: {
+        assignedCaptainId: captainId,
+        status: OrderStatus.ASSIGNED,
+      },
+    },
+    orderBy: [{ expiredAt: "asc" }, { assignedAt: "desc" }],
+    select: { orderId: true },
+  });
+  if (pendingLog) return pendingLog.orderId;
+
+  const active = await prisma.order.findFirst({
+    where: {
+      assignedCaptainId: captainId,
+      status: { in: CAPTAIN_CURRENT_WORKING_STATUSES },
+    },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true },
+  });
+  return active?.id ?? null;
+}
 
 export const captainMobileService = {
   login(input: { phone?: string; email?: string; password: string }) {
@@ -60,6 +129,11 @@ export const captainMobileService = {
     };
   },
 
+  /**
+   * `GET /mobile/captain/me/assignment` — **one live snapshot only** (`findFirst` per branch):
+   * pending OFFER (soonest-expiring log) or newest ACTIVE-working row, or NONE.
+   * Not a multi-order queue; a contract change is required to expose concurrent live orders.
+   */
   async getCurrentAssignment(userId: string): Promise<CurrentAssignmentResponse> {
     const captain = await captainRepository.findByUserId(userId);
     if (!captain) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
@@ -116,7 +190,7 @@ export const captainMobileService = {
     const active = await prisma.order.findFirst({
       where: {
         assignedCaptainId: captain.id,
-        status: { in: [OrderStatus.ACCEPTED, OrderStatus.PICKED_UP, OrderStatus.IN_TRANSIT] },
+        status: { in: CAPTAIN_CURRENT_WORKING_STATUSES },
       },
       orderBy: { updatedAt: "desc" },
       include: {
@@ -128,6 +202,118 @@ export const captainMobileService = {
     if (active) return { state: "ACTIVE", order: toOrderDetailDto(active) };
 
     return { state: "NONE" };
+  },
+
+  /**
+   * Secondary concurrent offers / active-working orders hidden from the singular `/me/assignment` card.
+   * Default AUTO distribution policy remains single-order; concurrent rows here are explicit exceptional paths.
+   * Uses the same primary key as `getCurrentAssignment` via `resolvePrimaryAssignmentOrderId`.
+   */
+  async getAssignmentOverflow(userId: string): Promise<AssignmentOverflowResponse> {
+    const captain = await captainRepository.findByUserId(userId);
+    if (!captain) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
+
+    const primaryOrderId = await resolvePrimaryAssignmentOrderId(captain.id);
+    const now = new Date();
+
+    const [pendingLogs, activeOrders] = await Promise.all([
+      prisma.orderAssignmentLog.findMany({
+        where: {
+          captainId: captain.id,
+          responseStatus: AssignmentResponseStatus.PENDING,
+          OR: [{ expiredAt: null }, { expiredAt: { gt: now } }],
+          order: {
+            assignedCaptainId: captain.id,
+            status: OrderStatus.ASSIGNED,
+          },
+        },
+        orderBy: [{ expiredAt: "asc" }, { assignedAt: "desc" }],
+        select: {
+          assignedAt: true,
+          expiredAt: true,
+          orderId: true,
+          order: {
+            select: {
+              orderNumber: true,
+              status: true,
+              customerPhone: true,
+              amount: true,
+              cashCollection: true,
+              pickupAddress: true,
+              dropoffAddress: true,
+              store: { select: { name: true } },
+            },
+          },
+        },
+      }),
+      prisma.order.findMany({
+        where: {
+          assignedCaptainId: captain.id,
+          status: { in: CAPTAIN_CURRENT_WORKING_STATUSES },
+        },
+        orderBy: { updatedAt: "desc" },
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+          customerPhone: true,
+          amount: true,
+          cashCollection: true,
+          pickupAddress: true,
+          dropoffAddress: true,
+          store: { select: { name: true } },
+        },
+      }),
+    ]);
+
+    const items: AssignmentOverflowItemDto[] = [];
+    const seen = new Set<string>();
+    const primaryOrderIdNormalized = primaryOrderId ? String(primaryOrderId).trim() : null;
+
+    for (const log of pendingLogs) {
+      const orderId = String(log.orderId ?? "").trim();
+      if (!orderId) continue;
+      if (orderId === primaryOrderIdNormalized) continue;
+      if (seen.has(orderId)) continue;
+      seen.add(orderId);
+      const clamped = clampOfferExpiredAtToConfiguredWindow(log.assignedAt, log.expiredAt);
+      items.push({
+        orderId,
+        orderNumber: log.order.orderNumber,
+        kind: "OFFER",
+        status: log.order.status,
+        customerPhone: log.order.customerPhone,
+        amount: log.order.amount.toString(),
+        cashCollection: log.order.cashCollection.toString(),
+        pickupAddress: log.order.pickupAddress,
+        dropoffAddress: log.order.dropoffAddress,
+        storeName: log.order.store.name,
+        offerExpiresAt: clamped ? clamped.toISOString() : null,
+      });
+    }
+
+    for (const o of activeOrders) {
+      const orderId = String(o.id ?? "").trim();
+      if (!orderId) continue;
+      if (orderId === primaryOrderIdNormalized) continue;
+      if (seen.has(orderId)) continue;
+      seen.add(orderId);
+      items.push({
+        orderId,
+        orderNumber: o.orderNumber,
+        kind: "ACTIVE",
+        status: o.status,
+        customerPhone: o.customerPhone,
+        amount: o.amount.toString(),
+        cashCollection: o.cashCollection.toString(),
+        pickupAddress: o.pickupAddress,
+        dropoffAddress: o.dropoffAddress,
+        storeName: o.store.name,
+        offerExpiresAt: null,
+      });
+    }
+
+    return { primaryOrderId: primaryOrderIdNormalized, items };
   },
 
   async getOrderById(userId: string, orderId: string) {

@@ -33,8 +33,13 @@ export function createApiClient(getToken: GetToken) {
       distributionDragDrop: (orderId: string, captainId: string) =>
         orders.distributionDragDrop(t(), orderId, captainId),
       distributionCancelCaptain: (orderId: string) => orders.distributionCancelCaptain(t(), orderId),
+      archive: (orderId: string) => orders.archiveOrder(t(), orderId),
+      unarchive: (orderId: string) => orders.unarchiveOrder(t(), orderId),
+      adminOverrideStatus: (orderId: string, status: Parameters<typeof orders.adminOverrideOrderStatus>[2]) =>
+        orders.adminOverrideOrderStatus(t(), orderId, status),
     },
     captains: {
+      get: (id: string) => captains.getCaptain(t(), id),
       list: (q?: Parameters<typeof captains.listCaptains>[1]) => captains.listCaptains(t(), q),
       create: (body: captains.CreateCaptainPayload) => captains.createCaptain(t(), body),
       setActive: (id: string, isActive: boolean) => captains.setCaptainActive(t(), id, isActive),
@@ -60,6 +65,8 @@ export function createApiClient(getToken: GetToken) {
     },
     notifications: {
       list: (page?: number, pageSize?: number) => notifications.listNotifications(t(), page, pageSize),
+      create: (payload: notifications.CreateCaptainNotificationPayload) =>
+        notifications.createNotification(t(), payload),
       quickStatus: (status: notifications.QuickStatusCode) => notifications.sendQuickStatus(t(), status),
     },
     activity: {

@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import type { OrderDetailDto } from "@/services/api/dto";
 import { formatLastSeenAr } from "@/features/home/utils/format";
 import { homeTheme } from "@/features/home/theme";
+import { formatOrderSerial } from "@/lib/order-serial";
 
 type Props = {
   order: OrderDetailDto;
@@ -16,7 +17,7 @@ export function OrderDetailHeader({ order, offerHint }: Props) {
     <View style={styles.wrap}>
       <View>
         <Text style={styles.kicker}>رقم الطلب</Text>
-        <Text style={styles.orderNo}>{order.orderNumber}</Text>
+        <Text style={styles.orderNo}>{formatOrderSerial(order.orderNumber)}</Text>
       </View>
       <View style={styles.metaRow}>
         <Text style={styles.meta}>

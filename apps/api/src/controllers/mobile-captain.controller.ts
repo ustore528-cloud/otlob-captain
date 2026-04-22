@@ -5,6 +5,7 @@ import { pathParam } from "../utils/path-params.js";
 import { captainMobileService } from "../services/captain-mobile.service.js";
 import { toOrderDetailDto } from "../dto/order.dto.js";
 import { notificationService } from "../services/notifications.service.js";
+import { pushNotificationService } from "../services/push-notification.service.js";
 
 export const mobileCaptainController = {
   login: async (req: Request, res: Response) => {
@@ -30,8 +31,15 @@ export const mobileCaptainController = {
     return res.json(ok(data));
   },
 
+  /** GET /mobile/captain/me/assignment — singular live snapshot (NONE | one OFFER | one ACTIVE). */
   currentAssignment: async (req: Request, res: Response) => {
     const data = await captainMobileService.getCurrentAssignment(req.user!.id);
+    return res.json(ok(data));
+  },
+
+  /** GET /mobile/captain/me/assignment/overflow — secondary assignable / in-flight orders not on the primary card. */
+  assignmentOverflow: async (req: Request, res: Response) => {
+    const data = await captainMobileService.getAssignmentOverflow(req.user!.id);
     return res.json(ok(data));
   },
 
@@ -49,6 +57,17 @@ export const mobileCaptainController = {
   updateAvailability: async (req: Request, res: Response) => {
     const body = req.body as { availabilityStatus: import("@prisma/client").CaptainAvailabilityStatus };
     const data = await captainMobileService.updateAvailability(req.user!.id, body.availabilityStatus);
+    return res.json(ok(data));
+  },
+
+  registerPushToken: async (req: Request, res: Response) => {
+    const body = req.body as { token: string; platform: "android" | "ios"; appVersion?: string };
+    const data = await pushNotificationService.registerCaptainPushToken({
+      userId: req.user!.id,
+      token: body.token,
+      platform: body.platform,
+      appVersion: body.appVersion ?? null,
+    });
     return res.json(ok(data));
   },
 

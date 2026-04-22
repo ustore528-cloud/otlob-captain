@@ -6,6 +6,7 @@ export const queryKeys = {
   captain: {
     me: ["captain-mobile", "captain", "me"] as const,
     assignment: ["captain-mobile", "captain", "assignment"] as const,
+    assignmentOverflow: ["captain-mobile", "captain", "assignment-overflow"] as const,
     workStatus: ["captain-mobile", "captain", "work-status"] as const,
   },
   orders: {

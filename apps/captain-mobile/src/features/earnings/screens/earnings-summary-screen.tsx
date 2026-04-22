@@ -16,6 +16,7 @@ import { QueryErrorState } from "@/components/ui/query-error-state";
 import { useInnerToolBack } from "@/hooks/use-inner-tool-back";
 import { homeTheme } from "@/features/home/theme";
 import { screenStyles } from "@/theme/screen-styles";
+import { formatOrderAmountAr } from "@/lib/order-currency";
 import { useEarningsSummary } from "@/hooks/api/use-earnings-summary";
 import { useAuth } from "@/hooks/use-auth";
 import type { EarningsSummaryQuery } from "@/services/api/dto";
@@ -171,8 +172,7 @@ export function EarningsSummaryScreen() {
           <>
             <View style={styles.heroCard}>
               <Text style={styles.heroLabel}>إجمالي التحصيل</Text>
-              <Text style={styles.heroValue}>{data?.totalCashCollection ?? "0"}</Text>
-              <Text style={styles.heroUnit}>ر.س</Text>
+              <Text style={styles.heroValue}>{formatOrderAmountAr(data?.totalCashCollection ?? "0")}</Text>
               <Text style={styles.heroHint}>مجموع المبالغ المطلوب تحصيلها من الطلبات المسلّمة</Text>
             </View>
 
@@ -185,7 +185,7 @@ export function EarningsSummaryScreen() {
               <View style={styles.statCard}>
                 <Ionicons name="pricetag-outline" size={22} color={homeTheme.accent} />
                 <Text style={styles.statLabel}>قيمة الطلبات</Text>
-                <Text style={styles.statValueSmall}>{data?.totalAmount ?? "0"} ر.س</Text>
+                <Text style={styles.statValueSmall}>{formatOrderAmountAr(data?.totalAmount ?? "0")}</Text>
               </View>
             </View>
 
@@ -271,12 +271,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     marginTop: 8,
     letterSpacing: -1,
-  },
-  heroUnit: {
-    color: homeTheme.accent,
-    fontSize: 16,
-    fontWeight: "800",
-    marginTop: 4,
   },
   heroHint: {
     color: homeTheme.textSubtle,
