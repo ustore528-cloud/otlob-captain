@@ -18,6 +18,7 @@ import { ASSIGNED_LIST_PARAMS, CONFIRMED_LIST_PARAMS, PENDING_LIST_PARAMS } from
 import { DistributionMap } from "@/features/distribution/distribution-map";
 import { DraggableOrderCard } from "@/features/distribution/draggable-order-card";
 import { formatDistributionQueueSerial } from "@/features/distribution/distribution-queue-serial";
+import { isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ActiveMapCaptain } from "@/types/api";
 import type { OrderListItem } from "@/types/api";
@@ -54,7 +55,7 @@ function dedupeCaptainsById(captains: ActiveMapCaptain[]): ActiveMapCaptain[] {
 
 function useDispatchRole() {
   const role = useAuthStore((s) => s.user?.role);
-  return role === "ADMIN" || role === "DISPATCHER";
+  return isDispatchRole(role);
 }
 
 export function DistributionPageView() {

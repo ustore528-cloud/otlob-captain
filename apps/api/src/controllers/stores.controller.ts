@@ -14,7 +14,13 @@ export const storesController = {
       pathParam(req, "id"),
       req.body as Parameters<typeof storesService.update>[1],
       req.user!.id,
-      { role: req.user!.role, userId: req.user!.id, storeId: req.user!.storeId },
+      {
+        role: req.user!.role,
+        userId: req.user!.id,
+        storeId: req.user!.storeId,
+        companyId: req.user!.companyId ?? null,
+        branchId: req.user!.branchId ?? null,
+      },
     );
     return res.json(ok(data));
   },
@@ -28,7 +34,12 @@ export const storesController = {
         page: Number(q.page) || 1,
         pageSize: Number(q.pageSize) || 20,
       },
-      { role: req.user!.role, userId: req.user!.id },
+      {
+        role: req.user!.role,
+        userId: req.user!.id,
+        companyId: req.user!.companyId ?? null,
+        branchId: req.user!.branchId ?? null,
+      },
     );
     return res.json(ok(data));
   },
@@ -37,6 +48,8 @@ export const storesController = {
     const data = await storesService.getById(pathParam(req, "id"), {
       role: req.user!.role,
       userId: req.user!.id,
+      companyId: req.user!.companyId ?? null,
+      branchId: req.user!.branchId ?? null,
     });
     return res.json(ok(data));
   },

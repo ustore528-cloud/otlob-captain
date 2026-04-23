@@ -7,24 +7,33 @@ const prisma = new PrismaClient();
 const SEED_STORE_ID = "seed-store-main";
 
 async function main() {
+  const defaultBranch = await prisma.branch.findFirst({
+    where: { isActive: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!defaultBranch) {
+    throw new Error("No branch found — run `prisma migrate deploy` (Phase 1) before seed.");
+  }
+
   const passwordHash = await bcrypt.hash("Admin12345!", 12);
 
   await prisma.user.upsert({
     where: { phone: "+966500000001" },
-    update: {},
+    update: { companyId: defaultBranch.companyId },
     create: {
       fullName: "مسؤول النظام",
       phone: "+966500000001",
       email: "admin@example.com",
       passwordHash,
-      role: $Enums.UserRole.ADMIN,
+      role: $Enums.UserRole.COMPANY_ADMIN,
       isActive: true,
+      companyId: defaultBranch.companyId,
     },
   });
 
   await prisma.user.upsert({
     where: { phone: "+966500000002" },
-    update: {},
+    update: { companyId: defaultBranch.companyId },
     create: {
       fullName: "موزّع تجريبي",
       phone: "+966500000002",
@@ -32,6 +41,7 @@ async function main() {
       passwordHash,
       role: $Enums.UserRole.DISPATCHER,
       isActive: true,
+      companyId: defaultBranch.companyId,
     },
   });
 
@@ -43,14 +53,17 @@ async function main() {
       phone: "+966500000003",
       email: "store@example.com",
       passwordHash,
-      role: $Enums.UserRole.STORE,
+      role: $Enums.UserRole.STORE_ADMIN,
       isActive: true,
     },
   });
 
   await prisma.store.upsert({
     where: { id: SEED_STORE_ID },
-    update: {},
+    update: {
+      companyId: defaultBranch.companyId,
+      branchId: defaultBranch.id,
+    },
     create: {
       id: SEED_STORE_ID,
       name: "متجر تجريبي",
@@ -59,6 +72,8 @@ async function main() {
       address: "طريق الملك فهد، مبنى تجريبي",
       isActive: true,
       ownerUserId: storeOwner.id,
+      companyId: defaultBranch.companyId,
+      branchId: defaultBranch.id,
     },
   });
 
@@ -78,6 +93,8 @@ async function main() {
   await prisma.captain.upsert({
     where: { userId: captainUser.id },
     update: {
+      companyId: defaultBranch.companyId,
+      branchId: defaultBranch.id,
       vehicleType: "دراجه ناريه",
       area: "الرياض",
       isActive: true,
@@ -85,6 +102,8 @@ async function main() {
     },
     create: {
       userId: captainUser.id,
+      companyId: defaultBranch.companyId,
+      branchId: defaultBranch.id,
       vehicleType: "دراجه ناريه",
       area: "الرياض",
       isActive: true,
@@ -109,6 +128,8 @@ async function main() {
   await prisma.captain.upsert({
     where: { userId: previewCaptainUser.id },
     update: {
+      companyId: defaultBranch.companyId,
+      branchId: defaultBranch.id,
       vehicleType: "دراجه ناريه",
       area: "الرياض — معاينة",
       isActive: true,
@@ -116,6 +137,8 @@ async function main() {
     },
     create: {
       userId: previewCaptainUser.id,
+      companyId: defaultBranch.companyId,
+      branchId: defaultBranch.id,
       vehicleType: "دراجه ناريه",
       area: "الرياض — معاينة",
       isActive: true,
@@ -125,7 +148,7 @@ async function main() {
 
   // eslint-disable-next-line no-console
   console.log(
-    "Seed OK: users (ADMIN, DISPATCHER, STORE, CAPTAIN×2), store, captain profiles",
+    "Seed OK: users (COMPANY_ADMIN, DISPATCHER, STORE_ADMIN, CAPTAIN×2), store, captain profiles",
   );
   // eslint-disable-next-line no-console
   console.log(

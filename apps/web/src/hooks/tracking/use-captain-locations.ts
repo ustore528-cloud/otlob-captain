@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/api/query-keys";
 import { api } from "@/lib/api/singleton";
+import { isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function useCaptainLocations(options?: {
@@ -12,7 +13,7 @@ export function useCaptainLocations(options?: {
 }) {
   const token = useAuthStore((s) => s.token);
   const role = useAuthStore((s) => s.user?.role);
-  const can = role === "ADMIN" || role === "DISPATCHER";
+  const can = isDispatchRole(role);
   const ids = options?.captainIds ?? [];
 
   const activeMap = useQuery({

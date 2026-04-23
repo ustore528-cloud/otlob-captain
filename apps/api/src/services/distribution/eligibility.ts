@@ -8,9 +8,11 @@ import {
  * شروط التوزيع التلقائي (Round Robin):
  * - المستخدم: role = CAPTAIN, isActive = true
  * - ملف الكابتن: isActive = true, availabilityStatus = AVAILABLE
+ * - نفس فرع الطلب (عزل متعدد المستأجرين)
  */
-export function eligibleCaptainsForAutoDistribution(): Prisma.CaptainWhereInput {
+export function eligibleCaptainsForAutoDistribution(branchId: string): Prisma.CaptainWhereInput {
   return {
+    branchId,
     isActive: true,
     availabilityStatus: CaptainAvailabilityStatus.AVAILABLE,
     user: {

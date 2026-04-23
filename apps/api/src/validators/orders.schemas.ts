@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { OrderStatus, DistributionMode, $Enums } from "@prisma/client";
 import { PaginationQuerySchema } from "./pagination.schemas.js";
+import { StoreIdSchema } from "./stores.schemas.js";
 
 export const OrderIdParamSchema = z.object({
   id: z.string().cuid(),
 });
 
 export const CreateOrderBodySchema = z.object({
-  storeId: z.string().cuid().optional(),
+  storeId: StoreIdSchema.optional(),
   /** ربط اختياري بحساب عميل — وإلا يُستنتج من تطابق رقم الهاتف مع مستخدم CUSTOMER */
   customerUserId: z.string().cuid().optional(),
   customerName: z.string().min(1).max(200),
@@ -17,14 +18,17 @@ export const CreateOrderBodySchema = z.object({
   area: z.string().min(1).max(200),
   amount: z.coerce.number().nonnegative(),
   cashCollection: z.coerce.number().nonnegative().optional(),
+  pickupLatitude: z.number().min(-90).max(90).optional(),
+  pickupLongitude: z.number().min(-180).max(180).optional(),
   dropoffLatitude: z.number().min(-90).max(90).optional(),
   dropoffLongitude: z.number().min(-180).max(180).optional(),
+  deliveryFee: z.coerce.number().nonnegative().optional(),
   notes: z.string().max(2000).optional(),
   distributionMode: z.nativeEnum(DistributionMode).optional(),
 });
 
 export const ListOrdersQuerySchema = PaginationQuerySchema.extend({
-  storeId: z.string().cuid().optional(),
+  storeId: StoreIdSchema.optional(),
   status: z.nativeEnum(OrderStatus).optional(),
   area: z.string().optional(),
   orderNumber: z.string().optional(),

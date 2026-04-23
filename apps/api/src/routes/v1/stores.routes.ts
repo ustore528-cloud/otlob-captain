@@ -3,6 +3,7 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { requireRoles } from "../../middlewares/rbac.middleware.js";
+import { ROLE_GROUPS } from "../../lib/rbac-roles.js";
 import {
   CreateStoreBodySchema,
   UpdateStoreBodySchema,
@@ -16,28 +17,28 @@ router.use(authMiddleware);
 
 router.get(
   "/",
-  requireRoles("ADMIN", "DISPATCHER", "STORE"),
+  requireRoles(...ROLE_GROUPS.managementAdmins, ...ROLE_GROUPS.dispatchers, ...ROLE_GROUPS.storeAdmins),
   validate("query", ListStoresQuerySchema),
   asyncHandler(storesController.list.bind(storesController)),
 );
 
 router.post(
   "/",
-  requireRoles("ADMIN", "DISPATCHER"),
+  requireRoles(...ROLE_GROUPS.managementAdmins),
   validate("body", CreateStoreBodySchema),
   asyncHandler(storesController.create.bind(storesController)),
 );
 
 router.get(
   "/:id",
-  requireRoles("ADMIN", "DISPATCHER", "STORE"),
+  requireRoles(...ROLE_GROUPS.managementAdmins, ...ROLE_GROUPS.dispatchers, ...ROLE_GROUPS.storeAdmins),
   validate("params", StoreIdParamSchema),
   asyncHandler(storesController.getById.bind(storesController)),
 );
 
 router.patch(
   "/:id",
-  requireRoles("ADMIN", "DISPATCHER", "STORE"),
+  requireRoles(...ROLE_GROUPS.managementAdmins, ...ROLE_GROUPS.dispatchers, ...ROLE_GROUPS.storeAdmins),
   validate("params", StoreIdParamSchema),
   validate("body", UpdateStoreBodySchema),
   asyncHandler(storesController.update.bind(storesController)),

@@ -37,10 +37,19 @@ export const storeRepository = {
     ]);
   },
 
-  list(params: { area?: string; isActive?: boolean; page: number; pageSize: number }) {
+  list(params: {
+    area?: string;
+    isActive?: boolean;
+    companyId?: string;
+    branchId?: string;
+    page: number;
+    pageSize: number;
+  }) {
     const where: Prisma.StoreWhereInput = {};
     if (params.area) where.area = { contains: params.area, mode: "insensitive" };
     if (params.isActive !== undefined) where.isActive = params.isActive;
+    if (params.companyId) where.companyId = params.companyId;
+    if (params.branchId) where.branchId = params.branchId;
 
     const { skip, take } = normalizePaginationForPrisma(params);
 

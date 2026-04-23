@@ -25,7 +25,7 @@ const userPublicSelect = {
 
 export const userRepository = {
   findById(id: string) {
-    return prisma.user.findUnique({ where: { id } });
+    return prisma.user.findFirst({ where: { id } });
   },
 
   findByPhone(phone: string) {

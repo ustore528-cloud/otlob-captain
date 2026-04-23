@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { PaginationQuerySchema } from "./pagination.schemas.js";
 
+/** Backward-compatible support for the long-lived seeded demo store ID. */
+export const StoreIdSchema = z.union([z.string().cuid(), z.literal("seed-store-main")]);
+
 export const StoreIdParamSchema = z.object({
-  id: z.string().cuid(),
+  id: StoreIdSchema,
 });
 
 export const CreateStoreBodySchema = z.object({
@@ -11,6 +14,8 @@ export const CreateStoreBodySchema = z.object({
   area: z.string().min(1).max(200),
   address: z.string().min(1).max(500),
   ownerUserId: z.string().cuid(),
+  /** يُستنتج تلقائياً عند فرع واحد نشط للشركة */
+  branchId: z.string().cuid().optional(),
 });
 
 export const UpdateStoreBodySchema = CreateStoreBodySchema.partial().extend({

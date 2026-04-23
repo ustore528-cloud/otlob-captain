@@ -6,6 +6,8 @@ type OrderEmitCore = {
   id: string;
   orderNumber: string;
   status: OrderStatus;
+  companyId: string;
+  branchId: string;
 };
 
 export function emitDispatcherOrderUpdated(order: OrderEmitCore): void {
@@ -13,6 +15,9 @@ export function emitDispatcherOrderUpdated(order: OrderEmitCore): void {
     id: order.id,
     orderNumber: order.orderNumber,
     status: order.status,
+  }, {
+    companyId: order.companyId,
+    branchId: order.branchId,
   });
 }
 

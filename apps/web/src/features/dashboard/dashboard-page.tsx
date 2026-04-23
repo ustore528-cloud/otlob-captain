@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/layout/stat-card";
 import { QueryErrorLine } from "@/features/dashboard/components/query-error-line";
 import { useActivityList, useDashboardStats, useNotifications, useSendQuickStatusAlert, type QuickStatusCode } from "@/hooks";
+import { canListOrdersRole, isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 
 const DashboardMapSettingsCardLazy = lazy(() =>
@@ -20,7 +21,7 @@ const DashboardActivityCardLazy = lazy(() =>
 
 function useDispatchRole() {
   const r = useAuthStore((s) => s.user?.role);
-  return r === "ADMIN" || r === "DISPATCHER";
+  return isDispatchRole(r);
 }
 
 /**
@@ -29,9 +30,7 @@ function useDispatchRole() {
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const dispatch = useDispatchRole();
-  const canListOrders = Boolean(
-    user && (user.role === "ADMIN" || user.role === "DISPATCHER" || user.role === "STORE"),
-  );
+  const canListOrders = canListOrdersRole(user?.role);
 
   const dashboard = useDashboardStats();
   const notifications = useNotifications(1, 1);

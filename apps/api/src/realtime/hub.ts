@@ -11,21 +11,34 @@ export function getIo(): Server | null {
 }
 
 export const rooms = {
-  dispatchers: "dispatchers",
+  dispatchersCompany: (companyId: string) => `dispatchers:company:${companyId}`,
+  dispatchersBranch: (companyId: string, branchId: string) => `dispatchers:company:${companyId}:branch:${branchId}`,
   store: (id: string) => `store:${id}`,
   captain: (id: string) => `captain:${id}`,
 } as const;
 
-export function emitOrderUpdated(payload: unknown): void {
-  io?.to(rooms.dispatchers).emit("order:updated", payload);
+type DispatcherTenantScope = {
+  companyId: string;
+  branchId?: string | null;
+};
+
+function emitToDispatchers(event: string, payload: unknown, scope: DispatcherTenantScope): void {
+  io?.to(rooms.dispatchersCompany(scope.companyId)).emit(event, payload);
+  if (scope.branchId) {
+    io?.to(rooms.dispatchersBranch(scope.companyId, scope.branchId)).emit(event, payload);
+  }
 }
 
-export function emitOrderCreated(payload: unknown): void {
-  io?.to(rooms.dispatchers).emit("order:created", payload);
+export function emitOrderUpdated(payload: unknown, scope: DispatcherTenantScope): void {
+  emitToDispatchers("order:updated", payload, scope);
 }
 
-export function emitCaptainLocation(payload: unknown): void {
-  io?.to(rooms.dispatchers).emit("captain:location", payload);
+export function emitOrderCreated(payload: unknown, scope: DispatcherTenantScope): void {
+  emitToDispatchers("order:created", payload, scope);
+}
+
+export function emitCaptainLocation(payload: unknown, scope: DispatcherTenantScope): void {
+  emitToDispatchers("captain:location", payload, scope);
 }
 
 export function emitToCaptain(captainUserId: string, event: string, payload: unknown): void {

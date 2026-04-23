@@ -20,6 +20,14 @@ import { lockOrderDistributionTx } from "./distribution/order-lock.js";
 import { logCaptainOrderResponse } from "./captain-order-response-log.js";
 import { resolveOrderCustomerUserId } from "./order-customer-link.js";
 import { notificationService } from "./notifications.service.js";
+import { pushNotificationService } from "./push-notification.service.js";
+import { captainPrepaidBalanceService } from "./captain-prepaid-balance.service.js";
+import {
+  assertOrderAndCaptainSameCompany,
+  assertStaffCanAccessOrder,
+  resolveStaffTenantOrderListFilter,
+} from "./tenant-scope.service.js";
+import { isCaptainRole, isOrderOperatorRole, isStoreAdminRole, type AppRole } from "../lib/rbac-roles.js";
 
 function decAmount(v: Prisma.Decimal | null | undefined): string {
   if (v == null) return "0";
@@ -62,40 +70,71 @@ export const ordersService = {
       area: string;
       amount: number;
       cashCollection?: number;
+      pickupLatitude?: number;
+      pickupLongitude?: number;
       dropoffLatitude?: number;
       dropoffLongitude?: number;
+      deliveryFee?: number;
       notes?: string;
       distributionMode?: "AUTO" | "MANUAL";
       /** اختياري — ربط صريح بحساب عميل؛ وإلا يُستنتج من تطابق الهاتف */
       customerUserId?: string;
     },
-    actor: { userId: string; role: string; storeId: string | null },
+    actor: {
+      userId: string;
+      role: AppRole;
+      storeId: string | null;
+      companyId: string | null;
+      branchId: string | null;
+    },
   ) {
     let resolvedStoreId = input.storeId;
+    const staffTenant =
+      isOrderOperatorRole(actor.role)
+        ? await resolveStaffTenantOrderListFilter({
+            userId: actor.userId,
+            role: actor.role,
+            companyId: actor.companyId ?? null,
+            branchId: actor.branchId ?? null,
+          })
+        : null;
 
-    if (actor.role === "STORE") {
+    if (isStoreAdminRole(actor.role)) {
       if (!actor.storeId || (resolvedStoreId && resolvedStoreId !== actor.storeId)) {
         throw new AppError(403, "Cannot create order for another store", "FORBIDDEN");
       }
       resolvedStoreId = actor.storeId;
     }
 
-    if (!resolvedStoreId && (actor.role === "ADMIN" || actor.role === "DISPATCHER")) {
+    if (!resolvedStoreId && isOrderOperatorRole(actor.role)) {
       const existing = await prisma.store.findFirst({
-        where: { isActive: true },
+        where: {
+          isActive: true,
+          ...(staffTenant?.companyId ? { companyId: staffTenant.companyId } : {}),
+          ...(staffTenant!.branchId ? { branchId: staffTenant!.branchId } : {}),
+        },
         orderBy: { createdAt: "asc" },
       });
       if (existing) {
         resolvedStoreId = existing.id;
       } else {
+        const defaultBranch = await prisma.branch.findFirst({
+          where: { companyId: staffTenant!.companyId, isActive: true },
+          orderBy: { createdAt: "asc" },
+        });
+        if (!defaultBranch) {
+          throw new AppError(500, "No active branch configured for this company", "INTERNAL");
+        }
         const operationalStore = await prisma.store.create({
           data: {
             name: "متجر التشغيل",
             phone: "0000000000",
             area: "عام",
             address: "تشغيل النظام (بدون متجر فعلي)",
-            ownerUserId: actor.userId,
             isActive: true,
+            company: { connect: { id: staffTenant?.companyId ?? defaultBranch.companyId } },
+            branch: { connect: { id: defaultBranch.id } },
+            owner: { connect: { id: actor.userId } },
           },
         });
         resolvedStoreId = operationalStore.id;
@@ -106,13 +145,20 @@ export const ordersService = {
       throw new AppError(400, "storeId is required", "BAD_REQUEST");
     }
 
-    const store = await prisma.store.findUnique({ where: { id: resolvedStoreId } });
+    const store = await prisma.store.findUnique({
+      where: { id: resolvedStoreId },
+      include: { branch: { select: { companyId: true } } },
+    });
     if (!store?.isActive) throw new AppError(400, "Store not found or inactive", "BAD_REQUEST");
-
-    const notesWithCoords =
-      input.dropoffLatitude != null && input.dropoffLongitude != null
-        ? `${input.notes ? `${input.notes}\n` : ""}[coords] lat=${input.dropoffLatitude.toFixed(6)}, lng=${input.dropoffLongitude.toFixed(6)}`
-        : input.notes;
+    if (store.branch.companyId !== store.companyId) {
+      throw new AppError(500, "Store tenant linkage is inconsistent", "INTERNAL");
+    }
+    if (
+      staffTenant &&
+      (store.companyId !== staffTenant.companyId || (staffTenant.branchId && store.branchId !== staffTenant.branchId))
+    ) {
+      throw new AppError(403, "Cannot create order for another company or branch", "FORBIDDEN");
+    }
 
     const linkedCustomerUserId = await resolveOrderCustomerUserId({
       explicitCustomerUserId: input.customerUserId ?? null,
@@ -123,13 +169,20 @@ export const ordersService = {
       orderNumber: generateOrderNumber(),
       customerName: input.customerName,
       customerPhone: input.customerPhone,
+      company: { connect: { id: store.companyId } },
+      branch: { connect: { id: store.branchId } },
       store: { connect: { id: resolvedStoreId } },
       pickupAddress: input.pickupAddress,
       dropoffAddress: input.dropoffAddress,
+      pickupLat: input.pickupLatitude ?? store.latitude ?? null,
+      pickupLng: input.pickupLongitude ?? store.longitude ?? null,
+      dropoffLat: input.dropoffLatitude ?? null,
+      dropoffLng: input.dropoffLongitude ?? null,
       area: input.area,
       amount: new Prisma.Decimal(input.amount),
       cashCollection: new Prisma.Decimal(input.cashCollection ?? 0),
-      notes: notesWithCoords,
+      ...(input.deliveryFee != null ? { deliveryFee: new Prisma.Decimal(input.deliveryFee) } : {}),
+      notes: input.notes ?? null,
       status: OrderStatus.PENDING,
       distributionMode: input.distributionMode ?? DistributionMode.AUTO,
       createdBy: { connect: { id: actor.userId } },
@@ -150,12 +203,28 @@ export const ordersService = {
       page: number;
       pageSize: number;
     },
-    actor: { role: string; storeId: string | null },
+    actor: {
+      userId: string;
+      role: AppRole;
+      storeId: string | null;
+      companyId: string | null;
+      branchId: string | null;
+    },
   ) {
-    const filters = { ...params };
-    if (actor.role === "STORE") {
+    const filters: Parameters<typeof orderRepository.list>[0] = { ...params };
+    if (isStoreAdminRole(actor.role)) {
       if (!actor.storeId) throw new AppError(400, "Store scope missing", "BAD_REQUEST");
       filters.storeId = actor.storeId;
+    }
+    if (isOrderOperatorRole(actor.role)) {
+      const tenant = await resolveStaffTenantOrderListFilter({
+        userId: actor.userId,
+        role: actor.role,
+        companyId: actor.companyId ?? null,
+        branchId: actor.branchId ?? null,
+      });
+      if (tenant.companyId) filters.companyId = tenant.companyId;
+      if (tenant.branchId) filters.branchId = tenant.branchId;
     }
     const [total, items] = await orderRepository.list(filters);
     return {
@@ -190,15 +259,39 @@ export const ordersService = {
     };
   },
 
-  async getById(id: string, actor: { role: string; userId: string; storeId: string | null }) {
+  async getById(
+    id: string,
+    actor: {
+      role: AppRole;
+      userId: string;
+      storeId: string | null;
+      companyId: string | null;
+      branchId: string | null;
+    },
+  ) {
     const order = await orderRepository.findById(id);
     if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
-    if (actor.role === "STORE" && order.storeId !== actor.storeId) {
+    if (isStoreAdminRole(actor.role) && order.storeId !== actor.storeId) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
-    if (actor.role === "CAPTAIN") {
+    if (isOrderOperatorRole(actor.role)) {
+      await assertStaffCanAccessOrder(
+        {
+          userId: actor.userId,
+          role: actor.role,
+          companyId: actor.companyId ?? null,
+          branchId: actor.branchId ?? null,
+        },
+        { companyId: order.companyId, branchId: order.branchId },
+      );
+    }
+    if (isCaptainRole(actor.role)) {
       const cap = await captainRepository.findByUserId(actor.userId);
       if (!cap) throw new AppError(403, "Forbidden", "FORBIDDEN");
+      assertOrderAndCaptainSameCompany(
+        { companyId: order.companyId, branchId: order.branchId },
+        { companyId: cap.companyId, branchId: cap.branchId },
+      );
       const allowed =
         order.assignedCaptainId === cap.id || order.assignmentLogs.some((l) => l.captainId === cap.id);
       if (!allowed) throw new AppError(403, "Forbidden", "FORBIDDEN");
@@ -209,24 +302,45 @@ export const ordersService = {
   async updateStatus(
     id: string,
     status: OrderStatus,
-    actor: { userId: string; role: string; storeId: string | null },
+    actor: {
+      userId: string;
+      role: AppRole;
+      storeId: string | null;
+      companyId: string | null;
+      branchId: string | null;
+    },
   ) {
     const { userId: actorUserId, role: actorRole, storeId: actorStoreId } = actor;
-    if (!["ADMIN", "DISPATCHER", "STORE", "CAPTAIN"].includes(actorRole)) {
+    if (!isOrderOperatorRole(actorRole) && !isStoreAdminRole(actorRole) && !isCaptainRole(actorRole)) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
     const existing = await orderRepository.findById(id);
     if (!existing) throw new AppError(404, "Order not found", "NOT_FOUND");
+    if (isOrderOperatorRole(actorRole)) {
+      await assertStaffCanAccessOrder(
+        {
+          userId: actorUserId,
+          role: actorRole,
+          companyId: actor.companyId ?? null,
+          branchId: actor.branchId ?? null,
+        },
+        { companyId: existing.companyId, branchId: existing.branchId },
+      );
+    }
 
-    if (actorRole === "STORE") {
+    if (isStoreAdminRole(actorRole)) {
       if (!actorStoreId || existing.storeId !== actorStoreId) {
         throw new AppError(403, "Forbidden", "FORBIDDEN");
       }
     }
 
-    if (actorRole === "CAPTAIN") {
+    if (isCaptainRole(actorRole)) {
       const captain = await captainRepository.findByUserId(actorUserId);
       if (!captain) throw new AppError(403, "Forbidden", "FORBIDDEN");
+      assertOrderAndCaptainSameCompany(
+        { companyId: existing.companyId, branchId: existing.branchId },
+        { companyId: captain.companyId, branchId: captain.branchId },
+      );
       if (existing.assignedCaptainId !== captain.id) {
         throw new AppError(403, "Only the assigned captain can update delivery status", "FORBIDDEN");
       }
@@ -235,8 +349,22 @@ export const ordersService = {
 
     if (existing.status === status) return existing;
 
-    const order = await orderRepository.update(id, { status });
-    await activityService.log(actorUserId, "ORDER_STATUS_CHANGED", "order", id, { status });
+    const order = await prisma.$transaction(async (tx) => {
+      const updated = await tx.order.update({
+        where: { id },
+        data: { status },
+        include: {
+          assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 15 },
+          store: true,
+          assignedCaptain: true,
+        },
+      });
+      if (status === OrderStatus.DELIVERED) {
+        await captainPrepaidBalanceService.deductForDeliveredOrderTx(tx, id, actorUserId);
+      }
+      await activityService.logTx(tx, actorUserId, "ORDER_STATUS_CHANGED", "order", id, { status });
+      return updated;
+    });
     emitDispatcherOrderUpdated(order);
     if (order.assignedCaptain?.userId) {
       emitCaptainOrderUpdated(order.assignedCaptain.userId, order);
@@ -252,9 +380,20 @@ export const ordersService = {
 
       const orderRow = await tx.order.findUnique({
         where: { id: orderId },
-        select: { id: true, status: true, assignedCaptainId: true },
+        select: {
+          id: true,
+          status: true,
+          assignedCaptainId: true,
+          companyId: true,
+          branchId: true,
+        },
       });
       if (!orderRow) throw new AppError(404, "Order not found", "NOT_FOUND");
+
+      assertOrderAndCaptainSameCompany(
+        { companyId: orderRow.companyId, branchId: orderRow.branchId },
+        { companyId: captain.companyId, branchId: captain.branchId },
+      );
 
       const log = await tx.orderAssignmentLog.findFirst({
         where: { orderId, captainId: captain.id, responseStatus: "PENDING" },
@@ -340,9 +479,20 @@ export const ordersService = {
 
       const orderRow = await tx.order.findUnique({
         where: { id: orderId },
-        select: { id: true, status: true, assignedCaptainId: true },
+        select: {
+          id: true,
+          status: true,
+          assignedCaptainId: true,
+          companyId: true,
+          branchId: true,
+        },
       });
       if (!orderRow) throw new AppError(404, "Order not found", "NOT_FOUND");
+
+      assertOrderAndCaptainSameCompany(
+        { companyId: orderRow.companyId, branchId: orderRow.branchId },
+        { companyId: captain.companyId, branchId: captain.branchId },
+      );
 
       const log = await tx.orderAssignmentLog.findFirst({
         where: { orderId, captainId: captain.id, responseStatus: "PENDING" },
@@ -421,6 +571,15 @@ export const ordersService = {
           timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
         });
         emitCaptainOrderUpdated(nextCaptainUserId, order);
+        void pushNotificationService.sendCaptainOrderPush({
+          userId: nextCaptainUserId,
+          title: "ط·ظ„ط¨ ط¬ط¯ظٹط¯ ط¨ط§ظ†طھط¸ط§ط± ظ‚ط¨ظˆظ„ظƒ",
+          body: `طھظ… ط¹ط±ط¶ ط§ظ„ط·ظ„ط¨ ${order.orderNumber} ط¹ظ„ظٹظƒ. ط§ط¶ط؛ط· ظ„ظ„ظ‚ط¨ظˆظ„ ط£ظˆ ط§ظ„ط±ظپط¶.`,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          kind: "OFFER",
+          status: order.status,
+        });
       }
       return order;
     });
@@ -479,9 +638,9 @@ export const ordersService = {
   async adminOverrideOrderStatus(
     orderId: string,
     targetStatus: OrderStatus,
-    actor: { userId: string; role: string },
+    actor: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
   ) {
-    if (actor.role !== "ADMIN" && actor.role !== "DISPATCHER") {
+    if (!isOrderOperatorRole(actor.role)) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
 
@@ -497,9 +656,18 @@ export const ordersService = {
 
     const quick = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { status: true, archivedAt: true },
+      select: { status: true, archivedAt: true, companyId: true, branchId: true },
     });
     if (!quick) throw new AppError(404, "Order not found", "NOT_FOUND");
+    await assertStaffCanAccessOrder(
+      {
+        userId: actor.userId,
+          role: actor.role,
+        companyId: actor.companyId ?? null,
+        branchId: actor.branchId ?? null,
+      },
+      { companyId: quick.companyId, branchId: quick.branchId },
+    );
     if (quick.archivedAt) {
       throw new AppError(409, "ألغِ أرشفة الطلب قبل تعديل الحالة", "ORDER_ARCHIVED");
     }
@@ -552,6 +720,10 @@ export const ordersService = {
         },
       });
 
+      if (targetStatus === OrderStatus.DELIVERED) {
+        await captainPrepaidBalanceService.deductForDeliveredOrderTx(tx, orderId, actor.userId);
+      }
+
       await activityService.logTx(tx, actor.userId, "ORDER_ADMIN_STATUS_OVERRIDE", "order", orderId, {
         from: before.status,
         to: targetStatus,
@@ -580,12 +752,26 @@ export const ordersService = {
     return order;
   },
 
-  async archiveOrder(orderId: string, actor: { userId: string; role: string }) {
-    if (actor.role !== "ADMIN" && actor.role !== "DISPATCHER") {
+  async archiveOrder(orderId: string, actor: {
+    userId: string;
+    role: AppRole;
+    companyId: string | null;
+    branchId: string | null;
+  }) {
+    if (!isOrderOperatorRole(actor.role)) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
     const existing = await orderRepository.findById(orderId);
     if (!existing) throw new AppError(404, "Order not found", "NOT_FOUND");
+    await assertStaffCanAccessOrder(
+      {
+        userId: actor.userId,
+        role: actor.role,
+        companyId: actor.companyId ?? null,
+        branchId: actor.branchId ?? null,
+      },
+      { companyId: existing.companyId, branchId: existing.branchId },
+    );
     if (existing.archivedAt) {
       throw new AppError(409, "الطلب مؤرشف مسبقاً", "ALREADY_ARCHIVED");
     }
@@ -601,7 +787,12 @@ export const ordersService = {
     }
 
     if (existing.assignedCaptainId && existing.status === OrderStatus.ASSIGNED) {
-      await distributionService.cancelCaptainAssignment(orderId, actor.userId);
+      await distributionService.cancelCaptainAssignment(orderId, actor.userId, {
+        userId: actor.userId,
+        role: actor.role,
+        companyId: actor.companyId ?? null,
+        branchId: actor.branchId ?? null,
+      });
     }
 
     await prisma.order.update({
@@ -615,12 +806,26 @@ export const ordersService = {
     return archived;
   },
 
-  async unarchiveOrder(orderId: string, actor: { userId: string; role: string }) {
-    if (actor.role !== "ADMIN" && actor.role !== "DISPATCHER") {
+  async unarchiveOrder(orderId: string, actor: {
+    userId: string;
+    role: AppRole;
+    companyId: string | null;
+    branchId: string | null;
+  }) {
+    if (!isOrderOperatorRole(actor.role)) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
     const existing = await orderRepository.findById(orderId);
     if (!existing) throw new AppError(404, "Order not found", "NOT_FOUND");
+    await assertStaffCanAccessOrder(
+      {
+        userId: actor.userId,
+        role: actor.role,
+        companyId: actor.companyId ?? null,
+        branchId: actor.branchId ?? null,
+      },
+      { companyId: existing.companyId, branchId: existing.branchId },
+    );
     if (!existing.archivedAt) {
       throw new AppError(409, "الطلب غير مؤرشف", "NOT_ARCHIVED");
     }

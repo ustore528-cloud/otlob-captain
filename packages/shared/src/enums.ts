@@ -1,7 +1,15 @@
 import { z } from "zod";
 
 /** أدوار المستخدمين — مطابقة Prisma / API */
-export const UserRoleSchema = z.enum(["ADMIN", "DISPATCHER", "CAPTAIN", "STORE", "CUSTOMER"]);
+export const UserRoleSchema = z.enum([
+  "SUPER_ADMIN",
+  "COMPANY_ADMIN",
+  "BRANCH_MANAGER",
+  "STORE_ADMIN",
+  "DISPATCHER",
+  "CAPTAIN",
+  "CUSTOMER",
+]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 /** @deprecated استخدم UserRoleSchema */

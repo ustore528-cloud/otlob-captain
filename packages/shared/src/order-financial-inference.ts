@@ -64,11 +64,15 @@ function fmt(n: number): string {
   return round2(n).toFixed(2);
 }
 
-/**
- * Builds the captain-facing breakdown used by API DTOs and mobile when no explicit overrides exist.
- * Always sets `deliveryFeeSource: "inferred"` until the API persists authoritative fee lines.
- */
-export function inferOrderFinancialBreakdown(amountStr: string, cashCollectionStr: string): OrderFinancialBreakdownDto {
+export type InferOrderFinancialBreakdownOptions = {
+  /** When set (non-blank), overrides the displayed delivery fee line with `deliveryFeeSource: "explicit"`. */
+  explicitDeliveryFeeStr?: string | null;
+};
+
+function computeBaseOrderFinancialBreakdown(
+  amountStr: string,
+  cashCollectionStr: string,
+): OrderFinancialBreakdownDto {
   const orderValue = round2(parseMoney(amountStr));
   const cash = round2(parseMoney(cashCollectionStr));
 
@@ -96,4 +100,28 @@ export function inferOrderFinancialBreakdown(amountStr: string, cashCollectionSt
     isCashOnDelivery: false,
     deliveryFeeSource: "inferred",
   };
+}
+
+/**
+ * Builds the captain-facing breakdown used by API DTOs and mobile.
+ * When `opts.explicitDeliveryFeeStr` is provided, the delivery fee line is marked `explicit`.
+ */
+export function inferOrderFinancialBreakdown(
+  amountStr: string,
+  cashCollectionStr: string,
+  opts?: InferOrderFinancialBreakdownOptions,
+): OrderFinancialBreakdownDto {
+  const base = computeBaseOrderFinancialBreakdown(amountStr, cashCollectionStr);
+  const exRaw = opts?.explicitDeliveryFeeStr;
+  if (exRaw != null && String(exRaw).trim() !== "") {
+    const explicitFee = round2(parseMoney(String(exRaw)));
+    if (explicitFee >= 0) {
+      return {
+        ...base,
+        deliveryFee: fmt(explicitFee),
+        deliveryFeeSource: "explicit",
+      };
+    }
+  }
+  return base;
 }

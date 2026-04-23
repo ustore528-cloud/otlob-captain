@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import type { AppRole } from "../lib/rbac-roles.js";
 import { ok } from "../utils/api-response.js";
 import { trackingService } from "../services/tracking.service.js";
 
@@ -12,12 +13,22 @@ export const trackingController = {
   latestLocations: async (req: Request, res: Response) => {
     const raw = (req.query as { captainIds?: string }).captainIds;
     const ids = raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
-    const data = await trackingService.latestLocations(ids);
+    const data = await trackingService.latestLocations(ids, {
+      userId: req.user!.id,
+      role: req.user!.role as AppRole,
+      companyId: req.user!.companyId ?? null,
+      branchId: req.user!.branchId ?? null,
+    });
     return res.json(ok(data));
   },
 
-  activeMap: async (_req: Request, res: Response) => {
-    const data = await trackingService.activeCaptainsMap();
+  activeMap: async (req: Request, res: Response) => {
+    const data = await trackingService.activeCaptainsMap({
+      userId: req.user!.id,
+      role: req.user!.role as AppRole,
+      companyId: req.user!.companyId ?? null,
+      branchId: req.user!.branchId ?? null,
+    });
     return res.json(ok(data));
   },
 };

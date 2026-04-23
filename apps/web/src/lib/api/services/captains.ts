@@ -1,5 +1,12 @@
 import { apiFetch, paths } from "@/lib/api/http";
-import type { CaptainListItem, CaptainStats, OrderListItem, Paginated } from "@/types/api";
+import type {
+  CaptainListItem,
+  CaptainPrepaidSummary,
+  CaptainPrepaidTransaction,
+  CaptainStats,
+  OrderListItem,
+  Paginated,
+} from "@/types/api";
 
 export type CreateCaptainPayload = {
   fullName: string;
@@ -74,6 +81,9 @@ export type UpdateCaptainPayload = {
   vehicleType?: string;
   area?: string;
   isActive?: boolean;
+  prepaidEnabled?: boolean;
+  commissionPercent?: number | null;
+  minimumBalanceToReceiveOrders?: number | null;
   fullName?: string;
   phone?: string;
 };
@@ -88,4 +98,37 @@ export function updateCaptain(token: string, id: string, body: UpdateCaptainPayl
 
 export function deleteCaptain(token: string, id: string) {
   return apiFetch<{ deleted: true }>(paths.captains.byId(id), { method: "DELETE", token });
+}
+
+export function getCaptainPrepaidSummary(token: string, id: string): Promise<CaptainPrepaidSummary> {
+  return apiFetch<CaptainPrepaidSummary>(paths.captains.prepaidSummary(id), { token });
+}
+
+export function listCaptainPrepaidTransactions(
+  token: string,
+  id: string,
+  q: { page?: number; pageSize?: number } = {},
+): Promise<Paginated<CaptainPrepaidTransaction>> {
+  const p = new URLSearchParams();
+  p.set("page", String(q.page ?? 1));
+  p.set("pageSize", String(q.pageSize ?? 20));
+  return apiFetch<Paginated<CaptainPrepaidTransaction>>(`${paths.captains.prepaidTransactions(id)}?${p.toString()}`, {
+    token,
+  });
+}
+
+export function chargeCaptainPrepaidBalance(token: string, id: string, body: { amount: number; note?: string }) {
+  return apiFetch<CaptainPrepaidTransaction>(paths.captains.prepaidCharge(id), {
+    method: "POST",
+    token,
+    body: JSON.stringify(body),
+  });
+}
+
+export function adjustCaptainPrepaidBalance(token: string, id: string, body: { amount: number; note: string }) {
+  return apiFetch<CaptainPrepaidTransaction>(paths.captains.prepaidAdjustment(id), {
+    method: "POST",
+    token,
+    body: JSON.stringify(body),
+  });
 }

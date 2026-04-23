@@ -43,8 +43,50 @@ export type CaptainListItem = {
   area: string;
   isActive: boolean;
   availabilityStatus: string;
+  prepaidBalance?: string;
+  commissionPercent?: string | null;
+  prepaidEnabled?: boolean;
+  totalCharged?: string;
+  totalDeducted?: string;
+  minimumBalanceToReceiveOrders?: string | null;
+  lastBalanceUpdatedAt?: string | null;
   lastSeenAt: string | null;
   user: { id: string; fullName: string; phone: string; isActive: boolean };
+};
+
+export type CaptainPrepaidSummary = {
+  captainId: string;
+  currentBalance: string;
+  prepaidBalance: string;
+  commissionPercent: string;
+  prepaidEnabled: boolean;
+  captainPrepaidEnabled: boolean;
+  systemPrepaidEnabled: boolean;
+  totalCharged: string;
+  totalDeducted: string;
+  minimumBalanceToReceiveOrders: string;
+  lowBalance: boolean;
+  blockedFromReceivingOrders: boolean;
+  blockReason: string | null;
+  estimatedRemainingOrders: number | null;
+  lastBalanceUpdatedAt: string | null;
+  lastChargeAt: string | null;
+  lastDeductionAt: string | null;
+  explanationText: string;
+};
+
+export type CaptainPrepaidTransaction = {
+  id: string;
+  captainId: string;
+  type: "charge" | "deduction" | "refund" | "adjustment";
+  amount: string;
+  balanceAfter: string;
+  commissionPercentSnapshot: string | null;
+  deliveryFeeSnapshot: string | null;
+  orderId: string | null;
+  note: string | null;
+  createdBy: string | null;
+  createdAt: string;
 };
 
 export type StoreListItem = {
@@ -139,5 +181,10 @@ export type DashboardSettingsDto = {
   mapDefaultLat: number | null;
   mapDefaultLng: number | null;
   mapDefaultZoom: number | null;
+  prepaidCaptainsEnabled: boolean;
+  prepaidDefaultCommissionPercent: string;
+  prepaidAllowCaptainCustomCommission: boolean;
+  prepaidMinimumBalanceToReceiveOrders: string;
+  prepaidAllowManualAssignmentOverride: boolean;
   updatedAt: string;
 };

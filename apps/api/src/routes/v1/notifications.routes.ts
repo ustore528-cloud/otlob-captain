@@ -3,6 +3,7 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { requireRoles } from "../../middlewares/rbac.middleware.js";
+import { ROLE_GROUPS } from "../../lib/rbac-roles.js";
 import {
   CreateNotificationBodySchema,
   NotificationIdParamSchema,
@@ -16,14 +17,14 @@ router.use(authMiddleware);
 
 router.post(
   "/",
-  requireRoles("ADMIN", "DISPATCHER"),
+  requireRoles(...ROLE_GROUPS.orderOperators),
   validate("body", CreateNotificationBodySchema),
   asyncHandler(notificationsController.create.bind(notificationsController)),
 );
 
 router.post(
   "/quick-status",
-  requireRoles("ADMIN", "DISPATCHER"),
+  requireRoles(...ROLE_GROUPS.orderOperators),
   validate("body", QuickStatusAlertBodySchema),
   asyncHandler(notificationsController.quickStatusAlert.bind(notificationsController)),
 );

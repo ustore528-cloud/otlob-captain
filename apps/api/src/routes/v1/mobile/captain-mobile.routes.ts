@@ -35,6 +35,11 @@ captainMobileRoutes.use(authMiddleware, requireRoles("CAPTAIN"));
 captainMobileRoutes.get("/me", asyncHandler(mobileCaptainController.me.bind(mobileCaptainController)));
 
 captainMobileRoutes.get(
+  "/me/prepaid-summary",
+  asyncHandler(mobileCaptainController.prepaidSummary.bind(mobileCaptainController)),
+);
+
+captainMobileRoutes.get(
   "/me/work-status",
   asyncHandler(mobileCaptainController.workStatus.bind(mobileCaptainController)),
 );

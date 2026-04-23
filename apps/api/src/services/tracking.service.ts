@@ -7,12 +7,14 @@ import { prisma } from "../lib/prisma.js";
 import { captainRepository } from "../repositories/captain.repository.js";
 import { captainLocationRepository } from "../repositories/captain-location.repository.js";
 import { AppError } from "../utils/errors.js";
+import { resolveStaffTenantOrderListFilter } from "./tenant-scope.service.js";
 import { activityService } from "./activity.service.js";
 import { env } from "../config/env.js";
 import { emitCaptainLocation } from "../realtime/hub.js";
 import { clampOfferExpiredAtToConfiguredWindow } from "./distribution/clamp-offer-expired-at.js";
 import { logOfferPayloadTrackingMapDiagnostics } from "./distribution/offer-diagnostics.js";
 import { CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES } from "./distribution/eligibility.js";
+import type { AppRole } from "../lib/rbac-roles.js";
 
 export const trackingService = {
   async updateLocation(userId: string, latitude: number, longitude: number) {
@@ -31,18 +33,58 @@ export const trackingService = {
       latitude,
       longitude,
       recordedAt: loc.recordedAt.toISOString(),
+    }, {
+      companyId: captain.companyId,
+      branchId: captain.branchId,
     });
     return loc;
   },
 
-  async latestLocations(captainIds: string[]) {
-    return captainLocationRepository.latestByCaptainIds(captainIds);
+  async latestLocations(
+    captainIds: string[],
+    scope: {
+      userId: string;
+      role: AppRole;
+      companyId: string | null;
+      branchId: string | null;
+    },
+  ) {
+    const tenant = await resolveStaffTenantOrderListFilter({
+      userId: scope.userId,
+      role: scope.role,
+      companyId: scope.companyId,
+      branchId: scope.branchId,
+    });
+    if (captainIds.length === 0) return [];
+
+    const allowedCaptains = await prisma.captain.findMany({
+      where: {
+        id: { in: captainIds },
+        companyId: tenant.companyId,
+        ...(tenant.branchId ? { branchId: tenant.branchId } : {}),
+      },
+      select: { id: true },
+    });
+    return captainLocationRepository.latestByCaptainIds(allowedCaptains.map((c) => c.id));
   },
 
   /** كباتن نشطون مع آخر موقع مسجل */
-  async activeCaptainsMap() {
+  async activeCaptainsMap(scope: {
+    userId: string;
+    role: AppRole;
+    companyId: string | null;
+    branchId: string | null;
+  }) {
+    const tenant = await resolveStaffTenantOrderListFilter({
+      userId: scope.userId,
+      role: scope.role,
+      companyId: scope.companyId,
+      branchId: scope.branchId,
+    });
     const captains = await prisma.captain.findMany({
       where: {
+        companyId: tenant.companyId,
+        ...(tenant.branchId ? { branchId: tenant.branchId } : {}),
         isActive: true,
         availabilityStatus: {
           in: [CaptainAvailabilityStatus.AVAILABLE, CaptainAvailabilityStatus.ON_DELIVERY, CaptainAvailabilityStatus.BUSY],

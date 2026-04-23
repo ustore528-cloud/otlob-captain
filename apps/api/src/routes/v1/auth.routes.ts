@@ -3,6 +3,7 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { requireRoles } from "../../middlewares/rbac.middleware.js";
+import { ROLE_GROUPS } from "../../lib/rbac-roles.js";
 import { LoginBodySchema, RefreshBodySchema, RegisterBodySchema } from "../../validators/auth.schemas.js";
 import { authController } from "../../controllers/auth.controller.js";
 
@@ -15,7 +16,7 @@ router.post(
   "/register",
   validate("body", RegisterBodySchema),
   authMiddleware,
-  requireRoles("ADMIN"),
+  requireRoles(...ROLE_GROUPS.superAdmins),
   asyncHandler(authController.register.bind(authController)),
 );
 

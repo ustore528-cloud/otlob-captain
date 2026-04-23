@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { isStoreAdminRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -21,7 +22,7 @@ export function NewOrderForm() {
 
   const create = useCreateOrder();
 
-  const lockedStoreId = user?.role === "STORE" ? user.storeId : null;
+  const lockedStoreId = isStoreAdminRole(user?.role) ? user?.storeId ?? null : null;
 
   useEffect(() => {
     if (!includeMapPin) {

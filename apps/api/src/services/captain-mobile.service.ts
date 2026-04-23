@@ -18,6 +18,7 @@ import { env } from "../config/env.js";
 import { DISTRIBUTION_TIMEOUT_SECONDS } from "./distribution/constants.js";
 import { clampOfferExpiredAtToConfiguredWindow } from "./distribution/clamp-offer-expired-at.js";
 import { logOfferPayloadCaptainMobileDiagnostics } from "./distribution/offer-diagnostics.js";
+import { captainPrepaidBalanceService } from "./captain-prepaid-balance.service.js";
 
 /** @see ./distribution/assigned-order-semantics.ts — ASSIGNED vs OFFER vs ACTIVE (ACCEPTED+). */
 
@@ -110,6 +111,7 @@ export const captainMobileService = {
   async me(userId: string) {
     const captain = await captainRepository.findByUserId(userId);
     if (!captain) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
+    const prepaidBalance = await captainPrepaidBalanceService.getSummary(captain.id);
     return {
       user: {
         id: captain.user.id,
@@ -125,8 +127,15 @@ export const captainMobileService = {
         availabilityStatus: captain.availabilityStatus,
         isActive: captain.isActive,
         lastSeenAt: captain.lastSeenAt?.toISOString() ?? null,
+        prepaidBalance,
       },
     };
+  },
+
+  async prepaidSummary(userId: string) {
+    const captain = await captainRepository.findByUserId(userId);
+    if (!captain) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
+    return captainPrepaidBalanceService.getSummary(captain.id);
   },
 
   /**
@@ -317,10 +326,14 @@ export const captainMobileService = {
   },
 
   async getOrderById(userId: string, orderId: string) {
+    const cap = await captainRepository.findByUserId(userId);
+    if (!cap) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
     const order = await ordersService.getById(orderId, {
       role: "CAPTAIN",
       userId,
       storeId: null,
+      companyId: cap.companyId,
+      branchId: cap.branchId,
     });
     return toOrderDetailDto(order);
   },
@@ -352,8 +365,16 @@ export const captainMobileService = {
     return ordersService.rejectByCaptain(orderId, userId);
   },
 
-  updateOrderStatus(orderId: string, status: OrderStatus, userId: string) {
-    return ordersService.updateStatus(orderId, status, { userId, role: "CAPTAIN", storeId: null });
+  async updateOrderStatus(orderId: string, status: OrderStatus, userId: string) {
+    const cap = await captainRepository.findByUserId(userId);
+    if (!cap) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
+    return ordersService.updateStatus(orderId, status, {
+      userId,
+      role: "CAPTAIN",
+      storeId: null,
+      companyId: cap.companyId,
+      branchId: cap.branchId,
+    });
   },
 
   updateLocation(userId: string, latitude: number, longitude: number) {
@@ -368,6 +389,7 @@ export const captainMobileService = {
     if (!captain) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
     const [total, rows] = await orderRepository.listForCaptain({
       captainId: captain.id,
+      branchId: captain.branchId,
       status: params.status,
       from: params.from,
       to: params.to,

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { OrdersListSection } from "@/features/orders/components/orders-list-section";
 import { ORDERS_PAGE_INITIAL_LIST_PARAMS } from "@/router/loaders";
+import { isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { OrderListItem } from "@/types/api";
 
@@ -28,7 +29,7 @@ export function OrdersPageView() {
   const [statusOverrideOrder, setStatusOverrideOrder] = useState<OrderListItem | null>(null);
   const [statusOverrideTarget, setStatusOverrideTarget] = useState<AdminOverrideTargetStatus>("PENDING");
 
-  const canDispatch = role === "ADMIN" || role === "DISPATCHER";
+  const canDispatch = isDispatchRole(role);
 
   const orderParams = useMemo(() => {
     const t = q.trim();

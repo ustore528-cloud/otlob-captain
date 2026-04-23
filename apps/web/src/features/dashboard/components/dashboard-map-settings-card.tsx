@@ -31,6 +31,11 @@ export function DashboardMapSettingsCard() {
   const [latitude, setLatitude] = useState(24.7136);
   const [longitude, setLongitude] = useState(46.6753);
   const [zoom, setZoom] = useState(11);
+  const [prepaidCaptainsEnabled, setPrepaidCaptainsEnabled] = useState(false);
+  const [prepaidDefaultCommissionPercent, setPrepaidDefaultCommissionPercent] = useState("15");
+  const [prepaidAllowCaptainCustomCommission, setPrepaidAllowCaptainCustomCommission] = useState(true);
+  const [prepaidMinimumBalanceToReceiveOrders, setPrepaidMinimumBalanceToReceiveOrders] = useState("0");
+  const [prepaidAllowManualAssignmentOverride, setPrepaidAllowManualAssignmentOverride] = useState(false);
 
   const [geocodeLoading, setGeocodeLoading] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
@@ -46,6 +51,11 @@ export function DashboardMapSettingsCard() {
     setLatitude(next.latitude);
     setLongitude(next.longitude);
     setZoom(next.zoom);
+    setPrepaidCaptainsEnabled(Boolean(settings.data.prepaidCaptainsEnabled));
+    setPrepaidDefaultCommissionPercent(String(settings.data.prepaidDefaultCommissionPercent ?? "15"));
+    setPrepaidAllowCaptainCustomCommission(Boolean(settings.data.prepaidAllowCaptainCustomCommission));
+    setPrepaidMinimumBalanceToReceiveOrders(String(settings.data.prepaidMinimumBalanceToReceiveOrders ?? "0"));
+    setPrepaidAllowManualAssignmentOverride(Boolean(settings.data.prepaidAllowManualAssignmentOverride));
   }, [settings.data]);
 
   const onViewChange = useCallback((next: { latitude: number; longitude: number; zoom: number }) => {
@@ -89,6 +99,10 @@ export function DashboardMapSettingsCard() {
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(zoom)) return;
     const zi = Math.round(zoom);
     if (zi < 1 || zi > 19) return;
+    const commission = Number(prepaidDefaultCommissionPercent);
+    const minBalance = Number(prepaidMinimumBalanceToReceiveOrders);
+    if (!Number.isFinite(commission) || commission < 0 || commission > 100) return;
+    if (!Number.isFinite(minBalance) || minBalance < 0) return;
     update.mutate(
       {
         mapCountry: mapCountry.trim() || null,
@@ -96,6 +110,11 @@ export function DashboardMapSettingsCard() {
         mapDefaultLat: latitude,
         mapDefaultLng: longitude,
         mapDefaultZoom: zi,
+        prepaidCaptainsEnabled,
+        prepaidDefaultCommissionPercent: commission,
+        prepaidAllowCaptainCustomCommission,
+        prepaidMinimumBalanceToReceiveOrders: minBalance,
+        prepaidAllowManualAssignmentOverride,
       },
       {
         onSuccess: (data) => {
@@ -264,6 +283,59 @@ export function DashboardMapSettingsCard() {
               disabled={loading}
             />
           </div>
+        </div>
+
+        <div className="grid gap-3 rounded-xl border border-card-border bg-card p-4">
+          <div>
+            <h3 className="text-sm font-semibold">نظام رصيد الكباتن المدفوع مسبقًا</h3>
+            <p className="mt-1 text-xs text-muted">يتم الخصم من رسوم التوصيل فقط بعد تسليم الطلب.</p>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={prepaidCaptainsEnabled}
+              onChange={(e) => setPrepaidCaptainsEnabled(e.target.checked)}
+            />
+            تفعيل نظام الرصيد
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="prepaid-default-commission">نسبة العمولة الافتراضية</Label>
+              <Input
+                id="prepaid-default-commission"
+                inputMode="decimal"
+                dir="ltr"
+                value={prepaidDefaultCommissionPercent}
+                onChange={(e) => setPrepaidDefaultCommissionPercent(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="prepaid-min-balance">الحد الأدنى لاستقبال طلبات</Label>
+              <Input
+                id="prepaid-min-balance"
+                inputMode="decimal"
+                dir="ltr"
+                value={prepaidMinimumBalanceToReceiveOrders}
+                onChange={(e) => setPrepaidMinimumBalanceToReceiveOrders(e.target.value)}
+              />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={prepaidAllowCaptainCustomCommission}
+              onChange={(e) => setPrepaidAllowCaptainCustomCommission(e.target.checked)}
+            />
+            السماح بنسبة عمولة خاصة لكل كابتن
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={prepaidAllowManualAssignmentOverride}
+              onChange={(e) => setPrepaidAllowManualAssignmentOverride(e.target.checked)}
+            />
+            السماح بتجاوز التعيين اليدوي عند انخفاض الرصيد
+          </label>
         </div>
 
         {update.isError ? (

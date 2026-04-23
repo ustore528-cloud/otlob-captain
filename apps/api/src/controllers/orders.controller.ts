@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import type { AssignmentType } from "@prisma/client";
 import { $Enums } from "@prisma/client";
+import type { AppRole } from "../lib/rbac-roles.js";
 import { ok } from "../utils/api-response.js";
 import { pathParam } from "../utils/path-params.js";
 import { ordersService } from "../services/orders.service.js";
@@ -8,8 +9,10 @@ import { distributionService } from "../services/distribution/index.js";
 
 const actor = (req: Request) => ({
   userId: req.user!.id,
-  role: req.user!.role,
+  role: req.user!.role as AppRole,
   storeId: req.user!.storeId,
+  companyId: req.user!.companyId ?? null,
+  branchId: req.user!.branchId ?? null,
 });
 
 function logOrderActionControllerTiming(
@@ -49,7 +52,12 @@ export const ordersController = {
 
   adminOverrideOrderStatus: async (req: Request, res: Response) => {
     const body = req.body as { status: import("@prisma/client").OrderStatus };
-    const data = await ordersService.adminOverrideOrderStatus(pathParam(req, "id"), body.status, actor(req));
+    const data = await ordersService.adminOverrideOrderStatus(pathParam(req, "id"), body.status, {
+      userId: req.user!.id,
+      role: req.user!.role as AppRole,
+      companyId: req.user!.companyId ?? null,
+      branchId: req.user!.branchId ?? null,
+    });
     return res.json(ok(data));
   },
 
@@ -105,7 +113,12 @@ export const ordersController = {
       note: "auth+rbac+validation already passed",
     });
     try {
-      const data = await distributionService.reassign(orderId, body.captainId, req.user!.id, { requestId });
+      const data = await distributionService.reassign(orderId, body.captainId, req.user!.id, { requestId }, {
+        userId: req.user!.id,
+        role: req.user!.role as AppRole,
+        companyId: req.user!.companyId ?? null,
+        branchId: req.user!.branchId ?? null,
+      });
       logOrderActionControllerTiming("reassign", "response_ready", {
         requestId,
         orderId,
@@ -126,7 +139,12 @@ export const ordersController = {
   },
 
   startAutoDistribution: async (req: Request, res: Response) => {
-    const data = await distributionService.startAuto(pathParam(req, "id"), req.user!.id);
+    const data = await distributionService.startAuto(pathParam(req, "id"), req.user!.id, {
+      userId: req.user!.id,
+      role: req.user!.role as AppRole,
+      companyId: req.user!.companyId ?? null,
+      branchId: req.user!.branchId ?? null,
+    });
     return res.json(ok(data));
   },
 
@@ -142,7 +160,12 @@ export const ordersController = {
       note: "auth+rbac+validation already passed",
     });
     try {
-      const data = await distributionService.resendToDistribution(orderId, req.user!.id, { requestId });
+      const data = await distributionService.resendToDistribution(orderId, req.user!.id, { requestId }, {
+        userId: req.user!.id,
+        role: req.user!.role as AppRole,
+        companyId: req.user!.companyId ?? null,
+        branchId: req.user!.branchId ?? null,
+      });
       logOrderActionControllerTiming("resend_distribution", "response_ready", {
         requestId,
         orderId,
@@ -161,7 +184,12 @@ export const ordersController = {
   },
 
   cancelCaptainAssignment: async (req: Request, res: Response) => {
-    const data = await distributionService.cancelCaptainAssignment(pathParam(req, "id"), req.user!.id);
+    const data = await distributionService.cancelCaptainAssignment(pathParam(req, "id"), req.user!.id, {
+      userId: req.user!.id,
+      role: req.user!.role as AppRole,
+      companyId: req.user!.companyId ?? null,
+      branchId: req.user!.branchId ?? null,
+    });
     return res.json(ok(data));
   },
 
@@ -184,7 +212,12 @@ export const ordersController = {
       note: "auth+rbac+validation already passed",
     });
     try {
-      const data = await distributionService.assignManual(orderId, body.captainId, req.user!.id, mode, { requestId });
+      const data = await distributionService.assignManual(orderId, body.captainId, req.user!.id, mode, { requestId }, {
+        userId: req.user!.id,
+        role: req.user!.role as AppRole,
+        companyId: req.user!.companyId ?? null,
+        branchId: req.user!.branchId ?? null,
+      });
       logOrderActionControllerTiming("manual_assign", "response_ready", {
         requestId,
         orderId,
@@ -216,6 +249,12 @@ export const ordersController = {
       req.user!.id,
       $Enums.AssignmentType.DRAG_DROP,
       { requestId },
+      {
+        userId: req.user!.id,
+        role: req.user!.role as AppRole,
+        companyId: req.user!.companyId ?? null,
+        branchId: req.user!.branchId ?? null,
+      },
     );
     return res.json(ok(data));
   },

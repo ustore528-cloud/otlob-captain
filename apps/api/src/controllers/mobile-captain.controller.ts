@@ -31,6 +31,11 @@ export const mobileCaptainController = {
     return res.json(ok(data));
   },
 
+  prepaidSummary: async (req: Request, res: Response) => {
+    const data = await captainMobileService.prepaidSummary(req.user!.id);
+    return res.json(ok(data));
+  },
+
   /** GET /mobile/captain/me/assignment — singular live snapshot (NONE | one OFFER | one ACTIVE). */
   currentAssignment: async (req: Request, res: Response) => {
     const data = await captainMobileService.getCurrentAssignment(req.user!.id);
@@ -61,12 +66,24 @@ export const mobileCaptainController = {
   },
 
   registerPushToken: async (req: Request, res: Response) => {
-    const body = req.body as { token: string; platform: "android" | "ios"; appVersion?: string };
+    const body = req.body as { token: string; platform: "android" | "ios"; appVersion?: string | null };
+    // eslint-disable-next-line no-console
+    console.info("[mobileCaptainController.registerPushToken] request_received", {
+      userId: req.user!.id,
+      platform: body.platform,
+      appVersion: body.appVersion ?? null,
+      token: body.token ? `${body.token.slice(0, 18)}...${body.token.slice(-6)}` : null,
+    });
     const data = await pushNotificationService.registerCaptainPushToken({
       userId: req.user!.id,
       token: body.token,
       platform: body.platform,
       appVersion: body.appVersion ?? null,
+    });
+    // eslint-disable-next-line no-console
+    console.info("[mobileCaptainController.registerPushToken] response_ready", {
+      userId: req.user!.id,
+      registered: data.registered,
     });
     return res.json(ok(data));
   },

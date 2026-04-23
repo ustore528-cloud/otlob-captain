@@ -1,6 +1,7 @@
 import { queryKeys } from "@/lib/api/query-keys";
 import { api } from "@/lib/api/singleton";
 import { loadDashboardStats } from "@/lib/dashboard-stats";
+import { canListOrdersRole, isDispatchRole } from "@/lib/rbac-roles";
 import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -12,8 +13,8 @@ export async function homeLoader() {
   if (!token) return null;
   const user = useAuthStore.getState().user;
   const role = user?.role;
-  const canListOrders = Boolean(role && (role === "ADMIN" || role === "DISPATCHER" || role === "STORE"));
-  const isDispatch = role === "ADMIN" || role === "DISPATCHER";
+  const canListOrders = canListOrdersRole(role);
+  const isDispatch = isDispatchRole(role);
 
   void queryClient.prefetchQuery({
     queryKey: [...queryKeys.dashboard.stats(), { canListOrders, isDispatch }],
@@ -61,7 +62,7 @@ export async function incubatorHostLoader() {
 export async function distributionLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
-  if (!token || (role !== "ADMIN" && role !== "DISPATCHER")) return null;
+  if (!token || !isDispatchRole(role)) return null;
 
   const p1 = { page: 1, pageSize: 80, status: "PENDING", orderNumber: "", customerPhone: "" };
   const p2 = { page: 1, pageSize: 80, status: "CONFIRMED", orderNumber: "", customerPhone: "" };
@@ -80,7 +81,7 @@ export async function distributionLoader() {
 export async function captainsLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
-  if (!token || (role !== "ADMIN" && role !== "DISPATCHER")) return null;
+  if (!token || !isDispatchRole(role)) return null;
   void queryClient.prefetchQuery({
     queryKey: queryKeys.captains.list({ page: 1, pageSize: 100 }),
     queryFn: () => api.captains.list({ page: 1, pageSize: 100 }),
@@ -91,7 +92,7 @@ export async function captainsLoader() {
 export async function usersLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
-  if (!token || (role !== "ADMIN" && role !== "DISPATCHER")) return null;
+  if (!token || !isDispatchRole(role)) return null;
   const params = { page: 1, pageSize: 80, role: "" };
   void queryClient.prefetchQuery({
     queryKey: queryKeys.users.list(params),

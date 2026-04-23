@@ -1,4 +1,4 @@
-import { UserRole, OrderStatus, type OrderStatus as OrderStatusT } from "@prisma/client";
+import { Prisma, UserRole, OrderStatus, type OrderStatus as OrderStatusT } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "../lib/prisma.js";
 import { hashPassword } from "../lib/password.js";
@@ -6,6 +6,12 @@ import { captainRepository } from "../repositories/captain.repository.js";
 import { orderRepository } from "../repositories/order.repository.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
+import {
+  assertStaffCanAccessCaptain,
+  resolveBranchIdForStaffOperation,
+  resolveStaffTenantOrderListFilter,
+} from "./tenant-scope.service.js";
+import { isCaptainRole, isOrderOperatorRole, type AppRole } from "../lib/rbac-roles.js";
 
 function parseOptionalIsoDate(label: string, raw?: string, endOfDay?: boolean): Date | undefined {
   if (!raw?.trim()) return undefined;
@@ -20,10 +26,19 @@ function parseOptionalIsoDate(label: string, raw?: string, endOfDay?: boolean): 
 
 export const captainsService = {
   async create(
-    input: { fullName: string; phone: string; email?: string; password: string; vehicleType: string; area: string },
+    input: {
+      fullName: string;
+      phone: string;
+      email?: string;
+      password: string;
+      vehicleType: string;
+      area: string;
+      branchId?: string;
+    },
     actorUserId: string,
   ) {
     const passwordHash = await hashPassword(input.password);
+    const { companyId, branchId } = await resolveBranchIdForStaffOperation(actorUserId, input.branchId);
     try {
       const result = await prisma.$transaction(async (tx) => {
         const user = await tx.user.create({
@@ -38,7 +53,9 @@ export const captainsService = {
         });
         const captain = await tx.captain.create({
           data: {
-            userId: user.id,
+            user: { connect: { id: user.id } },
+            company: { connect: { id: companyId } },
+            branch: { connect: { id: branchId } },
             vehicleType: input.vehicleType,
             area: input.area,
             isActive: true,
@@ -67,19 +84,33 @@ export const captainsService = {
       isActive: boolean;
       fullName: string;
       phone: string;
+      prepaidEnabled: boolean;
+      commissionPercent: number | null;
+      minimumBalanceToReceiveOrders: number | null;
     }>,
     actorUserId: string,
-    opts: { role: string; userId: string },
+    opts: { role: AppRole; userId: string; companyId: string | null; branchId: string | null },
   ) {
     const cap = await captainRepository.findById(id);
     if (!cap) throw new AppError(404, "Captain not found", "NOT_FOUND");
-    if (opts.role === "CAPTAIN" && cap.userId !== opts.userId) {
+    if (isOrderOperatorRole(opts.role)) {
+      await assertStaffCanAccessCaptain(
+        {
+          userId: opts.userId,
+          role: opts.role,
+          companyId: opts.companyId ?? null,
+          branchId: opts.branchId ?? null,
+        },
+        cap,
+      );
+    }
+    if (isCaptainRole(opts.role) && cap.userId !== opts.userId) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
-    if (opts.role === "CAPTAIN" && input.isActive !== undefined) {
+    if (isCaptainRole(opts.role) && input.isActive !== undefined) {
       throw new AppError(403, "Cannot change activation", "FORBIDDEN");
     }
-    if (opts.role === "CAPTAIN" && (input.fullName !== undefined || input.phone !== undefined)) {
+    if (isCaptainRole(opts.role) && (input.fullName !== undefined || input.phone !== undefined)) {
       throw new AppError(403, "Cannot change account name or phone", "FORBIDDEN");
     }
 
@@ -87,12 +118,22 @@ export const captainsService = {
     if (input.vehicleType !== undefined) data.vehicleType = input.vehicleType;
     if (input.area !== undefined) data.area = input.area;
     if (input.isActive !== undefined) data.isActive = input.isActive;
+    if (isOrderOperatorRole(opts.role) && input.prepaidEnabled !== undefined) {
+      data.prepaidEnabled = input.prepaidEnabled;
+    }
+    if (isOrderOperatorRole(opts.role) && input.commissionPercent !== undefined) {
+      data.commissionPercent = input.commissionPercent == null ? null : new Prisma.Decimal(input.commissionPercent);
+    }
+    if (isOrderOperatorRole(opts.role) && input.minimumBalanceToReceiveOrders !== undefined) {
+      data.minimumBalanceToReceiveOrders =
+        input.minimumBalanceToReceiveOrders == null ? null : new Prisma.Decimal(input.minimumBalanceToReceiveOrders);
+    }
 
     const userInclude = { user: { select: { id: true, fullName: true, phone: true, email: true, isActive: true } } };
 
     try {
       const updated = await prisma.$transaction(async (tx) => {
-        if (opts.role === "ADMIN" || opts.role === "DISPATCHER") {
+        if (isOrderOperatorRole(opts.role)) {
           if (input.fullName !== undefined || input.phone !== undefined) {
             await tx.user.update({
               where: { id: cap.userId },
@@ -125,18 +166,57 @@ export const captainsService = {
     }
   },
 
-  async list(params: Parameters<typeof captainRepository.list>[0]) {
+  async list(
+    params: Parameters<typeof captainRepository.list>[0],
+    opts?: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
+  ) {
+    if (opts && isOrderOperatorRole(opts.role)) {
+      const tenant = await resolveStaffTenantOrderListFilter({
+        userId: opts.userId,
+        role: opts.role,
+        companyId: opts.companyId ?? null,
+        branchId: opts.branchId ?? null,
+      });
+      const [total, items] = await captainRepository.list({
+        ...params,
+        companyId: tenant.companyId,
+        branchId: tenant.branchId,
+      });
+      return { total, items };
+    }
     const [total, items] = await captainRepository.list(params);
     return { total, items };
   },
 
-  async getById(id: string) {
+  async getById(
+    id: string,
+    actor?: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
+  ) {
     const cap = await captainRepository.findById(id);
     if (!cap) throw new AppError(404, "Captain not found", "NOT_FOUND");
+    if (actor && isOrderOperatorRole(actor.role)) {
+      await assertStaffCanAccessCaptain(
+        {
+          userId: actor.userId,
+          role: actor.role,
+          companyId: actor.companyId ?? null,
+          branchId: actor.branchId ?? null,
+        },
+        cap,
+      );
+    }
     return cap;
   },
 
-  async setActive(id: string, isActive: boolean, actorUserId: string) {
+  async setActive(
+    id: string,
+    isActive: boolean,
+    actorUserId: string,
+    actorScope?: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
+  ) {
+    if (actorScope && isOrderOperatorRole(actorScope.role)) {
+      await this.getById(id, actorScope);
+    }
     const updated = await captainRepository.update(id, { isActive });
     await activityService.log(actorUserId, isActive ? "CAPTAIN_ACTIVATED" : "CAPTAIN_DEACTIVATED", "captain", id, {});
     return updated;
@@ -147,11 +227,11 @@ export const captainsService = {
     userId: string,
     availabilityStatus: import("@prisma/client").CaptainAvailabilityStatus,
     actorUserId: string,
-    opts: { role: string },
+    opts: { role: AppRole },
   ) {
     const cap = await captainRepository.findById(captainId);
     if (!cap) throw new AppError(404, "Captain not found", "NOT_FOUND");
-    if (opts.role === "CAPTAIN" && cap.userId !== userId) {
+    if (isCaptainRole(opts.role) && cap.userId !== userId) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
     const updated = await captainRepository.update(captainId, {
@@ -173,15 +253,16 @@ export const captainsService = {
       area?: string;
       status?: OrderStatusT;
     },
+    actor: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
   ) {
-    const cap = await captainRepository.findById(captainId);
-    if (!cap) throw new AppError(404, "Captain not found", "NOT_FOUND");
+    const cap = await this.getById(captainId, actor);
 
     const from = parseOptionalIsoDate("from", params.from, false);
     const to = parseOptionalIsoDate("to", params.to, true);
 
     const [total, items] = await orderRepository.listForCaptain({
       captainId,
+      branchId: cap.branchId,
       status: params.status,
       from,
       to,
@@ -193,9 +274,12 @@ export const captainsService = {
     return { total, items };
   },
 
-  async deleteCaptain(captainId: string, actorUserId: string) {
-    const cap = await captainRepository.findById(captainId);
-    if (!cap) throw new AppError(404, "Captain not found", "NOT_FOUND");
+  async deleteCaptain(
+    captainId: string,
+    actorUserId: string,
+    actorScope: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
+  ) {
+    await this.getById(captainId, actorScope);
 
     await prisma.$transaction(async (tx) => {
       const open = await tx.order.count({
@@ -218,6 +302,8 @@ export const captainsService = {
       });
       await tx.orderAssignmentLog.deleteMany({ where: { captainId } });
       await tx.captainLocation.deleteMany({ where: { captainId } });
+      const cap = await tx.captain.findUnique({ where: { id: captainId } });
+      if (!cap) throw new AppError(404, "Captain not found", "NOT_FOUND");
       await tx.captain.delete({ where: { id: captainId } });
       await tx.user.delete({ where: { id: cap.userId } });
     });
@@ -226,9 +312,11 @@ export const captainsService = {
     return { deleted: true as const };
   },
 
-  async stats(captainId: string) {
-    const cap = await captainRepository.findById(captainId);
-    if (!cap) throw new AppError(404, "Captain not found", "NOT_FOUND");
+  async stats(
+    captainId: string,
+    actor?: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
+  ) {
+    await this.getById(captainId, actor);
 
     const [delivered, activeOrders] = await prisma.$transaction([
       prisma.order.count({

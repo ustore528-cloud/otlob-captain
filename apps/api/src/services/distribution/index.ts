@@ -1,4 +1,4 @@
-import { $Enums, OrderStatus } from "@prisma/client";
+import { $Enums, OrderStatus, type UserRole } from "@prisma/client";
 import type { AssignmentType, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { distributionEngine } from "./distribution-engine.js";
@@ -9,14 +9,46 @@ import { DISTRIBUTION_TIMEOUT_SECONDS } from "./constants.js";
 import { emitCaptainAssignmentEnded } from "../../realtime/order-emits.js";
 import { logDistributionTimeout } from "./distribution-timeout-log.js";
 import { pushNotificationService } from "../push-notification.service.js";
+import { assertStaffCanAccessCaptain, assertStaffCanAccessOrder } from "../tenant-scope.service.js";
+import type { AppRole } from "../../lib/rbac-roles.js";
 
 type OrderCaptainEmit = {
   id: string;
   orderNumber: string;
   status: OrderStatus;
+  companyId: string;
+  branchId: string;
   assignedCaptain: { userId: string } | null;
 } | null;
 type DistributionRequestContext = { requestId?: string };
+type StaffDistributionScope = {
+  userId: string;
+  role: AppRole;
+  companyId: string | null;
+  branchId: string | null;
+};
+
+async function assertDispatcherCanAccessDistributionTargets(
+  orderId: string,
+  actorScope?: StaffDistributionScope,
+  captainId?: string,
+): Promise<void> {
+  if (!actorScope) return;
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { companyId: true, branchId: true },
+  });
+  if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
+  await assertStaffCanAccessOrder(actorScope, order);
+
+  if (!captainId) return;
+  const captain = await prisma.captain.findUnique({
+    where: { id: captainId },
+    select: { companyId: true, branchId: true },
+  });
+  if (!captain) return;
+  await assertStaffCanAccessCaptain(actorScope, captain);
+}
 
 function logActionTiming(
   action: "manual_assign" | "resend_distribution" | "reassign",
@@ -116,18 +148,21 @@ function emitCaptainDistributionSocket(order: OrderCaptainEmit, kind: "OFFER" | 
     status: order.status,
     timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
   });
-  emitOrderUpdated({ id: order.id, orderNumber: order.orderNumber, status: order.status });
-  void pushNotificationService.sendToCaptainUser(order.assignedCaptain.userId, {
+  emitOrderUpdated(
+    { id: order.id, orderNumber: order.orderNumber, status: order.status },
+    { companyId: order.companyId, branchId: order.branchId },
+  );
+  void pushNotificationService.sendCaptainOrderPush({
+    userId: order.assignedCaptain.userId,
     title: kind === "REASSIGNED" ? "إعادة تعيين طلب" : "طلب جديد بانتظار قبولك",
     body:
       kind === "REASSIGNED"
         ? `تمت إعادة تعيين الطلب ${order.orderNumber} لك.`
         : `تم عرض الطلب ${order.orderNumber} عليك. اضغط للقبول أو الرفض.`,
-    data: {
-      orderId: order.id,
-      kind,
-      status: order.status,
-    },
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    kind,
+    status: order.status,
   });
 }
 
@@ -150,6 +185,8 @@ async function emitAfterTimeoutProcessing(hint: { orderId: string; expiredCaptai
       id: true,
       orderNumber: true,
       status: true,
+      companyId: true,
+      branchId: true,
       assignedCaptain: { select: { userId: true } },
     },
   });
@@ -161,7 +198,10 @@ async function emitAfterTimeoutProcessing(hint: { orderId: string; expiredCaptai
   if (order.status === OrderStatus.ASSIGNED && order.assignedCaptain?.userId) {
     emitCaptainDistributionSocket(order, "OFFER");
   } else {
-    emitOrderUpdated({ id: order.id, orderNumber: order.orderNumber, status: order.status });
+    emitOrderUpdated(
+      { id: order.id, orderNumber: order.orderNumber, status: order.status },
+      { companyId: order.companyId, branchId: order.branchId },
+    );
   }
 }
 
@@ -191,15 +231,22 @@ export const distributionService = {
     }
   },
 
-  startAuto: async (orderId: string, actorUserId: string | null) => {
+  startAuto: async (orderId: string, actorUserId: string | null, actorScope?: StaffDistributionScope) => {
+    await assertDispatcherCanAccessDistributionTargets(orderId, actorScope);
     const order = await distributionEngine.startAutoDistribution(orderId, actorUserId);
     emitCaptainDistributionSocket(order, "OFFER");
     return order;
   },
 
-  resendToDistribution: async (orderId: string, actorUserId: string | null, ctx: DistributionRequestContext = {}) => {
+  resendToDistribution: async (
+    orderId: string,
+    actorUserId: string | null,
+    ctx: DistributionRequestContext = {},
+    actorScope?: StaffDistributionScope,
+  ) => {
     const t0 = Date.now();
     logActionTiming("resend_distribution", "service_enter", { requestId: ctx.requestId, orderId, actorUserId });
+    await assertDispatcherCanAccessDistributionTargets(orderId, actorScope);
     await runFastOrderPrecheck("resend_distribution", {
       orderId,
       t0,
@@ -250,6 +297,7 @@ export const distributionService = {
     actorUserId: string | null,
     assignmentType: Extract<AssignmentType, "MANUAL" | "DRAG_DROP"> = $Enums.AssignmentType.MANUAL,
     ctx: DistributionRequestContext = {},
+    actorScope?: StaffDistributionScope,
   ) => {
     const t0 = Date.now();
     logActionTiming("manual_assign", "service_enter", {
@@ -259,6 +307,7 @@ export const distributionService = {
       actorUserId,
       assignmentType,
     });
+    await assertDispatcherCanAccessDistributionTargets(orderId, actorScope, captainId);
     await runFastOrderPrecheck("manual_assign", {
       orderId,
       captainId,
@@ -309,9 +358,16 @@ export const distributionService = {
     }
   },
 
-  reassign: async (orderId: string, captainId: string, actorUserId: string | null, ctx: DistributionRequestContext = {}) => {
+  reassign: async (
+    orderId: string,
+    captainId: string,
+    actorUserId: string | null,
+    ctx: DistributionRequestContext = {},
+    actorScope?: StaffDistributionScope,
+  ) => {
     const t0 = Date.now();
     logActionTiming("reassign", "service_enter", { requestId: ctx.requestId, orderId, captainId, actorUserId });
+    await assertDispatcherCanAccessDistributionTargets(orderId, actorScope, captainId);
     await runFastOrderPrecheck("reassign", {
       orderId,
       captainId,
@@ -360,13 +416,17 @@ export const distributionService = {
     }
   },
 
-  cancelCaptainAssignment: async (orderId: string, actorUserId: string | null) => {
+  cancelCaptainAssignment: async (orderId: string, actorUserId: string | null, actorScope?: StaffDistributionScope) => {
+    await assertDispatcherCanAccessDistributionTargets(orderId, actorScope);
     const result = await distributionEngine.cancelCaptainAssignment(orderId, actorUserId);
     if (result.cancelledCaptainUserId) {
       emitCaptainAssignmentEnded(result.cancelledCaptainUserId, { orderId, reason: "DISPATCH_CANCELLED" });
     }
     if (result.order) {
-      emitOrderUpdated({ id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status });
+      emitOrderUpdated(
+        { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status },
+        { companyId: result.order.companyId, branchId: result.order.branchId },
+      );
     }
     return result.order;
   },

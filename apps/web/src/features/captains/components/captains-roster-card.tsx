@@ -1,9 +1,13 @@
-import { BarChart3, Pencil, Trash2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { BarChart3, CreditCard, ListChecks, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useCaptains, useDeleteCaptain, useToggleCaptain } from "@/hooks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { availabilityAr } from "@/features/captains/lib/availability-ar";
+import { api } from "@/lib/api/singleton";
+import { queryKeys } from "@/lib/api/query-keys";
+import { toastApiError, toastSuccess } from "@/lib/toast";
 import type { CaptainListItem } from "@/types/api";
 
 type Props = {
@@ -16,6 +20,67 @@ export function CaptainsRosterCard({ onOpenReport, onOpenEdit, canDelete }: Prop
   const captains = useCaptains({ page: 1, pageSize: 100 });
   const toggle = useToggleCaptain();
   const del = useDeleteCaptain();
+  const qc = useQueryClient();
+  const charge = useMutation({
+    mutationFn: ({ id, amount, note }: { id: string; amount: number; note?: string }) =>
+      api.captains.prepaidCharge(id, { amount, note }),
+    onSuccess: async () => {
+      toastSuccess("تم شحن الرصيد بنجاح");
+      await qc.invalidateQueries({ queryKey: queryKeys.captains.root });
+    },
+    onError: (err) => toastApiError(err, "تعذر شحن رصيد الكابتن"),
+  });
+  const adjustment = useMutation({
+    mutationFn: ({ id, amount, note }: { id: string; amount: number; note: string }) =>
+      api.captains.prepaidAdjustment(id, { amount, note }),
+    onSuccess: async () => {
+      toastSuccess("تم تسجيل تعديل الرصيد");
+      await qc.invalidateQueries({ queryKey: queryKeys.captains.root });
+    },
+    onError: (err) => toastApiError(err, "تعذر تعديل الرصيد"),
+  });
+
+  function askAmount(label: string) {
+    const raw = window.prompt(label);
+    if (raw == null) return null;
+    const amount = Number(raw.replace(",", "."));
+    if (!Number.isFinite(amount)) {
+      window.alert("أدخل مبلغًا صحيحًا");
+      return null;
+    }
+    return amount;
+  }
+
+  function chargeBalance(c: CaptainListItem) {
+    const amount = askAmount(`شحن رصيد ${c.user.fullName}`);
+    if (amount == null || amount <= 0) return;
+    const note = window.prompt("ملاحظة اختيارية") ?? undefined;
+    charge.mutate({ id: c.id, amount, note });
+  }
+
+  function adjustBalance(c: CaptainListItem) {
+    const amount = askAmount(`تعديل رصيد ${c.user.fullName} (يمكن إدخال قيمة سالبة)`);
+    if (amount == null || amount === 0) return;
+    const note = window.prompt("سبب التعديل مطلوب");
+    if (!note?.trim()) {
+      window.alert("سبب التعديل مطلوب");
+      return;
+    }
+    adjustment.mutate({ id: c.id, amount, note });
+  }
+
+  async function showLedger(c: CaptainListItem) {
+    try {
+      const ledger = await api.captains.prepaidTransactions(c.id, { page: 1, pageSize: 8 });
+      const lines = ledger.items.map(
+        (x) =>
+          `${new Date(x.createdAt).toLocaleString("ar-SA")} | ${x.type} | ${x.amount} ILS | بعد الحركة ${x.balanceAfter}`,
+      );
+      window.alert(lines.length ? lines.join("\n") : "لا توجد حركات رصيد بعد");
+    } catch (err) {
+      toastApiError(err, "تعذر تحميل سجل الحركات");
+    }
+  }
 
   function confirmDelete(c: CaptainListItem) {
     const ok = window.confirm(
@@ -57,8 +122,34 @@ export function CaptainsRosterCard({ onOpenReport, onOpenEdit, canDelete }: Prop
                 <div className="mt-2 text-xs text-muted">
                   {c.vehicleType} — {c.area}
                 </div>
+                <div className="mt-3 grid gap-2 rounded-lg border border-card-border bg-background/70 p-3 text-xs sm:grid-cols-3">
+                  <div>
+                    <span className="text-muted">الرصيد المتبقي</span>
+                    <div className="mt-1 font-semibold text-foreground">{c.prepaidBalance ?? "0.00"} ILS</div>
+                  </div>
+                  <div>
+                    <span className="text-muted">نسبة العمولة</span>
+                    <div className="mt-1 font-semibold text-foreground">{c.commissionPercent ?? "افتراضي"}%</div>
+                  </div>
+                  <div>
+                    <span className="text-muted">إجمالي الخصم</span>
+                    <div className="mt-1 font-semibold text-foreground">{c.totalDeducted ?? "0.00"} ILS</div>
+                  </div>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="default" size="sm" disabled={charge.isPending} onClick={() => chargeBalance(c)}>
+                  <CreditCard className="size-4" />
+                  شحن الرصيد
+                </Button>
+                <Button type="button" variant="secondary" size="sm" disabled={adjustment.isPending} onClick={() => adjustBalance(c)}>
+                  <SlidersHorizontal className="size-4" />
+                  تعديل
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => void showLedger(c)}>
+                  <ListChecks className="size-4" />
+                  سجل الحركات
+                </Button>
                 <Button type="button" variant="secondary" size="sm" onClick={() => onOpenReport(c)}>
                   <BarChart3 className="size-4" />
                   تقرير

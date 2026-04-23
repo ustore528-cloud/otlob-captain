@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/layout/page-header";
 import { userRoleLabel } from "@/lib/user-role";
+import { isDispatchRole, isManagementAdminRole } from "@/lib/rbac-roles";
 import { AddUserFormCard } from "@/features/users/components/add-user-form-card";
 import { UserCard } from "@/features/users/components/user-card";
 import { USER_ROLE_FILTER_OPTIONS } from "@/features/users/constants";
@@ -20,10 +21,10 @@ export function UsersPageView() {
   const toggle = useToggleUserActive();
   const togglePendingUserId = toggle.isPending ? toggle.variables?.id ?? null : null;
 
-  const isAdmin = me?.role === "ADMIN";
-  const canEditCustomerProfile = isAdmin || me?.role === "DISPATCHER";
+  const isAdmin = isManagementAdminRole(me?.role);
+  const canEditCustomerProfile = isDispatchRole(me?.role);
 
-  if (me?.role !== "ADMIN" && me?.role !== "DISPATCHER") return <Navigate to="/" replace />;
+  if (!isDispatchRole(me?.role)) return <Navigate to="/" replace />;
 
   return (
     <div className="grid gap-8">

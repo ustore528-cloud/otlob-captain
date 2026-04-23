@@ -27,6 +27,11 @@ export const paths = {
     availability: (id: string) => `${API_V1}/captains/${id}/availability`,
     stats: (id: string) => `${API_V1}/captains/${id}/stats`,
     orders: (id: string) => `${API_V1}/captains/${id}/orders`,
+    prepaidBalance: (id: string) => `${API_V1}/captains/${id}/prepaid-balance`,
+    prepaidSummary: (id: string) => `${API_V1}/captains/${id}/prepaid-summary`,
+    prepaidTransactions: (id: string) => `${API_V1}/captains/${id}/prepaid-transactions`,
+    prepaidCharge: (id: string) => `${API_V1}/captains/${id}/prepaid-charge`,
+    prepaidAdjustment: (id: string) => `${API_V1}/captains/${id}/prepaid-adjustment`,
   },
   orders: {
     root: `${API_V1}/orders`,
@@ -71,6 +76,7 @@ export const paths = {
     login: `${API_V1}/mobile/captain/auth/login`,
     refresh: `${API_V1}/mobile/captain/auth/refresh`,
     me: `${API_V1}/mobile/captain/me`,
+    prepaidSummary: `${API_V1}/mobile/captain/me/prepaid-summary`,
     workStatus: `${API_V1}/mobile/captain/me/work-status`,
     /** Singular live snapshot (NONE | one OFFER | one ACTIVE) — not a multi-order queue. */
     assignment: `${API_V1}/mobile/captain/me/assignment`,

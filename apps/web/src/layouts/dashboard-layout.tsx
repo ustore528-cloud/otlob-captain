@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { DashboardSidebar } from "@/layouts/dashboard/dashboard-sidebar";
 import { useDashboardSocketInvalidate } from "@/layouts/dashboard/use-dashboard-socket-invalidate";
+import { canListOrdersRole, isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function DashboardLayout() {
@@ -11,8 +12,8 @@ export function DashboardLayout() {
   const clear = useAuthStore((s) => s.clear);
 
   const role = user?.role;
-  const isDispatch = role === "ADMIN" || role === "DISPATCHER";
-  const canOrders = role === "ADMIN" || role === "DISPATCHER" || role === "STORE";
+  const isDispatch = isDispatchRole(role);
+  const canOrders = canListOrdersRole(role);
 
   const nav = {
     canNewOrder: canOrders,

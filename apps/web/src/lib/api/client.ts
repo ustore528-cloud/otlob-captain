@@ -48,6 +48,13 @@ export function createApiClient(getToken: GetToken) {
         captains.listCaptainOrders(t(), id, q),
       update: (id: string, body: captains.UpdateCaptainPayload) => captains.updateCaptain(t(), id, body),
       delete: (id: string) => captains.deleteCaptain(t(), id),
+      prepaidSummary: (id: string) => captains.getCaptainPrepaidSummary(t(), id),
+      prepaidTransactions: (id: string, q?: Parameters<typeof captains.listCaptainPrepaidTransactions>[2]) =>
+        captains.listCaptainPrepaidTransactions(t(), id, q),
+      prepaidCharge: (id: string, body: Parameters<typeof captains.chargeCaptainPrepaidBalance>[2]) =>
+        captains.chargeCaptainPrepaidBalance(t(), id, body),
+      prepaidAdjustment: (id: string, body: Parameters<typeof captains.adjustCaptainPrepaidBalance>[2]) =>
+        captains.adjustCaptainPrepaidBalance(t(), id, body),
     },
     users: {
       list: (q?: Parameters<typeof users.listUsers>[1]) => users.listUsers(t(), q),

@@ -10,18 +10,33 @@ export const usersController = {
       role: q.role as never,
       page: Number(q.page) || 1,
       pageSize: Number(q.pageSize) || 20,
+    }, {
+      userId: req.user!.id,
+      role: req.user!.role,
+      companyId: req.user!.companyId ?? null,
+      branchId: req.user!.branchId ?? null,
     });
     return res.json(ok(data));
   },
 
   getById: async (req: Request, res: Response) => {
-    const data = await usersService.getById(pathParam(req, "id"));
+    const data = await usersService.getById(pathParam(req, "id"), {
+      userId: req.user!.id,
+      role: req.user!.role,
+      companyId: req.user!.companyId ?? null,
+      branchId: req.user!.branchId ?? null,
+    });
     return res.json(ok(data));
   },
 
   setActive: async (req: Request, res: Response) => {
     const body = req.body as { isActive: boolean };
-    const data = await usersService.setActive(pathParam(req, "id"), body.isActive, req.user!.id);
+    const data = await usersService.setActive(pathParam(req, "id"), body.isActive, req.user!.id, {
+      userId: req.user!.id,
+      role: req.user!.role,
+      companyId: req.user!.companyId ?? null,
+      branchId: req.user!.branchId ?? null,
+    });
     return res.json(ok(data));
   },
 
@@ -31,7 +46,12 @@ export const usersController = {
   },
 
   updateCustomerProfile: async (req: Request, res: Response) => {
-    const data = await usersService.updateCustomerProfile(pathParam(req, "id"), req.body as never);
+    const data = await usersService.updateCustomerProfile(pathParam(req, "id"), req.body as never, {
+      userId: req.user!.id,
+      role: req.user!.role,
+      companyId: req.user!.companyId ?? null,
+      branchId: req.user!.branchId ?? null,
+    });
     return res.json(ok(data));
   },
 };

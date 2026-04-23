@@ -23,6 +23,14 @@ const DEMO_LOCATION_RADIUS = 0.052;
 const DEMO_CAPTAIN_COUNT = 3;
 
 async function main() {
+  const defaultBranch = await prisma.branch.findFirst({
+    where: { isActive: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!defaultBranch) {
+    throw new Error("No active branch — run migrations + seed first.");
+  }
+
   const deleted = await prisma.order.deleteMany({});
   // eslint-disable-next-line no-console
   console.log(`Deleted orders: ${deleted.count}`);
@@ -62,6 +70,8 @@ async function main() {
     await prisma.captain.upsert({
       where: { userId: user.id },
       update: {
+        companyId: defaultBranch.companyId,
+        branchId: defaultBranch.id,
         isActive: true,
         availabilityStatus: $Enums.CaptainAvailabilityStatus.AVAILABLE,
         vehicleType: VEHICLE_TYPES[i % VEHICLE_TYPES.length],
@@ -69,6 +79,8 @@ async function main() {
       },
       create: {
         userId: user.id,
+        companyId: defaultBranch.companyId,
+        branchId: defaultBranch.id,
         vehicleType: VEHICLE_TYPES[i % VEHICLE_TYPES.length],
         area: "الرياض",
         isActive: true,
@@ -112,11 +124,11 @@ async function main() {
     })();
 
   const actor = await prisma.user.findFirst({
-    where: { role: UserRole.ADMIN, isActive: true },
-    select: { id: true, role: true },
+    where: { role: UserRole.COMPANY_ADMIN, isActive: true },
+    select: { id: true, role: true, companyId: true, branchId: true },
   });
   if (!actor) {
-    throw new Error("لا يوجد مستخدم ADMIN نشط — شغّل prisma seed أو أنشئ مسؤولاً.");
+    throw new Error("لا يوجد مستخدم COMPANY_ADMIN نشط — شغّل prisma seed أو أنشئ مسؤولاً.");
   }
 
   const order = await ordersService.create(
@@ -134,13 +146,24 @@ async function main() {
       dropoffLatitude: MAP_CENTER_LAT,
       dropoffLongitude: MAP_CENTER_LNG,
     },
-    { userId: actor.id, role: actor.role, storeId: null },
+    {
+      userId: actor.id,
+      role: actor.role,
+      storeId: null,
+      companyId: actor.companyId ?? null,
+      branchId: actor.branchId ?? null,
+    },
   );
 
   // eslint-disable-next-line no-console
   console.log(`طلب جديد: ${order.orderNumber}`);
 
-  await distributionService.resendToDistribution(order.id, actor.id);
+  await distributionService.resendToDistribution(order.id, actor.id, {}, {
+    userId: actor.id,
+    role: actor.role,
+    companyId: actor.companyId ?? null,
+    branchId: actor.branchId ?? null,
+  });
 
   const after = await prisma.order.findUnique({
     where: { id: order.id },

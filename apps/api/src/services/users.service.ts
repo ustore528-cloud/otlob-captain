@@ -3,6 +3,8 @@ import { hashPassword } from "../lib/password.js";
 import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
+import { isOrderOperatorRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
+import { resolveStaffTenantOrderListFilter } from "./tenant-scope.service.js";
 
 function toPublicUser(user: User | Record<string, unknown>) {
   const row = { ...user } as Record<string, unknown>;
@@ -17,18 +19,67 @@ function toPublicUser(user: User | Record<string, unknown>) {
 }
 
 export const usersService = {
-  async list(params: { role?: UserRole; page: number; pageSize: number }) {
-    const [total, items] = await userRepository.list(params);
+  async list(
+    params: { role?: UserRole; page: number; pageSize: number },
+    actor?: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
+  ) {
+    const filters: Parameters<typeof userRepository.list>[0] = { ...params };
+    if (actor && !isSuperAdminRole(actor.role) && isOrderOperatorRole(actor.role)) {
+      const tenant = await resolveStaffTenantOrderListFilter({
+        userId: actor.userId,
+        role: actor.role,
+        companyId: actor.companyId,
+        branchId: actor.branchId,
+      });
+      if (tenant.companyId) filters.companyId = tenant.companyId;
+      if (tenant.branchId) filters.branchId = tenant.branchId;
+    }
+    const [total, items] = await userRepository.list(filters);
     return { total, items: items.map((u) => toPublicUser(u)) };
   },
 
-  async getById(id: string) {
+  async getById(id: string, actor?: { userId: string; role: AppRole; companyId: string | null; branchId: string | null }) {
     const user = await userRepository.findById(id);
     if (!user) throw new AppError(404, "User not found", "NOT_FOUND");
+    if (actor && !isSuperAdminRole(actor.role) && isOrderOperatorRole(actor.role)) {
+      const tenant = await resolveStaffTenantOrderListFilter({
+        userId: actor.userId,
+        role: actor.role,
+        companyId: actor.companyId,
+        branchId: actor.branchId,
+      });
+      if (tenant.companyId && user.companyId !== tenant.companyId) {
+        throw new AppError(403, "Forbidden", "FORBIDDEN");
+      }
+      if (tenant.branchId && user.branchId !== tenant.branchId) {
+        throw new AppError(403, "Forbidden", "FORBIDDEN");
+      }
+    }
     return toPublicUser(user);
   },
 
-  async setActive(id: string, isActive: boolean, actorUserId: string) {
+  async setActive(
+    id: string,
+    isActive: boolean,
+    actorUserId: string,
+    actor?: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
+  ) {
+    if (actor && !isSuperAdminRole(actor.role) && isOrderOperatorRole(actor.role)) {
+      const existing = await userRepository.findById(id);
+      if (!existing) throw new AppError(404, "User not found", "NOT_FOUND");
+      const tenant = await resolveStaffTenantOrderListFilter({
+        userId: actor.userId,
+        role: actor.role,
+        companyId: actor.companyId,
+        branchId: actor.branchId,
+      });
+      if (tenant.companyId && existing.companyId !== tenant.companyId) {
+        throw new AppError(403, "Forbidden", "FORBIDDEN");
+      }
+      if (tenant.branchId && existing.branchId !== tenant.branchId) {
+        throw new AppError(403, "Forbidden", "FORBIDDEN");
+      }
+    }
     try {
       const updated = await userRepository.updateActive(id, isActive);
       await activityService.log(actorUserId, isActive ? "USER_ACTIVATED" : "USER_DEACTIVATED", "user", id, {});
@@ -71,9 +122,24 @@ export const usersService = {
       customerPreferredAmount?: number | null;
       customerPreferredDelivery?: number | null;
     },
+    actor?: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
   ) {
     const existing = await userRepository.findById(id);
     if (!existing) throw new AppError(404, "User not found", "NOT_FOUND");
+    if (actor && !isSuperAdminRole(actor.role) && isOrderOperatorRole(actor.role)) {
+      const tenant = await resolveStaffTenantOrderListFilter({
+        userId: actor.userId,
+        role: actor.role,
+        companyId: actor.companyId,
+        branchId: actor.branchId,
+      });
+      if (tenant.companyId && existing.companyId !== tenant.companyId) {
+        throw new AppError(403, "Forbidden", "FORBIDDEN");
+      }
+      if (tenant.branchId && existing.branchId !== tenant.branchId) {
+        throw new AppError(403, "Forbidden", "FORBIDDEN");
+      }
+    }
     if (existing.role !== "CUSTOMER") {
       throw new AppError(400, "Customer profile applies only to CUSTOMER users", "INVALID_ROLE");
     }

@@ -10,6 +10,11 @@ export type DashboardSettingsPatchPayload = {
   mapDefaultLat?: number | null;
   mapDefaultLng?: number | null;
   mapDefaultZoom?: number | null;
+  prepaidCaptainsEnabled?: boolean;
+  prepaidDefaultCommissionPercent?: number;
+  prepaidAllowCaptainCustomCommission?: boolean;
+  prepaidMinimumBalanceToReceiveOrders?: number;
+  prepaidAllowManualAssignmentOverride?: boolean;
 };
 
 export function getDashboardSettings(token: string): Promise<DashboardSettingsDto> {

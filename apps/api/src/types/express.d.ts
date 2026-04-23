@@ -1,12 +1,14 @@
-import type { UserRole } from "@prisma/client";
+import type { AppRole } from "../lib/rbac-roles.js";
 
 declare global {
   namespace Express {
     interface Request {
       user?: {
         id: string;
-        role: UserRole;
+        role: AppRole;
         storeId: string | null;
+        companyId: string | null;
+        branchId: string | null;
       };
     }
   }

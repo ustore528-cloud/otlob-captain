@@ -21,6 +21,8 @@ export const captainRepository = {
     area?: string;
     isActive?: boolean;
     availabilityStatus?: CaptainAvailabilityStatus;
+    companyId?: string;
+    branchId?: string;
     page: number;
     pageSize: number;
   }) {
@@ -28,6 +30,8 @@ export const captainRepository = {
     if (params.area) where.area = { contains: params.area, mode: "insensitive" };
     if (params.isActive !== undefined) where.isActive = params.isActive;
     if (params.availabilityStatus) where.availabilityStatus = params.availabilityStatus;
+    if (params.companyId) where.companyId = params.companyId;
+    if (params.branchId) where.branchId = params.branchId;
 
     const { skip, take } = normalizePaginationForPrisma(params);
 
@@ -59,9 +63,10 @@ export const captainRepository = {
   },
 
   /** كباتن نشطون ومتاحون للتوزيع */
-  findActiveForDistribution() {
+  findActiveForDistribution(branchId: string) {
     return prisma.captain.findMany({
       where: {
+        branchId,
         isActive: true,
         availabilityStatus: CaptainAvailabilityStatus.AVAILABLE,
         user: { isActive: true },

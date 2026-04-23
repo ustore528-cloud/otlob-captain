@@ -3,6 +3,7 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { requireRoles } from "../../middlewares/rbac.middleware.js";
+import { ROLE_GROUPS, isCaptainRole } from "../../lib/rbac-roles.js";
 import { UserActiveBodySchema } from "../../validators/users.schemas.js";
 import {
   CreateCaptainBodySchema,
@@ -11,6 +12,8 @@ import {
   ListCaptainsQuerySchema,
   ListCaptainOrdersQuerySchema,
   CaptainAvailabilityBodySchema,
+  CaptainPrepaidChargeBodySchema,
+  CaptainPrepaidAdjustmentBodySchema,
 } from "../../validators/captains.schemas.js";
 import { captainsController } from "../../controllers/captains.controller.js";
 import { captainRepository } from "../../repositories/captain.repository.js";
@@ -24,21 +27,21 @@ router.use(authMiddleware);
 
 router.get(
   "/",
-  requireRoles("ADMIN", "DISPATCHER"),
+  requireRoles(...ROLE_GROUPS.orderOperators),
   validate("query", ListCaptainsQuerySchema),
   asyncHandler(captainsController.list.bind(captainsController)),
 );
 
 router.post(
   "/",
-  requireRoles("ADMIN", "DISPATCHER"),
+  requireRoles(...ROLE_GROUPS.orderOperators),
   validate("body", CreateCaptainBodySchema),
   asyncHandler(captainsController.create.bind(captainsController)),
 );
 
 router.get(
   "/me",
-  requireRoles("CAPTAIN"),
+  requireRoles(...ROLE_GROUPS.captains),
   asyncHandler(async (req, res) => {
     const cap = await captainRepository.findByUserId(req.user!.id);
     if (!cap) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
@@ -48,7 +51,7 @@ router.get(
 
 router.patch(
   "/me/availability",
-  requireRoles("CAPTAIN"),
+  requireRoles(...ROLE_GROUPS.captains),
   validate("body", CaptainAvailabilityBodySchema),
   asyncHandler(async (req, res) => {
     const cap = await captainRepository.findByUserId(req.user!.id);
@@ -62,8 +65,63 @@ router.patch(
 );
 
 router.get(
+  "/:id/prepaid-balance",
+  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.captains),
+  validate("params", CaptainIdParamSchema),
+  asyncHandler(async (req, res, next) => {
+    if (isCaptainRole(req.user!.role)) {
+      const cap = await captainRepository.findByUserId(req.user!.id);
+      if (!cap || cap.id !== pathParam(req, "id")) return next(new AppError(403, "Forbidden", "FORBIDDEN"));
+    }
+    return captainsController.prepaidSummary(req, res);
+  }),
+);
+
+router.get(
+  "/:id/prepaid-summary",
+  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.captains),
+  validate("params", CaptainIdParamSchema),
+  asyncHandler(async (req, res, next) => {
+    if (isCaptainRole(req.user!.role)) {
+      const cap = await captainRepository.findByUserId(req.user!.id);
+      if (!cap || cap.id !== pathParam(req, "id")) return next(new AppError(403, "Forbidden", "FORBIDDEN"));
+    }
+    return captainsController.prepaidSummary(req, res);
+  }),
+);
+
+router.get(
+  "/:id/prepaid-transactions",
+  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.captains),
+  validate("params", CaptainIdParamSchema),
+  asyncHandler(async (req, res, next) => {
+    if (isCaptainRole(req.user!.role)) {
+      const cap = await captainRepository.findByUserId(req.user!.id);
+      if (!cap || cap.id !== pathParam(req, "id")) return next(new AppError(403, "Forbidden", "FORBIDDEN"));
+    }
+    return captainsController.prepaidTransactions(req, res);
+  }),
+);
+
+router.post(
+  "/:id/prepaid-charge",
+  requireRoles(...ROLE_GROUPS.managementAdmins),
+  validate("params", CaptainIdParamSchema),
+  validate("body", CaptainPrepaidChargeBodySchema),
+  asyncHandler(captainsController.prepaidCharge.bind(captainsController)),
+);
+
+router.post(
+  "/:id/prepaid-adjustment",
+  requireRoles(...ROLE_GROUPS.managementAdmins),
+  validate("params", CaptainIdParamSchema),
+  validate("body", CaptainPrepaidAdjustmentBodySchema),
+  asyncHandler(captainsController.prepaidAdjustment.bind(captainsController)),
+);
+
+router.get(
   "/:id/orders",
-  requireRoles("ADMIN", "DISPATCHER"),
+  requireRoles(...ROLE_GROUPS.orderOperators),
   validate("params", CaptainIdParamSchema),
   validate("query", ListCaptainOrdersQuerySchema),
   asyncHandler(captainsController.listOrders.bind(captainsController)),
@@ -71,17 +129,17 @@ router.get(
 
 router.delete(
   "/:id",
-  requireRoles("ADMIN"),
+  requireRoles(...ROLE_GROUPS.managementAdmins),
   validate("params", CaptainIdParamSchema),
   asyncHandler(captainsController.deleteCaptain.bind(captainsController)),
 );
 
 router.get(
   "/:id",
-  requireRoles("ADMIN", "DISPATCHER", "CAPTAIN"),
+  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.captains),
   validate("params", CaptainIdParamSchema),
   asyncHandler(async (req, res, next) => {
-    if (req.user!.role === "CAPTAIN") {
+    if (isCaptainRole(req.user!.role)) {
       const cap = await captainRepository.findByUserId(req.user!.id);
       if (!cap || cap.id !== pathParam(req, "id")) return next(new AppError(403, "Forbidden", "FORBIDDEN"));
     }
@@ -91,7 +149,7 @@ router.get(
 
 router.patch(
   "/:id",
-  requireRoles("ADMIN", "DISPATCHER", "CAPTAIN"),
+  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.captains),
   validate("params", CaptainIdParamSchema),
   validate("body", UpdateCaptainBodySchema),
   asyncHandler(captainsController.update.bind(captainsController)),
@@ -99,7 +157,7 @@ router.patch(
 
 router.patch(
   "/:id/active",
-  requireRoles("ADMIN", "DISPATCHER"),
+  requireRoles(...ROLE_GROUPS.orderOperators),
   validate("params", CaptainIdParamSchema),
   validate("body", UserActiveBodySchema),
   asyncHandler(async (req, res) => {
@@ -111,7 +169,7 @@ router.patch(
 
 router.patch(
   "/:id/availability",
-  requireRoles("ADMIN", "DISPATCHER"),
+  requireRoles(...ROLE_GROUPS.orderOperators),
   validate("params", CaptainIdParamSchema),
   validate("body", CaptainAvailabilityBodySchema),
   asyncHandler(captainsController.setAvailability.bind(captainsController)),
@@ -119,10 +177,10 @@ router.patch(
 
 router.get(
   "/:id/stats",
-  requireRoles("ADMIN", "DISPATCHER", "CAPTAIN"),
+  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.captains),
   validate("params", CaptainIdParamSchema),
   asyncHandler(async (req, res, next) => {
-    if (req.user!.role === "CAPTAIN") {
+    if (isCaptainRole(req.user!.role)) {
       const cap = await captainRepository.findByUserId(req.user!.id);
       if (!cap || cap.id !== pathParam(req, "id")) return next(new AppError(403, "Forbidden", "FORBIDDEN"));
     }

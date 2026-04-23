@@ -19,6 +19,19 @@ function normalizePatch(body: DashboardSettingsPatchBody) {
     ...(body.mapDefaultLat !== undefined && { mapDefaultLat: body.mapDefaultLat }),
     ...(body.mapDefaultLng !== undefined && { mapDefaultLng: body.mapDefaultLng }),
     ...(body.mapDefaultZoom !== undefined && { mapDefaultZoom: body.mapDefaultZoom }),
+    ...(body.prepaidCaptainsEnabled !== undefined && { prepaidCaptainsEnabled: body.prepaidCaptainsEnabled }),
+    ...(body.prepaidDefaultCommissionPercent !== undefined && {
+      prepaidDefaultCommissionPercent: body.prepaidDefaultCommissionPercent,
+    }),
+    ...(body.prepaidAllowCaptainCustomCommission !== undefined && {
+      prepaidAllowCaptainCustomCommission: body.prepaidAllowCaptainCustomCommission,
+    }),
+    ...(body.prepaidMinimumBalanceToReceiveOrders !== undefined && {
+      prepaidMinimumBalanceToReceiveOrders: body.prepaidMinimumBalanceToReceiveOrders,
+    }),
+    ...(body.prepaidAllowManualAssignmentOverride !== undefined && {
+      prepaidAllowManualAssignmentOverride: body.prepaidAllowManualAssignmentOverride,
+    }),
   };
 }
 

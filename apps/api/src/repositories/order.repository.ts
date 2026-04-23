@@ -40,6 +40,8 @@ export const orderRepository = {
 
   list(params: {
     storeId?: string;
+    companyId?: string;
+    branchId?: string;
     status?: OrderStatus;
     area?: string;
     orderNumber?: string;
@@ -52,6 +54,8 @@ export const orderRepository = {
       archivedAt: null,
     };
     if (params.storeId) where.storeId = params.storeId;
+    if (params.companyId) where.companyId = params.companyId;
+    if (params.branchId) where.branchId = params.branchId;
     if (params.status) where.status = params.status;
     if (params.area) where.area = { contains: params.area, mode: "insensitive" };
     if (params.orderNumber) where.orderNumber = { contains: params.orderNumber, mode: "insensitive" };
@@ -122,6 +126,7 @@ export const orderRepository = {
 
   listForCaptain(params: {
     captainId: string;
+    branchId: string;
     status?: OrderStatus;
     from?: Date;
     to?: Date;
@@ -131,6 +136,7 @@ export const orderRepository = {
     pageSize: number;
   }) {
     const AND: Prisma.OrderWhereInput[] = [
+      { branchId: params.branchId },
       {
         OR: [
           { assignedCaptainId: params.captainId },

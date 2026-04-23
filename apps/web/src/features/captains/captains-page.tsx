@@ -6,6 +6,7 @@ import { CaptainGuidanceCard } from "@/features/captains/components/captain-guid
 import { CaptainEditModal } from "@/features/captains/components/captain-edit-modal";
 import { CaptainOrdersReportModal } from "@/features/captains/components/captain-orders-report-modal";
 import { CaptainsRosterCard } from "@/features/captains/components/captains-roster-card";
+import { isDispatchRole, isManagementAdminRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { CaptainListItem } from "@/types/api";
 
@@ -14,9 +15,9 @@ export function CaptainsPageView() {
   const [reportCap, setReportCap] = useState<CaptainListItem | null>(null);
   const [editCap, setEditCap] = useState<CaptainListItem | null>(null);
 
-  const isAdmin = role === "ADMIN";
+  const isAdmin = isManagementAdminRole(role);
 
-  if (role !== "ADMIN" && role !== "DISPATCHER") return <Navigate to="/" replace />;
+  if (!isDispatchRole(role)) return <Navigate to="/" replace />;
 
   return (
     <div className="grid gap-8">

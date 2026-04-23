@@ -1,4 +1,9 @@
-import type { OrderStatus, AssignmentResponseStatus, AssignmentType } from "@prisma/client";
+import type {
+  OrderStatus,
+  AssignmentResponseStatus,
+  AssignmentType,
+  DistributionMode,
+} from "@prisma/client";
 import type { Decimal } from "@prisma/client/runtime/library";
 import { inferOrderFinancialBreakdown, type OrderFinancialBreakdownDto } from "@captain/shared";
 
@@ -25,16 +30,25 @@ export type OrderDetailDto = {
   /** الكابتن المعيّن حاليًا على الطلب — يُستخدم للتمييز بين عرض قديم وبيانات الطلب الحالية */
   assignedCaptainId: string | null;
   status: OrderStatus;
+  distributionMode: DistributionMode;
+  companyId: string;
+  branchId: string;
   customerName: string;
   customerPhone: string;
   pickupAddress: string;
   dropoffAddress: string;
+  pickupLat: number | null;
+  pickupLng: number | null;
+  dropoffLat: number | null;
+  dropoffLng: number | null;
   area: string;
   amount: string;
   cashCollection: string;
+  /** رسوم توصيل مخزّنة صراحةً في الطلب إن وُجدت */
+  deliveryFee: string | null;
   /**
    * Single server-side snapshot of captain-facing money lines (aligned with mobile).
-   * Until explicit DB columns exist, `deliveryFee` is **inferred** — see `@captain/shared` `inferOrderFinancialBreakdown`.
+   * When `deliveryFee` exists on the order, breakdown uses `deliveryFeeSource: "explicit"`.
    */
   financialBreakdown: OrderFinancialBreakdownDto;
   notes: string | null;
@@ -65,13 +79,21 @@ type OrderWithStore = {
   orderNumber: string;
   assignedCaptainId: string | null;
   status: OrderStatus;
+  distributionMode: DistributionMode;
+  companyId: string;
+  branchId: string;
   customerName: string;
   customerPhone: string;
   pickupAddress: string;
   dropoffAddress: string;
+  pickupLat: number | null;
+  pickupLng: number | null;
+  dropoffLat: number | null;
+  dropoffLng: number | null;
   area: string;
   amount: Decimal;
   cashCollection: Decimal;
+  deliveryFee: Decimal | null;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -90,19 +112,30 @@ type OrderWithStore = {
 export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
   const amountStr = dec(order.amount);
   const cashStr = dec(order.cashCollection);
+  const deliveryFeeStr = order.deliveryFee != null ? dec(order.deliveryFee) : null;
   return {
     id: order.id,
     orderNumber: order.orderNumber,
     assignedCaptainId: order.assignedCaptainId,
     status: order.status,
+    distributionMode: order.distributionMode,
+    companyId: order.companyId,
+    branchId: order.branchId,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
     pickupAddress: order.pickupAddress,
     dropoffAddress: order.dropoffAddress,
+    pickupLat: order.pickupLat ?? null,
+    pickupLng: order.pickupLng ?? null,
+    dropoffLat: order.dropoffLat ?? null,
+    dropoffLng: order.dropoffLng ?? null,
     area: order.area,
     amount: amountStr,
     cashCollection: cashStr,
-    financialBreakdown: inferOrderFinancialBreakdown(amountStr, cashStr),
+    deliveryFee: deliveryFeeStr,
+    financialBreakdown: inferOrderFinancialBreakdown(amountStr, cashStr, {
+      explicitDeliveryFeeStr: deliveryFeeStr,
+    }),
     notes: order.notes,
     store: {
       id: order.store.id,
