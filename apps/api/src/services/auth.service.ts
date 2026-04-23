@@ -31,7 +31,7 @@ async function buildTokenPayload(userId: string, role: AppRole) {
     companyId = cap?.companyId ?? null;
     branchId = cap?.branchId ?? null;
   } else {
-    const u = await prisma.user.findUnique({
+    const u = await prisma.user.findFirst({
       where: { id: userId },
       select: { companyId: true, branchId: true },
     });
