@@ -10,6 +10,7 @@ import { AvailabilityControl, useUpdateAvailability } from "@/features/availabil
 import type { CaptainAvailabilityStatus } from "@/services/api/dto";
 import { CaptainSummaryCard } from "../components/captain-summary-card";
 import { LastNotificationCard } from "../components/last-notification-card";
+import { PrepaidBalanceCard } from "../components/prepaid-balance-card";
 import { parseAvailabilityStatus } from "../labels";
 import { ScreenHeader } from "@/components/screen-header";
 import { WorkStatusBanner } from "@/features/work-status";
@@ -103,6 +104,10 @@ export function HomeScreen() {
         ) : meQuery.data ? (
           <>
             <CaptainSummaryCard user={meQuery.data.user} captain={meQuery.data.captain} />
+
+            <View style={styles.sectionGap} />
+
+            <PrepaidBalanceCard balance={meQuery.data.captain.prepaidBalance} />
 
             <View style={styles.sectionGap} />
 

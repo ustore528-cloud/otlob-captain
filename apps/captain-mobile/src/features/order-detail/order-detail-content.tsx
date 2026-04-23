@@ -83,6 +83,47 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
         <OrderStatusProgress status={order.status} compact />
       </SectionCard>
 
+      <View style={styles.infoGrid}>
+        <SectionCard title="المطعم" icon="storefront-outline" compact>
+          <View style={styles.infoPanel}>
+            <Text style={styles.infoTitle}>{order.store.name}</Text>
+            <Text style={styles.infoSub}>{order.store.area}</Text>
+            <Pressable
+              onPress={() => void openMapSearch(order.pickupAddress)}
+              hitSlop={8}
+              style={({ pressed }) => [styles.addressButton, pressed && styles.phonePressed]}
+            >
+              <Text style={styles.addressButtonText}>{order.pickupAddress}</Text>
+            </Pressable>
+          </View>
+        </SectionCard>
+
+        <SectionCard title="العميل" icon="person-outline" compact>
+          <View style={styles.infoPanel}>
+            <Text style={styles.infoTitle}>{order.customerName}</Text>
+            <View style={styles.phoneActionsRow}>
+              <WhatsAppActionButton phone={order.customerPhone} variant="pill" />
+              <Pressable
+                onPress={() => void openPhoneDialer(order.customerPhone)}
+                hitSlop={8}
+                accessibilityRole="link"
+                accessibilityLabel={`اتصال ${order.customerPhone}`}
+                style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
+              >
+                <Text style={styles.phoneLink}>{order.customerPhone}</Text>
+              </Pressable>
+            </View>
+            <Pressable
+              onPress={() => void openMapSearch(order.dropoffAddress)}
+              hitSlop={8}
+              style={({ pressed }) => [styles.addressButton, pressed && styles.phonePressed]}
+            >
+              <Text style={styles.addressButtonText}>{order.dropoffAddress}</Text>
+            </Pressable>
+          </View>
+        </SectionCard>
+      </View>
+
       {/* بطاقة 2: المالية والتحصيل + حاسبة نقد — تظهر من مرحلة التوصيل للعميل فقط */}
       {shouldShowOrderFinancialSection(order.status) ? (
         <SectionCard title="المالية والتحصيل" icon="cash-outline" compact>
@@ -186,6 +227,39 @@ const styles = StyleSheet.create({
     textAlign: "right",
     lineHeight: 16,
     marginBottom: 4,
+  },
+  infoGrid: {
+    gap: 10,
+  },
+  infoPanel: {
+    gap: 8,
+    alignItems: "flex-end",
+  },
+  infoTitle: {
+    color: homeTheme.text,
+    fontSize: 16,
+    fontWeight: "900",
+    textAlign: "right",
+  },
+  infoSub: {
+    color: homeTheme.textSubtle,
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  addressButton: {
+    width: "100%",
+    borderRadius: 12,
+    backgroundColor: homeTheme.neutralSoft,
+    borderWidth: 1,
+    borderColor: homeTheme.border,
+    padding: 10,
+  },
+  addressButtonText: {
+    color: homeTheme.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: "right",
   },
   customerRow: {
     flexDirection: "row-reverse",

@@ -29,7 +29,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FAF7F0"
       },
       "package": "com.captain.mobile",
@@ -55,7 +55,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/adaptive-icon.png",
+          "icon": "./assets/icon.png",
           "color": "#B02432",
           "defaultChannel": "captain-orders"
         }

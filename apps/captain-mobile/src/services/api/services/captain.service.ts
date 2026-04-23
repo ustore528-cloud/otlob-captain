@@ -2,6 +2,7 @@ import { paths } from "@captain/shared";
 import { authRequest } from "../client";
 import type {
   AssignmentOverflowResponse,
+  CaptainPrepaidSummaryDto,
   CurrentAssignmentResponse,
   MeResponse,
   UpdateAvailabilityRequest,
@@ -12,6 +13,10 @@ import type {
 export const captainService = {
   getMe(): Promise<MeResponse> {
     return authRequest<MeResponse>(paths.mobileCaptain.me, { method: "GET" });
+  },
+
+  getPrepaidSummary(): Promise<CaptainPrepaidSummaryDto> {
+    return authRequest<CaptainPrepaidSummaryDto>(paths.mobileCaptain.prepaidSummary, { method: "GET" });
   },
 
   /** Singular live assignment snapshot from the API (not a list). */

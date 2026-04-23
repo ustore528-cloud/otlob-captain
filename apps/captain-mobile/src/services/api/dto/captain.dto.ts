@@ -13,6 +13,28 @@ export type CaptainProfileDto = {
   availabilityStatus: string;
   isActive: boolean;
   lastSeenAt?: string | null;
+  prepaidBalance?: CaptainPrepaidSummaryDto;
+};
+
+export type CaptainPrepaidSummaryDto = {
+  captainId: string;
+  currentBalance: string;
+  prepaidBalance: string;
+  commissionPercent: string;
+  prepaidEnabled: boolean;
+  captainPrepaidEnabled: boolean;
+  systemPrepaidEnabled: boolean;
+  totalCharged: string;
+  totalDeducted: string;
+  minimumBalanceToReceiveOrders: string;
+  lowBalance: boolean;
+  blockedFromReceivingOrders: boolean;
+  blockReason: string | null;
+  estimatedRemainingOrders: number | null;
+  lastBalanceUpdatedAt: string | null;
+  lastChargeAt: string | null;
+  lastDeductionAt: string | null;
+  explanationText: string;
 };
 
 export type SessionUserDto = {
