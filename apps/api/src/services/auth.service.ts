@@ -2,17 +2,44 @@ import { UserRole } from "@prisma/client";
 import { verifyPassword, hashPassword } from "../lib/password.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/jwt.js";
 import { env } from "../config/env.js";
+import { prisma } from "../lib/prisma.js";
 import { userRepository } from "../repositories/user.repository.js";
 import { captainRepository } from "../repositories/captain.repository.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
+import { isStoreAdminRole, type AppRole } from "../lib/rbac-roles.js";
 
-async function buildTokenPayload(userId: string, role: UserRole) {
+async function buildTokenPayload(userId: string, role: AppRole) {
   let storeId: string | null = null;
-  if (role === UserRole.STORE) {
-    storeId = await userRepository.primaryStoreIdForOwner(userId);
+  let companyId: string | null = null;
+  let branchId: string | null = null;
+
+  if (isStoreAdminRole(role)) {
+    const store = await prisma.store.findFirst({
+      where: { ownerUserId: userId, isActive: true },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, companyId: true, branchId: true },
+    });
+    storeId = store?.id ?? null;
+    companyId = store?.companyId ?? null;
+    branchId = store?.branchId ?? null;
+  } else if (role === UserRole.CAPTAIN) {
+    const cap = await prisma.captain.findUnique({
+      where: { userId },
+      select: { companyId: true, branchId: true },
+    });
+    companyId = cap?.companyId ?? null;
+    branchId = cap?.branchId ?? null;
+  } else {
+    const u = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { companyId: true, branchId: true },
+    });
+    companyId = u?.companyId ?? null;
+    branchId = u?.branchId ?? null;
   }
-  return { sub: userId, role, storeId };
+
+  return { sub: userId, role, storeId, companyId, branchId };
 }
 
 function normalizeLoginIdentifiers(input: { phone?: string; email?: string; password: string }) {
@@ -53,6 +80,8 @@ export const authService = {
         role: user.role,
         isActive: user.isActive,
         storeId: payload.storeId,
+        companyId: payload.companyId,
+        branchId: payload.branchId,
       },
     };
   },
@@ -111,7 +140,7 @@ export const authService = {
   async me(userId: string) {
     const user = await userRepository.findById(userId);
     if (!user) throw new AppError(404, "User not found", "NOT_FOUND");
-    const storeId = await buildTokenPayload(user.id, user.role).then((p) => p.storeId);
+    const p = await buildTokenPayload(user.id, user.role);
     return {
       id: user.id,
       fullName: user.fullName,
@@ -119,7 +148,9 @@ export const authService = {
       email: user.email,
       role: user.role,
       isActive: user.isActive,
-      storeId,
+      storeId: p.storeId,
+      companyId: p.companyId,
+      branchId: p.branchId,
     };
   },
 
@@ -152,6 +183,9 @@ export const authService = {
           phone: user.phone,
           email: user.email,
           role: user.role,
+          storeId: payload.storeId,
+          companyId: payload.companyId,
+          branchId: payload.branchId,
         },
       };
     } catch {
