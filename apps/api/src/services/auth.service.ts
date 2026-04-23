@@ -1,4 +1,4 @@
-import { UserRole } from "@prisma/client";
+import { Prisma, UserRole } from "@prisma/client";
 import { verifyPassword, hashPassword } from "../lib/password.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/jwt.js";
 import { env } from "../config/env.js";
@@ -8,6 +8,81 @@ import { captainRepository } from "../repositories/captain.repository.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
 import { isStoreAdminRole, type AppRole } from "../lib/rbac-roles.js";
+
+type AuthUserRow = {
+  id: string;
+  fullName: string;
+  phone: string;
+  email: string | null;
+  passwordHash: string;
+  role: string;
+  isActive: boolean;
+  companyId: string | null;
+  branchId: string | null;
+};
+
+async function findAuthUserByPhone(phone: string): Promise<(AuthUserRow & { role: AppRole }) | null> {
+  const rows = await prisma.$queryRaw<AuthUserRow[]>(Prisma.sql`
+    SELECT
+      id,
+      full_name AS "fullName",
+      phone,
+      email,
+      password_hash AS "passwordHash",
+      role::text AS role,
+      is_active AS "isActive",
+      company_id AS "companyId",
+      branch_id AS "branchId"
+    FROM users
+    WHERE phone = ${phone}
+    LIMIT 1
+  `);
+  const row = rows[0];
+  if (!row) return null;
+  return { ...row, role: row.role as AppRole };
+}
+
+async function findAuthUserByEmail(email: string): Promise<(AuthUserRow & { role: AppRole }) | null> {
+  const rows = await prisma.$queryRaw<AuthUserRow[]>(Prisma.sql`
+    SELECT
+      id,
+      full_name AS "fullName",
+      phone,
+      email,
+      password_hash AS "passwordHash",
+      role::text AS role,
+      is_active AS "isActive",
+      company_id AS "companyId",
+      branch_id AS "branchId"
+    FROM users
+    WHERE email = ${email}
+    LIMIT 1
+  `);
+  const row = rows[0];
+  if (!row) return null;
+  return { ...row, role: row.role as AppRole };
+}
+
+async function findAuthUserById(userId: string): Promise<(AuthUserRow & { role: AppRole }) | null> {
+  const rows = await prisma.$queryRaw<AuthUserRow[]>(Prisma.sql`
+    SELECT
+      id,
+      full_name AS "fullName",
+      phone,
+      email,
+      password_hash AS "passwordHash",
+      role::text AS role,
+      is_active AS "isActive",
+      company_id AS "companyId",
+      branch_id AS "branchId"
+    FROM users
+    WHERE id = ${userId}
+    LIMIT 1
+  `);
+  const row = rows[0];
+  if (!row) return null;
+  return { ...row, role: row.role as AppRole };
+}
 
 async function buildTokenPayload(userId: string, role: AppRole) {
   let storeId: string | null = null;
@@ -53,9 +128,9 @@ export const authService = {
   async login(input: { phone?: string; email?: string; password: string }) {
     const { phone, email, password } = normalizeLoginIdentifiers(input);
     const user = phone
-      ? await userRepository.findByPhone(phone)
+      ? await findAuthUserByPhone(phone)
       : email
-        ? await userRepository.findByEmail(email)
+        ? await findAuthUserByEmail(email)
         : null;
     if (!user || !user.isActive) {
       throw new AppError(401, "Invalid credentials", "INVALID_CREDENTIALS");
@@ -128,7 +203,7 @@ export const authService = {
     } catch {
       throw new AppError(401, "Invalid refresh token", "INVALID_REFRESH");
     }
-    const user = await userRepository.findById(payload.sub);
+    const user = await findAuthUserById(payload.sub);
     if (!user || !user.isActive) throw new AppError(401, "User not found", "INVALID_REFRESH");
     const tokenPayload = await buildTokenPayload(user.id, user.role);
     return {
@@ -138,7 +213,7 @@ export const authService = {
   },
 
   async me(userId: string) {
-    const user = await userRepository.findById(userId);
+    const user = await findAuthUserById(userId);
     if (!user) throw new AppError(404, "User not found", "NOT_FOUND");
     const p = await buildTokenPayload(user.id, user.role);
     return {
