@@ -70,6 +70,12 @@ enum CaptainBalanceTransactionType {
   ADJUSTMENT
 }
 
+/** Phase B — نمط الاشتراك: عام تحت Super Admin، أو مرتبط بمشرف كباتن */
+enum StoreSubscriptionType {
+  PUBLIC
+  SUPERVISOR_LINKED
+}
+
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
@@ -110,6 +116,11 @@ model User {
   pushTokens    CaptainPushToken[]
   activityLogs  ActivityLog[]
 
+  /** متاجر يرتبط بها المستخدم كمشرف كباتن (Phase B) */
+  supervisedStores Store[] @relation("StoreCaptainSupervisor")
+  /** كباتن يشرف عليهم كمستخدم مشرف (Phase B4 — اختياري) */
+  supervisedCaptains Captain[] @relation("CaptainSupervisorUser")
+
   @@index([role, isActive])
   @@index([companyId])
   @@index([branchId])
@@ -130,8 +141,36 @@ model Company {
   orders            Order[]
   deliverySettings  DeliverySettings?
   users             User[]
+  /** مناطق جغرافية (خريطة) — Phase A: ربط المتجر بـ `primaryRegionId` */
+  regions           Region[]
 
   @@map("companies")
+}
+
+/** منطقة تشغيل على الخريطة — حدود اختيارية (GeoJSON) وسلسلة فرعيّة اختيارية */
+model Region {
+  id        String   @id @default(cuid())
+  companyId String   @map("company_id")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  /** رمز فريد ضمن نفس الشركة */
+  code      String
+  name      String
+  parentId  String?  @map("parent_id")
+  parent    Region?  @relation("RegionHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Region[] @relation("RegionHierarchy")
+  /** GeoJSON (مثلاً Polygon / MultiPolygon) — يُستكمل لاحقاً من محرر الخريطة */
+  boundaryGeoJson Json?    @map("boundary_geojson")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /** متاجر مربوطة بهذه المنطقة كـ primary */
+  primaryForStores Store[]
+
+  @@unique([companyId, code])
+  @@index([companyId, isActive])
+  @@index([parentId])
+  @@map("regions")
 }
 
 model City {
@@ -217,13 +256,24 @@ model Store {
   longitude   Float?   @map("longitude")
   ownerUserId String   @map("owner_user_id")
   owner       User     @relation("StoreOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
-  orders      Order[]
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  /** Phase A: ربط اختياري بالمنطقة الأساسية على الخريطة (NULL للبيانات القديمة) */
+  primaryRegionId String?  @map("primary_region_id")
+  primaryRegion   Region?  @relation(fields: [primaryRegionId], references: [id], onDelete: SetNull)
+  /** Phase B: نمط الاشتراك — الافتراضي PUBLIC (لا تغيير سلوك للبيانات الحالية) */
+  subscriptionType  StoreSubscriptionType @default(PUBLIC) @map("subscription_type")
+  /** مشرف كباتن اختياري — يُستَخدم عند SUPERVISOR_LINKED (التحقق لاحقاً في الـ API) */
+  supervisorUserId  String?  @map("supervisor_user_id")
+  supervisorUser    User?    @relation("StoreCaptainSupervisor", fields: [supervisorUserId], references: [id], onDelete: SetNull)
+  orders            Order[]
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@index([ownerUserId])
   @@index([companyId, branchId])
   @@index([area, isActive])
+  @@index([primaryRegionId])
+  @@index([supervisorUserId])
+  @@index([subscriptionType])
   @@map("stores")
 }
 
@@ -250,6 +300,10 @@ model Captain {
   createdAt            DateTime                  @default(now()) @map("created_at")
   updatedAt            DateTime                  @updatedAt @map("updated_at")
 
+  /** مشرف اختياري (موظف شركة/فرع) — نفس قواعد التحقق كـ store.supervisorUser */
+  supervisorUserId String?  @map("captain_supervisor_user_id")
+  supervisorUser   User?    @relation("CaptainSupervisorUser", fields: [supervisorUserId], references: [id], onDelete: SetNull)
+
   assignmentLogs   OrderAssignmentLog[]
   locations        CaptainLocation[]
   assignedOrders   Order[]              @relation("OrderAssignedCaptain")
@@ -258,6 +312,7 @@ model Captain {
   @@index([isActive, availabilityStatus])
   @@index([area, isActive])
   @@index([companyId, branchId])
+  @@index([supervisorUserId])
   @@map("captains")
 }
 

@@ -25,6 +25,7 @@ import { lockCaptainDistributionTx, lockOrderDistributionTx } from "./order-lock
 import { countCompletedAutoRounds, pickCaptainForAutoOffer } from "./round-robin.js";
 import { captainPrepaidBalanceService } from "../captain-prepaid-balance.service.js";
 import { assertOrderAndCaptainSameCompany } from "../tenant-scope.service.js";
+import { orderStoreListSelect } from "../../repositories/order-store-enrichment.js";
 
 /**
  * Default Prisma interactive transaction timeout is 5s. Distribution txs run several writes + notifications
@@ -113,7 +114,7 @@ function logAssignmentCreated(
 }
 
 const orderInclude = {
-  store: { select: { id: true, name: true } as const },
+  store: { select: orderStoreListSelect },
   assignedCaptain: { include: { user: { select: { id: true, fullName: true, phone: true } as const } } },
   assignmentLogs: { orderBy: { assignedAt: "desc" as const }, take: 15 },
 } as const;

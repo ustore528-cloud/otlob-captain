@@ -1,13 +1,14 @@
 import { AssignmentResponseStatus, type Prisma, type OrderStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { normalizePaginationForPrisma } from "../utils/pagination.js";
+import { orderStoreInclude, orderStoreListSelect } from "./order-store-enrichment.js";
 
 export const orderRepository = {
   findById(id: string) {
     return prisma.order.findUnique({
       where: { id },
       include: {
-        store: true,
+        store: orderStoreInclude,
         assignedCaptain: { include: { user: { select: { id: true, fullName: true, phone: true } } } },
         assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 50 },
         createdBy: { select: { id: true, fullName: true, phone: true } },
@@ -19,7 +20,7 @@ export const orderRepository = {
     return prisma.order.create({
       data,
       include: {
-        store: true,
+        store: orderStoreInclude,
         assignedCaptain: true,
         createdBy: { select: { id: true, fullName: true, phone: true } },
       },
@@ -31,7 +32,7 @@ export const orderRepository = {
       where: { id },
       data,
       include: {
-        store: true,
+        store: orderStoreInclude,
         assignedCaptain: { include: { user: { select: { id: true, fullName: true, phone: true } } } },
         assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 20 },
       },
@@ -48,18 +49,33 @@ export const orderRepository = {
     customerPhone?: string;
     page: number;
     pageSize: number;
+    /**
+     * Read-path: BRANCH_MANAGER / DISPATCHER with supervised stores or captains —
+     * restrict to `storeId` in set OR `assignedCaptainId` in set (OR combined).
+     */
+    supervisorReadOr?: { storeIds: string[]; captainIds: string[] };
   }) {
-    const where: Prisma.OrderWhereInput = {
+    const andParts: Prisma.OrderWhereInput[] = [
       /** قوائم التشغيل واللوحة: لا تعرض الطلبات المؤرشفة */
-      archivedAt: null,
-    };
-    if (params.storeId) where.storeId = params.storeId;
-    if (params.companyId) where.companyId = params.companyId;
-    if (params.branchId) where.branchId = params.branchId;
-    if (params.status) where.status = params.status;
-    if (params.area) where.area = { contains: params.area, mode: "insensitive" };
-    if (params.orderNumber) where.orderNumber = { contains: params.orderNumber, mode: "insensitive" };
-    if (params.customerPhone) where.customerPhone = { contains: params.customerPhone };
+      { archivedAt: null },
+    ];
+    if (params.storeId) andParts.push({ storeId: params.storeId });
+    if (params.companyId) andParts.push({ companyId: params.companyId });
+    if (params.branchId) andParts.push({ branchId: params.branchId });
+    if (params.status) andParts.push({ status: params.status });
+    if (params.area) andParts.push({ area: { contains: params.area, mode: "insensitive" } });
+    if (params.orderNumber) andParts.push({ orderNumber: { contains: params.orderNumber, mode: "insensitive" } });
+    if (params.customerPhone) andParts.push({ customerPhone: { contains: params.customerPhone } });
+
+    if (params.supervisorReadOr) {
+      const { storeIds, captainIds } = params.supervisorReadOr;
+      const or: Prisma.OrderWhereInput[] = [];
+      if (storeIds.length > 0) or.push({ storeId: { in: storeIds } });
+      if (captainIds.length > 0) or.push({ assignedCaptainId: { in: captainIds } });
+      if (or.length > 0) andParts.push({ OR: or });
+    }
+
+    const where: Prisma.OrderWhereInput = andParts.length === 1 ? andParts[0]! : { AND: andParts };
 
     const { skip, take } = normalizePaginationForPrisma(params);
 
@@ -71,7 +87,7 @@ export const orderRepository = {
         skip,
         take,
         include: {
-          store: { select: { id: true, name: true, area: true } },
+          store: { select: orderStoreListSelect },
           assignedCaptain: {
             include: { user: { select: { fullName: true, phone: true } } },
           },
@@ -104,7 +120,7 @@ export const orderRepository = {
         skip,
         take,
         include: {
-          store: { select: { id: true, name: true, area: true } },
+          store: { select: orderStoreListSelect },
           assignedCaptain: {
             include: { user: { select: { fullName: true, phone: true } } },
           },
@@ -179,7 +195,7 @@ export const orderRepository = {
         skip,
         take,
         include: {
-          store: { select: { id: true, name: true, area: true } },
+          store: { select: orderStoreListSelect },
           assignedCaptain: {
             include: { user: { select: { id: true, fullName: true, phone: true } } },
           },

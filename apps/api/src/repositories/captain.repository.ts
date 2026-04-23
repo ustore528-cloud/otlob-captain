@@ -1,19 +1,46 @@
 import { CaptainAvailabilityStatus, type Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { orderStoreSupervisorUserSelect } from "./order-store-enrichment.js";
 import { normalizePaginationForPrisma } from "../utils/pagination.js";
+
+const captainUserSelectDetail = {
+  id: true,
+  fullName: true,
+  phone: true,
+  email: true,
+  isActive: true,
+} as const satisfies Prisma.UserSelect;
+
+const captainUserSelectList = {
+  id: true,
+  fullName: true,
+  phone: true,
+  isActive: true,
+} as const satisfies Prisma.UserSelect;
+
+/** Read path: `user` + optional `supervisorUser` (same shape as order store supervisor summary). */
+export const captainWithRelationsInclude = {
+  user: { select: captainUserSelectDetail },
+  supervisorUser: { select: orderStoreSupervisorUserSelect },
+} satisfies Prisma.CaptainInclude;
+
+const captainListInclude = {
+  user: { select: captainUserSelectList },
+  supervisorUser: { select: orderStoreSupervisorUserSelect },
+} satisfies Prisma.CaptainInclude;
 
 export const captainRepository = {
   findById(id: string) {
     return prisma.captain.findUnique({
       where: { id },
-      include: { user: { select: { id: true, fullName: true, phone: true, email: true, isActive: true } } },
+      include: captainWithRelationsInclude,
     });
   },
 
   findByUserId(userId: string) {
     return prisma.captain.findUnique({
       where: { userId },
-      include: { user: { select: { id: true, fullName: true, phone: true, email: true, isActive: true } } },
+      include: captainWithRelationsInclude,
     });
   },
 
@@ -42,7 +69,7 @@ export const captainRepository = {
         orderBy: { updatedAt: "desc" },
         skip,
         take,
-        include: { user: { select: { id: true, fullName: true, phone: true, isActive: true } } },
+        include: captainListInclude,
       }),
     ]);
   },
@@ -51,14 +78,14 @@ export const captainRepository = {
     return prisma.captain.update({
       where: { id },
       data,
-      include: { user: { select: { id: true, fullName: true, phone: true } } },
+      include: captainWithRelationsInclude,
     });
   },
 
   create(data: Prisma.CaptainCreateInput) {
     return prisma.captain.create({
       data,
-      include: { user: { select: { id: true, fullName: true, phone: true } } },
+      include: captainWithRelationsInclude,
     });
   },
 

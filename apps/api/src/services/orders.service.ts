@@ -7,6 +7,7 @@ import { generateOrderNumber } from "../utils/order-number.js";
 import { activityService } from "./activity.service.js";
 import { distributionService } from "./distribution/index.js";
 import { assertCaptainOrderStatusTransition } from "../domain/order-captain-status.js";
+import { orderStoreInclude } from "../repositories/order-store-enrichment.js";
 import {
   emitCaptainAssignmentEnded,
   emitCaptainOrderUpdated,
@@ -27,6 +28,7 @@ import {
   assertStaffCanAccessOrder,
   resolveStaffTenantOrderListFilter,
 } from "./tenant-scope.service.js";
+import { assertSupervisorReadAccessForOrder, resolveSupervisorReadScopeForList } from "../lib/supervisor-order-read-scope.js";
 import { isCaptainRole, isOrderOperatorRole, isStoreAdminRole, type AppRole } from "../lib/rbac-roles.js";
 
 function decAmount(v: Prisma.Decimal | null | undefined): string {
@@ -225,6 +227,13 @@ export const ordersService = {
       });
       if (tenant.companyId) filters.companyId = tenant.companyId;
       if (tenant.branchId) filters.branchId = tenant.branchId;
+      const supRead = await resolveSupervisorReadScopeForList({
+        userId: actor.userId,
+        role: actor.role,
+        companyId: actor.companyId ?? null,
+        branchId: actor.branchId ?? null,
+      });
+      if (supRead) filters.supervisorReadOr = supRead;
     }
     const [total, items] = await orderRepository.list(filters);
     return {
@@ -283,6 +292,15 @@ export const ordersService = {
           branchId: actor.branchId ?? null,
         },
         { companyId: order.companyId, branchId: order.branchId },
+      );
+      await assertSupervisorReadAccessForOrder(
+        {
+          userId: actor.userId,
+          role: actor.role,
+          companyId: actor.companyId ?? null,
+          branchId: actor.branchId ?? null,
+        },
+        { storeId: order.storeId, assignedCaptainId: order.assignedCaptainId },
       );
     }
     if (isCaptainRole(actor.role)) {
@@ -355,7 +373,7 @@ export const ordersService = {
         data: { status },
         include: {
           assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 15 },
-          store: true,
+          store: orderStoreInclude,
           assignedCaptain: true,
         },
       });
@@ -456,7 +474,7 @@ export const ordersService = {
         data: { status: OrderStatus.ACCEPTED, assignedCaptainId: captain.id },
         include: {
           assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 15 },
-          store: true,
+          store: orderStoreInclude,
           assignedCaptain: true,
         },
       });
@@ -541,7 +559,7 @@ export const ordersService = {
         include: {
           assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 15 },
           assignedCaptain: true,
-          store: true,
+          store: orderStoreInclude,
         },
       });
     }).then((order) => {

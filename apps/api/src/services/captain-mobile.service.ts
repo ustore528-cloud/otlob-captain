@@ -15,10 +15,12 @@ import { captainsService } from "./captains.service.js";
 import { ordersService } from "./orders.service.js";
 import { trackingService } from "./tracking.service.js";
 import { env } from "../config/env.js";
+import { orderStoreInclude, orderStoreListSelect } from "../repositories/order-store-enrichment.js";
 import { DISTRIBUTION_TIMEOUT_SECONDS } from "./distribution/constants.js";
 import { clampOfferExpiredAtToConfiguredWindow } from "./distribution/clamp-offer-expired-at.js";
 import { logOfferPayloadCaptainMobileDiagnostics } from "./distribution/offer-diagnostics.js";
 import { captainPrepaidBalanceService } from "./captain-prepaid-balance.service.js";
+import type { StoreSubscriptionType, UserRole } from "@prisma/client";
 
 /** @see ./distribution/assigned-order-semantics.ts — ASSIGNED vs OFFER vs ACTIVE (ACCEPTED+). */
 
@@ -52,6 +54,24 @@ export type AssignmentOverflowItemDto = {
   dropoffAddress: string;
   storeName: string;
   offerExpiresAt: string | null;
+  /** Phase B slice 3 — read-only; same store subscription metadata as other order APIs */
+  storeSubscriptionType: StoreSubscriptionType;
+  storeSupervisorUser: {
+    id: string;
+    fullName: string;
+    phone: string;
+    email: string | null;
+    role: UserRole;
+    companyId: string | null;
+    branchId: string | null;
+  } | null;
+  /** Phase A completion — read-only; same `primaryRegion` summary as order list/detail */
+  storePrimaryRegion: {
+    id: string;
+    code: string;
+    name: string;
+    isActive: boolean;
+  } | null;
 };
 
 export type AssignmentOverflowResponse = {
@@ -97,6 +117,48 @@ async function resolvePrimaryAssignmentOrderId(captainId: string): Promise<strin
     select: { id: true },
   });
   return active?.id ?? null;
+}
+
+function overflowStoreEnrichmentFromOrderStore(store: {
+  subscriptionType: StoreSubscriptionType;
+  supervisorUser: {
+    id: string;
+    fullName: string;
+    phone: string;
+    email: string | null;
+    role: UserRole;
+    companyId: string | null;
+    branchId: string | null;
+  } | null;
+  primaryRegion: {
+    id: string;
+    code: string;
+    name: string;
+    isActive: boolean;
+  } | null;
+}): Pick<AssignmentOverflowItemDto, "storeSubscriptionType" | "storeSupervisorUser" | "storePrimaryRegion"> {
+  return {
+    storeSubscriptionType: store.subscriptionType,
+    storeSupervisorUser: store.supervisorUser
+      ? {
+          id: store.supervisorUser.id,
+          fullName: store.supervisorUser.fullName,
+          phone: store.supervisorUser.phone,
+          email: store.supervisorUser.email,
+          role: store.supervisorUser.role,
+          companyId: store.supervisorUser.companyId,
+          branchId: store.supervisorUser.branchId,
+        }
+      : null,
+    storePrimaryRegion: store.primaryRegion
+      ? {
+          id: store.primaryRegion.id,
+          code: store.primaryRegion.code,
+          name: store.primaryRegion.name,
+          isActive: store.primaryRegion.isActive,
+        }
+      : null,
+  };
 }
 
 export const captainMobileService = {
@@ -164,7 +226,7 @@ export const captainMobileService = {
       include: {
         order: {
           include: {
-            store: true,
+            store: orderStoreInclude,
             assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 20 },
           },
         },
@@ -203,7 +265,7 @@ export const captainMobileService = {
       },
       orderBy: { updatedAt: "desc" },
       include: {
-        store: true,
+        store: orderStoreInclude,
         assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 20 },
       },
     });
@@ -250,7 +312,7 @@ export const captainMobileService = {
               cashCollection: true,
               pickupAddress: true,
               dropoffAddress: true,
-              store: { select: { name: true } },
+              store: { select: orderStoreListSelect },
             },
           },
         },
@@ -270,7 +332,7 @@ export const captainMobileService = {
           cashCollection: true,
           pickupAddress: true,
           dropoffAddress: true,
-          store: { select: { name: true } },
+          store: { select: orderStoreListSelect },
         },
       }),
     ]);
@@ -298,6 +360,7 @@ export const captainMobileService = {
         dropoffAddress: log.order.dropoffAddress,
         storeName: log.order.store.name,
         offerExpiresAt: clamped ? clamped.toISOString() : null,
+        ...overflowStoreEnrichmentFromOrderStore(log.order.store),
       });
     }
 
@@ -319,6 +382,7 @@ export const captainMobileService = {
         dropoffAddress: o.dropoffAddress,
         storeName: o.store.name,
         offerExpiresAt: null,
+        ...overflowStoreEnrichmentFromOrderStore(o.store),
       });
     }
 

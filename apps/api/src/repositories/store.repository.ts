@@ -1,24 +1,47 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
+import { storePrimaryRegionSummarySelect } from "./order-store-enrichment.js";
 import { normalizePaginationForPrisma } from "../utils/pagination.js";
+
+const supervisorUserSelect = {
+  id: true,
+  fullName: true,
+  phone: true,
+  email: true,
+  role: true,
+  companyId: true,
+  branchId: true,
+} as const satisfies Prisma.UserSelect;
+
+const storeListInclude = {
+  owner: { select: { id: true, fullName: true, phone: true } },
+  supervisorUser: { select: supervisorUserSelect },
+  primaryRegion: { select: storePrimaryRegionSummarySelect },
+} as const;
+
+const storeDetailInclude = {
+  owner: { select: { id: true, fullName: true, phone: true, email: true } },
+  supervisorUser: { select: supervisorUserSelect },
+  primaryRegion: { select: storePrimaryRegionSummarySelect },
+} as const;
 
 export const storeRepository = {
   create(data: Prisma.StoreCreateInput) {
-    return prisma.store.create({ data, include: { owner: { select: { id: true, fullName: true, phone: true } } } });
+    return prisma.store.create({ data, include: storeDetailInclude });
   },
 
   update(id: string, data: Prisma.StoreUpdateInput) {
     return prisma.store.update({
       where: { id },
       data,
-      include: { owner: { select: { id: true, fullName: true, phone: true } } },
+      include: storeDetailInclude,
     });
   },
 
   findById(id: string) {
     return prisma.store.findUnique({
       where: { id },
-      include: { owner: { select: { id: true, fullName: true, phone: true, email: true } } },
+      include: storeDetailInclude,
     });
   },
 
@@ -32,7 +55,7 @@ export const storeRepository = {
         orderBy: { createdAt: "desc" },
         skip,
         take,
-        include: { owner: { select: { id: true, fullName: true, phone: true } } },
+        include: storeListInclude,
       }),
     ]);
   },
@@ -60,7 +83,7 @@ export const storeRepository = {
         orderBy: { createdAt: "desc" },
         skip,
         take,
-        include: { owner: { select: { id: true, fullName: true, phone: true } } },
+        include: storeListInclude,
       }),
     ]);
   },

@@ -1,9 +1,11 @@
 import { Prisma, UserRole, OrderStatus, type OrderStatus as OrderStatusT } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "../lib/prisma.js";
+import { assertOptionalCaptainSupervisorLinkValid } from "../lib/store-supervisor-validation.js";
 import { hashPassword } from "../lib/password.js";
-import { captainRepository } from "../repositories/captain.repository.js";
+import { captainRepository, captainWithRelationsInclude } from "../repositories/captain.repository.js";
 import { orderRepository } from "../repositories/order.repository.js";
+import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
 import {
@@ -34,11 +36,23 @@ export const captainsService = {
       vehicleType: string;
       area: string;
       branchId?: string;
+      supervisorUserId?: string | null;
     },
     actorUserId: string,
   ) {
     const passwordHash = await hashPassword(input.password);
     const { companyId, branchId } = await resolveBranchIdForStaffOperation(actorUserId, input.branchId);
+    const supervisorForAssert = input.supervisorUserId
+      ? await userRepository.findById(input.supervisorUserId)
+      : null;
+    if (input.supervisorUserId && !supervisorForAssert) {
+      throw new AppError(400, "Supervisor user not found", "VALIDATION_ERROR");
+    }
+    assertOptionalCaptainSupervisorLinkValid({
+      supervisorUser: supervisorForAssert,
+      captainCompanyId: companyId,
+      captainBranchId: branchId,
+    });
     try {
       const result = await prisma.$transaction(async (tx) => {
         const user = await tx.user.create({
@@ -59,10 +73,11 @@ export const captainsService = {
             vehicleType: input.vehicleType,
             area: input.area,
             isActive: true,
+            ...(input.supervisorUserId
+              ? { supervisorUser: { connect: { id: input.supervisorUserId } } }
+              : {}),
           },
-          include: {
-            user: { select: { id: true, fullName: true, phone: true, email: true, isActive: true } },
-          },
+          include: captainWithRelationsInclude,
         });
         return captain;
       });
@@ -87,6 +102,7 @@ export const captainsService = {
       prepaidEnabled: boolean;
       commissionPercent: number | null;
       minimumBalanceToReceiveOrders: number | null;
+      supervisorUserId: string | null;
     }>,
     actorUserId: string,
     opts: { role: AppRole; userId: string; companyId: string | null; branchId: string | null },
@@ -113,8 +129,11 @@ export const captainsService = {
     if (isCaptainRole(opts.role) && (input.fullName !== undefined || input.phone !== undefined)) {
       throw new AppError(403, "Cannot change account name or phone", "FORBIDDEN");
     }
+    if (isCaptainRole(opts.role) && input.supervisorUserId !== undefined) {
+      throw new AppError(403, "Cannot change supervisor link", "FORBIDDEN");
+    }
 
-    const data: Record<string, unknown> = {};
+    const data: Prisma.CaptainUpdateInput = {};
     if (input.vehicleType !== undefined) data.vehicleType = input.vehicleType;
     if (input.area !== undefined) data.area = input.area;
     if (input.isActive !== undefined) data.isActive = input.isActive;
@@ -128,8 +147,26 @@ export const captainsService = {
       data.minimumBalanceToReceiveOrders =
         input.minimumBalanceToReceiveOrders == null ? null : new Prisma.Decimal(input.minimumBalanceToReceiveOrders);
     }
+    if (isOrderOperatorRole(opts.role) && input.supervisorUserId !== undefined) {
+      const supervisorForAssert = input.supervisorUserId
+        ? await userRepository.findById(input.supervisorUserId)
+        : null;
+      if (input.supervisorUserId && !supervisorForAssert) {
+        throw new AppError(400, "Supervisor user not found", "VALIDATION_ERROR");
+      }
+      assertOptionalCaptainSupervisorLinkValid({
+        supervisorUser: supervisorForAssert,
+        captainCompanyId: cap.companyId,
+        captainBranchId: cap.branchId,
+      });
+      if (input.supervisorUserId === null) {
+        data.supervisorUser = { disconnect: true };
+      } else {
+        data.supervisorUser = { connect: { id: input.supervisorUserId } };
+      }
+    }
 
-    const userInclude = { user: { select: { id: true, fullName: true, phone: true, email: true, isActive: true } } };
+    const relationsInclude = captainWithRelationsInclude;
 
     try {
       const updated = await prisma.$transaction(async (tx) => {
@@ -148,12 +185,12 @@ export const captainsService = {
           return tx.captain.update({
             where: { id },
             data,
-            include: userInclude,
+            include: relationsInclude,
           });
         }
         return tx.captain.findUniqueOrThrow({
           where: { id },
-          include: userInclude,
+          include: relationsInclude,
         });
       });
       await activityService.log(actorUserId, "CAPTAIN_UPDATED", "captain", id, {});

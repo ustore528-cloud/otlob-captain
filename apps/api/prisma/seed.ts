@@ -15,6 +15,24 @@ async function main() {
     throw new Error("No branch found — run `prisma migrate deploy` (Phase 1) before seed.");
   }
 
+  const seedRegion = await prisma.region.upsert({
+    where: {
+      companyId_code: {
+        companyId: defaultBranch.companyId,
+        code: "SEED-DEFAULT",
+      },
+    },
+    create: {
+      companyId: defaultBranch.companyId,
+      code: "SEED-DEFAULT",
+      name: "منطقة تجريبية (Phase A)",
+      isActive: true,
+    },
+    update: {
+      isActive: true,
+    },
+  });
+
   const passwordHash = await bcrypt.hash("Admin12345!", 12);
 
   await prisma.user.upsert({
@@ -63,6 +81,7 @@ async function main() {
     update: {
       companyId: defaultBranch.companyId,
       branchId: defaultBranch.id,
+      primaryRegionId: seedRegion.id,
     },
     create: {
       id: SEED_STORE_ID,
@@ -74,6 +93,7 @@ async function main() {
       ownerUserId: storeOwner.id,
       companyId: defaultBranch.companyId,
       branchId: defaultBranch.id,
+      primaryRegionId: seedRegion.id,
     },
   });
 

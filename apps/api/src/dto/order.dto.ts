@@ -3,6 +3,8 @@ import type {
   AssignmentResponseStatus,
   AssignmentType,
   DistributionMode,
+  StoreSubscriptionType,
+  UserRole,
 } from "@prisma/client";
 import type { Decimal } from "@prisma/client/runtime/library";
 import { inferOrderFinancialBreakdown, type OrderFinancialBreakdownDto } from "@captain/shared";
@@ -12,7 +14,34 @@ function dec(v: Decimal | null | undefined): string {
   return v.toString();
 }
 
-export type StoreSummaryDto = { id: string; name: string; area: string; phone?: string };
+/** Linked supervisor user (read-only) — same shape on store listing/detail order payloads, Phase B slice 3 */
+export type OrderStoreSupervisorDto = {
+  id: string;
+  fullName: string;
+  phone: string;
+  email: string | null;
+  role: UserRole;
+  companyId: string | null;
+  branchId: string | null;
+} | null;
+
+/** Phase A completion — read-only region summary on store (same on orders and /stores). */
+export type StorePrimaryRegionSummaryDto = {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+} | null;
+
+export type StoreSummaryDto = {
+  id: string;
+  name: string;
+  area: string;
+  phone?: string;
+  subscriptionType: StoreSubscriptionType;
+  supervisorUser: OrderStoreSupervisorDto;
+  primaryRegion: StorePrimaryRegionSummaryDto;
+};
 
 export type OrderAssignmentLogDto = {
   id: string;
@@ -69,7 +98,10 @@ export type OrderListItemDto = {
   area: string;
   amount: string;
   cashCollection: string;
-  store: Pick<StoreSummaryDto, "id" | "name" | "area">;
+  store: Pick<
+    StoreSummaryDto,
+    "id" | "name" | "area" | "subscriptionType" | "supervisorUser" | "primaryRegion"
+  >;
   createdAt: string;
   updatedAt: string;
 };
@@ -97,7 +129,28 @@ type OrderWithStore = {
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
-  store: { id: string; name: string; area: string; phone?: string };
+  store: {
+    id: string;
+    name: string;
+    area: string;
+    phone?: string;
+    subscriptionType: StoreSubscriptionType;
+    supervisorUser: {
+      id: string;
+      fullName: string;
+      phone: string;
+      email: string | null;
+      role: UserRole;
+      companyId: string | null;
+      branchId: string | null;
+    } | null;
+    primaryRegion: {
+      id: string;
+      code: string;
+      name: string;
+      isActive: boolean;
+    } | null;
+  };
   assignmentLogs?: Array<{
     id: string;
     captainId: string;
@@ -141,6 +194,26 @@ export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
       id: order.store.id,
       name: order.store.name,
       area: order.store.area,
+      subscriptionType: order.store.subscriptionType,
+      primaryRegion: order.store.primaryRegion
+        ? {
+            id: order.store.primaryRegion.id,
+            code: order.store.primaryRegion.code,
+            name: order.store.primaryRegion.name,
+            isActive: order.store.primaryRegion.isActive,
+          }
+        : null,
+      supervisorUser: order.store.supervisorUser
+        ? {
+            id: order.store.supervisorUser.id,
+            fullName: order.store.supervisorUser.fullName,
+            phone: order.store.supervisorUser.phone,
+            email: order.store.supervisorUser.email,
+            role: order.store.supervisorUser.role,
+            companyId: order.store.supervisorUser.companyId,
+            branchId: order.store.supervisorUser.branchId,
+          }
+        : null,
       ...(order.store.phone != null ? { phone: order.store.phone } : {}),
     },
     createdAt: order.createdAt.toISOString(),
@@ -170,8 +243,29 @@ export function toOrderListItemDto(order: {
   cashCollection: Decimal;
   createdAt: Date;
   updatedAt: Date;
-  store: { id: string; name: string; area: string };
+  store: {
+    id: string;
+    name: string;
+    area: string;
+    subscriptionType: StoreSubscriptionType;
+    supervisorUser: {
+      id: string;
+      fullName: string;
+      phone: string;
+      email: string | null;
+      role: UserRole;
+      companyId: string | null;
+      branchId: string | null;
+    } | null;
+    primaryRegion: {
+      id: string;
+      code: string;
+      name: string;
+      isActive: boolean;
+    } | null;
+  };
 }): OrderListItemDto {
+  const sup = order.store.supervisorUser;
   return {
     id: order.id,
     orderNumber: order.orderNumber,
@@ -183,7 +277,31 @@ export function toOrderListItemDto(order: {
     area: order.area,
     amount: dec(order.amount),
     cashCollection: dec(order.cashCollection),
-    store: { id: order.store.id, name: order.store.name, area: order.store.area },
+    store: {
+      id: order.store.id,
+      name: order.store.name,
+      area: order.store.area,
+      subscriptionType: order.store.subscriptionType,
+      primaryRegion: order.store.primaryRegion
+        ? {
+            id: order.store.primaryRegion.id,
+            code: order.store.primaryRegion.code,
+            name: order.store.primaryRegion.name,
+            isActive: order.store.primaryRegion.isActive,
+          }
+        : null,
+      supervisorUser: sup
+        ? {
+            id: sup.id,
+            fullName: sup.fullName,
+            phone: sup.phone,
+            email: sup.email,
+            role: sup.role,
+            companyId: sup.companyId,
+            branchId: sup.branchId,
+          }
+        : null,
+    },
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
   };

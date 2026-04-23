@@ -22,6 +22,8 @@ export const CreateCaptainBodySchema = z.object({
   vehicleType: VehicleTypeSchema,
   area: z.string().min(1).max(200).trim(),
   branchId: z.string().cuid().optional(),
+  /** Staff only — optional link to a company supervisor user */
+  supervisorUserId: z.union([z.string().cuid(), z.null()]).optional(),
 });
 
 export const UpdateCaptainBodySchema = z.object({
@@ -34,6 +36,8 @@ export const UpdateCaptainBodySchema = z.object({
   /** للمدير / المشغّل فقط — تحديث بيانات المستخدم المرتبط */
   fullName: z.string().min(1).max(200).optional(),
   phone: z.string().min(5).max(32).optional(),
+  /** Order operators only — set to null to clear */
+  supervisorUserId: z.union([z.string().cuid(), z.null()]).optional(),
 });
 
 export const ListCaptainOrdersQuerySchema = PaginationQuerySchema.extend({
