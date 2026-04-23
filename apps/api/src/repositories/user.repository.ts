@@ -8,6 +8,8 @@ const userPublicSelect = {
   phone: true,
   email: true,
   role: true,
+  companyId: true,
+  branchId: true,
   isActive: true,
   createdAt: true,
   updatedAt: true,
@@ -27,16 +29,18 @@ export const userRepository = {
   },
 
   findByPhone(phone: string) {
-    return prisma.user.findUnique({ where: { phone } });
+    return prisma.user.findFirst({ where: { phone } });
   },
 
   findByEmail(email: string) {
-    return prisma.user.findUnique({ where: { email } });
+    return prisma.user.findFirst({ where: { email } });
   },
 
-  list(params: { role?: UserRole; page: number; pageSize: number }) {
+  list(params: { role?: UserRole; companyId?: string; branchId?: string; page: number; pageSize: number }) {
     const where: Prisma.UserWhereInput = {};
     if (params.role) where.role = params.role;
+    if (params.companyId) where.companyId = params.companyId;
+    if (params.branchId) where.branchId = params.branchId;
     const { skip, take } = normalizePaginationForPrisma(params);
     return prisma.$transaction([
       prisma.user.count({ where }),
