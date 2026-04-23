@@ -16,10 +16,12 @@ datasource db {
 // -----------------------------------------------------------------------------
 
 enum UserRole {
-  ADMIN
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  BRANCH_MANAGER
+  STORE_ADMIN
   DISPATCHER
   CAPTAIN
-  STORE
   CUSTOMER
 }
 
@@ -61,6 +63,13 @@ enum DistributionMode {
   MANUAL
 }
 
+enum CaptainBalanceTransactionType {
+  CHARGE
+  DEDUCTION
+  REFUND
+  ADJUSTMENT
+}
+
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
@@ -75,6 +84,12 @@ model User {
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+
+  /** نطاق شركة/فرع للمشرفين — يحدد عزل بيانات لوحة التحكم عند تعدد الشركات */
+  companyId String?  @map("company_id")
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  branchId  String?  @map("branch_id")
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
 
   /** بيانات توصيل افتراضية لحساب عميل التطبيق (CUSTOMER) — مطابقة لحقول «طلب جديد» */
   customerPickupAddress     String?  @map("customer_pickup_address") @db.VarChar(500)
@@ -96,7 +111,95 @@ model User {
   activityLogs  ActivityLog[]
 
   @@index([role, isActive])
+  @@index([companyId])
+  @@index([branchId])
   @@map("users")
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  cities            City[]
+  branches          Branch[]
+  stores            Store[]
+  captains          Captain[]
+  orders            Order[]
+  deliverySettings  DeliverySettings?
+  users             User[]
+
+  @@map("companies")
+}
+
+model City {
+  id        String   @id @default(cuid())
+  companyId String   @map("company_id")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  zones    Zone[]
+  branches Branch[]
+
+  @@index([companyId])
+  @@map("cities")
+}
+
+model Zone {
+  id        String   @id @default(cuid())
+  cityId    String   @map("city_id")
+  city      City     @relation(fields: [cityId], references: [id], onDelete: Restrict)
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  branches Branch[]
+
+  @@index([cityId])
+  @@map("zones")
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  companyId String   @map("company_id")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  cityId    String?  @map("city_id")
+  city      City?    @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  zoneId    String?  @map("zone_id")
+  zone      Zone?    @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stores   Store[]
+  captains Captain[]
+  orders   Order[]
+  users    User[]
+
+  @@index([companyId])
+  @@index([cityId])
+  @@index([zoneId])
+  @@map("branches")
+}
+
+/** إعدادات تسعير/توصيل على مستوى الشركة — منفصلة عن إعدادات اللوحة العامة `DashboardSettings` */
+model DeliverySettings {
+  id        String   @id @default(cuid())
+  companyId String   @unique @map("company_id")
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /** رسوم توصيل افتراضية للاقتباس (اختياري) */
+  defaultDeliveryFee Decimal? @map("default_delivery_fee") @db.Decimal(12, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("delivery_settings")
 }
 
 model Store {
@@ -106,6 +209,12 @@ model Store {
   area        String
   address     String
   isActive    Boolean  @default(true) @map("is_active")
+  companyId   String   @map("company_id")
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  branchId    String   @map("branch_id")
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  latitude    Float?   @map("latitude")
+  longitude   Float?   @map("longitude")
   ownerUserId String   @map("owner_user_id")
   owner       User     @relation("StoreOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
   orders      Order[]
@@ -113,6 +222,7 @@ model Store {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([ownerUserId])
+  @@index([companyId, branchId])
   @@index([area, isActive])
   @@map("stores")
 }
@@ -121,10 +231,21 @@ model Captain {
   id                   String                    @id @default(cuid())
   userId               String                    @unique @map("user_id")
   user                 User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId            String                    @map("company_id")
+  company              Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  branchId             String                    @map("branch_id")
+  branch               Branch                    @relation(fields: [branchId], references: [id], onDelete: Restrict)
   vehicleType          String                    @map("vehicle_type")
   area                 String
   isActive             Boolean                   @default(false) @map("is_active")
   availabilityStatus   CaptainAvailabilityStatus @default(OFFLINE) @map("availability_status")
+  prepaidBalance       Decimal                   @default(0) @map("prepaid_balance") @db.Decimal(12, 2)
+  commissionPercent    Decimal?                  @map("commission_percent") @db.Decimal(5, 2)
+  prepaidEnabled       Boolean                   @default(true) @map("prepaid_enabled")
+  totalCharged         Decimal                   @default(0) @map("total_charged") @db.Decimal(12, 2)
+  totalDeducted        Decimal                   @default(0) @map("total_deducted") @db.Decimal(12, 2)
+  minimumBalanceToReceiveOrders Decimal?         @map("minimum_balance_to_receive_orders") @db.Decimal(12, 2)
+  lastBalanceUpdatedAt DateTime?                 @map("last_balance_updated_at")
   lastSeenAt           DateTime?                 @map("last_seen_at")
   createdAt            DateTime                  @default(now()) @map("created_at")
   updatedAt            DateTime                  @updatedAt @map("updated_at")
@@ -132,9 +253,11 @@ model Captain {
   assignmentLogs   OrderAssignmentLog[]
   locations        CaptainLocation[]
   assignedOrders   Order[]              @relation("OrderAssignedCaptain")
+  balanceTransactions CaptainBalanceTransaction[]
 
   @@index([isActive, availabilityStatus])
   @@index([area, isActive])
+  @@index([companyId, branchId])
   @@map("captains")
 }
 
@@ -143,13 +266,25 @@ model Order {
   orderNumber        String             @unique @map("order_number")
   customerName       String             @map("customer_name")
   customerPhone      String             @map("customer_phone")
+  companyId          String             @map("company_id")
+  company            Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  branchId           String             @map("branch_id")
+  branch             Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict)
   storeId            String             @map("store_id")
   store              Store              @relation(fields: [storeId], references: [id], onDelete: Restrict)
   pickupAddress      String             @map("pickup_address")
   dropoffAddress     String             @map("dropoff_address")
+  /** إحداثيات الاستلام (المتجر/الفرع) — اختياري للسجلات القديمة */
+  pickupLat          Float?             @map("pickup_lat")
+  pickupLng          Float?             @map("pickup_lng")
+  /** إحداثيات التسليم للعميل */
+  dropoffLat         Float?             @map("dropoff_lat")
+  dropoffLng         Float?             @map("dropoff_lng")
   area               String
   amount             Decimal            @db.Decimal(12, 2)
   cashCollection     Decimal            @default(0) @map("cash_collection") @db.Decimal(12, 2)
+  /** رسوم توصيل محفوظة صراحةً — إن وُجدت تُفضَّل على الاستنتاج من COD في الواجهات */
+  deliveryFee        Decimal?           @map("delivery_fee") @db.Decimal(12, 2)
   notes              String?
   status             OrderStatus        @default(PENDING)
   distributionMode        DistributionMode   @default(AUTO) @map("distribution_mode")
@@ -162,12 +297,14 @@ model Order {
   assignedCaptainId  String?            @map("assigned_captain_id")
   assignedCaptain    Captain?           @relation("OrderAssignedCaptain", fields: [assignedCaptainId], references: [id], onDelete: SetNull)
   assignmentLogs     OrderAssignmentLog[]
+  balanceTransactions CaptainBalanceTransaction[]
   /** إخفاء من قوائم التشغيل دون حذف الصف — قابل للاسترجاع */
   archivedAt         DateTime?          @map("archived_at")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
   @@index([storeId, status])
+  @@index([companyId, branchId])
   @@index([assignedCaptainId])
   @@index([area, status])
   @@index([createdAt])
@@ -237,6 +374,27 @@ model CaptainPushToken {
   @@map("captain_push_tokens")
 }
 
+model CaptainBalanceTransaction {
+  id                        String                        @id @default(cuid())
+  captainId                 String                        @map("captain_id")
+  captain                   Captain                       @relation(fields: [captainId], references: [id], onDelete: Cascade)
+  type                      CaptainBalanceTransactionType
+  amount                    Decimal                       @db.Decimal(12, 2)
+  balanceAfter              Decimal                       @map("balance_after") @db.Decimal(12, 2)
+  commissionPercentSnapshot Decimal?                      @map("commission_percent_snapshot") @db.Decimal(5, 2)
+  deliveryFeeSnapshot       Decimal?                      @map("delivery_fee_snapshot") @db.Decimal(12, 2)
+  orderId                   String?                       @map("order_id")
+  order                     Order?                        @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  note                      String?
+  createdBy                 String?                       @map("created_by")
+  createdAt                 DateTime                      @default(now()) @map("created_at")
+
+  @@unique([captainId, orderId, type])
+  @@index([captainId, createdAt])
+  @@index([orderId])
+  @@map("captain_balance_transactions")
+}
+
 model ActivityLog {
   id         String   @id @default(cuid())
   userId     String?  @map("user_id")
@@ -260,6 +418,11 @@ model DashboardSettings {
   mapDefaultLat  Float?  @map("map_default_lat")
   mapDefaultLng  Float?  @map("map_default_lng")
   mapDefaultZoom Int?    @map("map_default_zoom")
+  prepaidCaptainsEnabled Boolean @default(false) @map("prepaid_captains_enabled")
+  prepaidDefaultCommissionPercent Decimal @default(15) @map("prepaid_default_commission_percent") @db.Decimal(5, 2)
+  prepaidAllowCaptainCustomCommission Boolean @default(true) @map("prepaid_allow_captain_custom_commission")
+  prepaidMinimumBalanceToReceiveOrders Decimal @default(0) @map("prepaid_minimum_balance_to_receive_orders") @db.Decimal(12, 2)
+  prepaidAllowManualAssignmentOverride Boolean @default(false) @map("prepaid_allow_manual_assignment_override")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   @@map("dashboard_settings")
