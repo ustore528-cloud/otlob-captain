@@ -4,6 +4,7 @@ import { validate } from "../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { requireRoles } from "../../middlewares/rbac.middleware.js";
 import { ROLE_GROUPS, isCaptainRole } from "../../lib/rbac-roles.js";
+import { rolesWithCapability } from "../../rbac/permissions.js";
 import { UserActiveBodySchema } from "../../validators/users.schemas.js";
 import {
   CreateCaptainBodySchema,
@@ -14,6 +15,7 @@ import {
   CaptainAvailabilityBodySchema,
   CaptainPrepaidChargeBodySchema,
   CaptainPrepaidAdjustmentBodySchema,
+  PrepaidTransactionsQuerySchema,
 } from "../../validators/captains.schemas.js";
 import { captainsController } from "../../controllers/captains.controller.js";
 import { captainRepository } from "../../repositories/captain.repository.js";
@@ -23,18 +25,20 @@ import { ok } from "../../utils/api-response.js";
 import { pathParam } from "../../utils/path-params.js";
 
 const router = Router();
+const captainsReadRoles = rolesWithCapability("captains.read");
+const captainsManageRoles = rolesWithCapability("captains.manage");
 router.use(authMiddleware);
 
 router.get(
   "/",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...captainsReadRoles),
   validate("query", ListCaptainsQuerySchema),
   asyncHandler(captainsController.list.bind(captainsController)),
 );
 
 router.post(
   "/",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...captainsManageRoles),
   validate("body", CreateCaptainBodySchema),
   asyncHandler(captainsController.create.bind(captainsController)),
 );
@@ -94,6 +98,7 @@ router.get(
   "/:id/prepaid-transactions",
   requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.captains),
   validate("params", CaptainIdParamSchema),
+  validate("query", PrepaidTransactionsQuerySchema),
   asyncHandler(async (req, res, next) => {
     if (isCaptainRole(req.user!.role)) {
       const cap = await captainRepository.findByUserId(req.user!.id);
@@ -105,7 +110,7 @@ router.get(
 
 router.post(
   "/:id/prepaid-charge",
-  requireRoles(...ROLE_GROUPS.managementAdmins),
+  requireRoles(...captainsManageRoles),
   validate("params", CaptainIdParamSchema),
   validate("body", CaptainPrepaidChargeBodySchema),
   asyncHandler(captainsController.prepaidCharge.bind(captainsController)),
@@ -113,7 +118,7 @@ router.post(
 
 router.post(
   "/:id/prepaid-adjustment",
-  requireRoles(...ROLE_GROUPS.managementAdmins),
+  requireRoles(...captainsManageRoles),
   validate("params", CaptainIdParamSchema),
   validate("body", CaptainPrepaidAdjustmentBodySchema),
   asyncHandler(captainsController.prepaidAdjustment.bind(captainsController)),
@@ -121,7 +126,7 @@ router.post(
 
 router.get(
   "/:id/orders",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...captainsReadRoles),
   validate("params", CaptainIdParamSchema),
   validate("query", ListCaptainOrdersQuerySchema),
   asyncHandler(captainsController.listOrders.bind(captainsController)),
@@ -129,14 +134,14 @@ router.get(
 
 router.delete(
   "/:id",
-  requireRoles(...ROLE_GROUPS.managementAdmins),
+  requireRoles(...captainsManageRoles),
   validate("params", CaptainIdParamSchema),
   asyncHandler(captainsController.deleteCaptain.bind(captainsController)),
 );
 
 router.get(
   "/:id",
-  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.captains),
+  requireRoles(...captainsReadRoles, ...ROLE_GROUPS.captains),
   validate("params", CaptainIdParamSchema),
   asyncHandler(async (req, res, next) => {
     if (isCaptainRole(req.user!.role)) {
@@ -149,7 +154,7 @@ router.get(
 
 router.patch(
   "/:id",
-  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.captains),
+  requireRoles(...captainsManageRoles, ...ROLE_GROUPS.captains),
   validate("params", CaptainIdParamSchema),
   validate("body", UpdateCaptainBodySchema),
   asyncHandler(captainsController.update.bind(captainsController)),
@@ -157,7 +162,7 @@ router.patch(
 
 router.patch(
   "/:id/active",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...captainsManageRoles),
   validate("params", CaptainIdParamSchema),
   validate("body", UserActiveBodySchema),
   asyncHandler(async (req, res) => {
@@ -169,7 +174,7 @@ router.patch(
 
 router.patch(
   "/:id/availability",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...captainsReadRoles),
   validate("params", CaptainIdParamSchema),
   validate("body", CaptainAvailabilityBodySchema),
   asyncHandler(captainsController.setAvailability.bind(captainsController)),
@@ -177,7 +182,7 @@ router.patch(
 
 router.get(
   "/:id/stats",
-  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.captains),
+  requireRoles(...captainsReadRoles, ...ROLE_GROUPS.captains),
   validate("params", CaptainIdParamSchema),
   asyncHandler(async (req, res, next) => {
     if (isCaptainRole(req.user!.role)) {

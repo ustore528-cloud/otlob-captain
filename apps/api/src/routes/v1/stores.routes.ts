@@ -15,30 +15,31 @@ import { storesController } from "../../controllers/stores.controller.js";
 const router = Router();
 router.use(authMiddleware);
 
+/** company-scoped list for `COMPANY_ADMIN` + full list for `SUPER_ADMIN` (see `storesService.list`). */
 router.get(
   "/",
-  requireRoles(...ROLE_GROUPS.managementAdmins, ...ROLE_GROUPS.dispatchers, ...ROLE_GROUPS.storeAdmins),
+  requireRoles(...ROLE_GROUPS.orderOperators),
   validate("query", ListStoresQuerySchema),
   asyncHandler(storesController.list.bind(storesController)),
 );
 
 router.post(
   "/",
-  requireRoles(...ROLE_GROUPS.managementAdmins),
+  requireRoles(...ROLE_GROUPS.superAdmins),
   validate("body", CreateStoreBodySchema),
   asyncHandler(storesController.create.bind(storesController)),
 );
 
 router.get(
   "/:id",
-  requireRoles(...ROLE_GROUPS.managementAdmins, ...ROLE_GROUPS.dispatchers, ...ROLE_GROUPS.storeAdmins),
+  requireRoles(...ROLE_GROUPS.superAdmins),
   validate("params", StoreIdParamSchema),
   asyncHandler(storesController.getById.bind(storesController)),
 );
 
 router.patch(
   "/:id",
-  requireRoles(...ROLE_GROUPS.managementAdmins, ...ROLE_GROUPS.dispatchers, ...ROLE_GROUPS.storeAdmins),
+  requireRoles(...ROLE_GROUPS.superAdmins),
   validate("params", StoreIdParamSchema),
   validate("body", UpdateStoreBodySchema),
   asyncHandler(storesController.update.bind(storesController)),

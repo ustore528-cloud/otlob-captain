@@ -4,10 +4,12 @@ import { validate } from "../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { requireRoles } from "../../middlewares/rbac.middleware.js";
 import { ROLE_GROUPS } from "../../lib/rbac-roles.js";
+import { rolesWithCapability } from "../../rbac/permissions.js";
 import { CaptainLocationBodySchema, LatestLocationsQuerySchema } from "../../validators/tracking.schemas.js";
 import { trackingController } from "../../controllers/tracking.controller.js";
 
 const router = Router();
+const dispatchTrackingRoles = rolesWithCapability("orders.dispatch");
 router.use(authMiddleware);
 
 router.post(
@@ -19,14 +21,14 @@ router.post(
 
 router.get(
   "/locations/latest",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...dispatchTrackingRoles),
   validate("query", LatestLocationsQuerySchema),
   asyncHandler(trackingController.latestLocations.bind(trackingController)),
 );
 
 router.get(
   "/captains/active-map",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...dispatchTrackingRoles),
   asyncHandler(trackingController.activeMap.bind(trackingController)),
 );
 

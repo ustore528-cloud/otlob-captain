@@ -1,17 +1,44 @@
-import type {
-  OrderStatus,
+import type { AssignmentType, StoreSubscriptionType, UserRole } from "@prisma/client";
+import {
   AssignmentResponseStatus,
-  AssignmentType,
   DistributionMode,
-  StoreSubscriptionType,
-  UserRole,
+  OrderStatus,
+  Prisma,
 } from "@prisma/client";
 import type { Decimal } from "@prisma/client/runtime/library";
-import { inferOrderFinancialBreakdown, type OrderFinancialBreakdownDto } from "@captain/shared";
+import {
+  inferCanonicalOrderFinancialBreakdown,
+  inferLegacyOrderFinancialBreakdown,
+  type OrderFinancialBreakdownDto,
+} from "@captain/shared";
+import { clampOfferExpiredAtToConfiguredWindow } from "../services/distribution/clamp-offer-expired-at.js";
 
 function dec(v: Decimal | null | undefined): string {
   if (v == null) return "0";
   return v.toString();
+}
+
+/** ISO expiry for active captain offer (ASSIGNED + matching PENDING log). */
+function pendingOfferExpiresAtIsoForListItem(order: {
+  status: OrderStatus;
+  assignedCaptainId: string | null;
+  assignmentLogs?: Array<{
+    captainId: string;
+    assignedAt: Date;
+    expiredAt: Date | null;
+    responseStatus: AssignmentResponseStatus;
+  }>;
+}): string | null {
+  if (order.status !== OrderStatus.ASSIGNED || !order.assignedCaptainId) return null;
+  const log = order.assignmentLogs?.find(
+    (l) =>
+      l.responseStatus === AssignmentResponseStatus.PENDING &&
+      l.captainId === order.assignedCaptainId &&
+      l.expiredAt != null,
+  );
+  if (!log?.expiredAt) return null;
+  const clamped = clampOfferExpiredAtToConfiguredWindow(log.assignedAt, log.expiredAt);
+  return clamped ? clamped.toISOString() : null;
 }
 
 /** Linked supervisor user (read-only) — same shape on store listing/detail order payloads, Phase B slice 3 */
@@ -76,10 +103,19 @@ export type OrderDetailDto = {
   /** رسوم توصيل مخزّنة صراحةً في الطلب إن وُجدت */
   deliveryFee: string | null;
   /**
-   * Single server-side snapshot of captain-facing money lines (aligned with mobile).
-   * When `deliveryFee` exists on the order, breakdown uses `deliveryFeeSource: "explicit"`.
+   * Captain-facing money lines. Uses canonical rules when `deliveryFee` is stored on the order;
+   * otherwise falls back to legacy inference for older rows (`delivery_fee` null).
    */
   financialBreakdown: OrderFinancialBreakdownDto;
+  /**
+   * Estimated commission for display: `financialBreakdown.deliveryFee` × assigned captain commission %.
+   * Null if no assignee or no percent.
+   */
+  commissionEstimate: string | null;
+  /** Earliest assignment log `assigned_at` (first offer / assignment). */
+  assignedAt: string | null;
+  pickedUpAt: string | null;
+  deliveredAt: string | null;
   notes: string | null;
   store: StoreSummaryDto;
   createdAt: string;
@@ -91,6 +127,7 @@ export type OrderListItemDto = {
   id: string;
   orderNumber: string;
   status: OrderStatus;
+  distributionMode: DistributionMode;
   customerName: string;
   customerPhone: string;
   pickupAddress: string;
@@ -98,12 +135,20 @@ export type OrderListItemDto = {
   area: string;
   amount: string;
   cashCollection: string;
+  /** Persisted delivery fee; null on legacy rows (UI may infer for display). */
+  deliveryFee: string | null;
+  notes: string | null;
   store: Pick<
     StoreSummaryDto,
     "id" | "name" | "area" | "subscriptionType" | "supervisorUser" | "primaryRegion"
   >;
   createdAt: string;
   updatedAt: string;
+  assignedCaptain: null | {
+    id: string;
+    user: { fullName: string; phone: string };
+  };
+  pendingOfferExpiresAt: string | null;
 };
 
 type OrderWithStore = {
@@ -129,6 +174,9 @@ type OrderWithStore = {
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
+  pickedUpAt?: Date | null;
+  deliveredAt?: Date | null;
+  assignedCaptain?: { commissionPercent: Prisma.Decimal | null } | null;
   store: {
     id: string;
     name: string;
@@ -162,10 +210,31 @@ type OrderWithStore = {
   }>;
 };
 
+function earliestAssignmentAtIso(logs: Array<{ assignedAt: Date }> | undefined): string | null {
+  if (!logs?.length) return null;
+  const minMs = logs.reduce((m, l) => Math.min(m, l.assignedAt.getTime()), logs[0]!.assignedAt.getTime());
+  return new Date(minMs).toISOString();
+}
+
+function commissionEstimateFromCaptain(
+  captain: { commissionPercent: Prisma.Decimal | null } | null | undefined,
+  deliveryFeeLine: string,
+): string | null {
+  if (!captain || captain.commissionPercent == null) return null;
+  const fee = new Prisma.Decimal(deliveryFeeLine);
+  const pct = new Prisma.Decimal(captain.commissionPercent);
+  return fee.mul(pct).div(100).toFixed(2);
+}
+
 export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
   const amountStr = dec(order.amount);
   const cashStr = dec(order.cashCollection);
   const deliveryFeeStr = order.deliveryFee != null ? dec(order.deliveryFee) : null;
+  const financialBreakdown =
+    deliveryFeeStr != null
+      ? inferCanonicalOrderFinancialBreakdown(amountStr, deliveryFeeStr, cashStr)
+      : inferLegacyOrderFinancialBreakdown(amountStr, cashStr);
+  const commissionEstimate = commissionEstimateFromCaptain(order.assignedCaptain ?? null, financialBreakdown.deliveryFee);
   return {
     id: order.id,
     orderNumber: order.orderNumber,
@@ -186,9 +255,11 @@ export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
     amount: amountStr,
     cashCollection: cashStr,
     deliveryFee: deliveryFeeStr,
-    financialBreakdown: inferOrderFinancialBreakdown(amountStr, cashStr, {
-      explicitDeliveryFeeStr: deliveryFeeStr,
-    }),
+    financialBreakdown,
+    commissionEstimate,
+    assignedAt: earliestAssignmentAtIso(order.assignmentLogs),
+    pickedUpAt: order.pickedUpAt ? order.pickedUpAt.toISOString() : null,
+    deliveredAt: order.deliveredAt ? order.deliveredAt.toISOString() : null,
     notes: order.notes,
     store: {
       id: order.store.id,
@@ -234,6 +305,8 @@ export function toOrderListItemDto(order: {
   id: string;
   orderNumber: string;
   status: OrderStatus;
+  distributionMode: DistributionMode;
+  assignedCaptainId: string | null;
   customerName: string;
   customerPhone: string;
   pickupAddress: string;
@@ -241,8 +314,20 @@ export function toOrderListItemDto(order: {
   area: string;
   amount: Decimal;
   cashCollection: Decimal;
+  deliveryFee: Decimal | null;
+  notes: string | null;
   createdAt: Date;
   updatedAt: Date;
+  assignedCaptain?: {
+    id: string;
+    user: { fullName: string; phone: string };
+  } | null;
+  assignmentLogs?: Array<{
+    captainId: string;
+    assignedAt: Date;
+    expiredAt: Date | null;
+    responseStatus: AssignmentResponseStatus;
+  }>;
   store: {
     id: string;
     name: string;
@@ -266,10 +351,12 @@ export function toOrderListItemDto(order: {
   };
 }): OrderListItemDto {
   const sup = order.store.supervisorUser;
+  const cap = order.assignedCaptain;
   return {
     id: order.id,
     orderNumber: order.orderNumber,
     status: order.status,
+    distributionMode: order.distributionMode,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
     pickupAddress: order.pickupAddress,
@@ -277,6 +364,8 @@ export function toOrderListItemDto(order: {
     area: order.area,
     amount: dec(order.amount),
     cashCollection: dec(order.cashCollection),
+    deliveryFee: order.deliveryFee != null ? dec(order.deliveryFee) : null,
+    notes: order.notes,
     store: {
       id: order.store.id,
       name: order.store.name,
@@ -304,5 +393,12 @@ export function toOrderListItemDto(order: {
     },
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
+    assignedCaptain: cap
+      ? {
+          id: cap.id,
+          user: { fullName: cap.user.fullName, phone: cap.user.phone },
+        }
+      : null,
+    pendingOfferExpiresAt: pendingOfferExpiresAtIsoForListItem(order),
   };
 }

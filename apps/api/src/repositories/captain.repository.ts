@@ -22,11 +22,13 @@ const captainUserSelectList = {
 export const captainWithRelationsInclude = {
   user: { select: captainUserSelectDetail },
   supervisorUser: { select: orderStoreSupervisorUserSelect },
+  createdByUser: { select: { id: true, fullName: true, role: true } },
 } satisfies Prisma.CaptainInclude;
 
 const captainListInclude = {
   user: { select: captainUserSelectList },
   supervisorUser: { select: orderStoreSupervisorUserSelect },
+  createdByUser: { select: { id: true, fullName: true, role: true } },
 } satisfies Prisma.CaptainInclude;
 
 export const captainRepository = {
@@ -50,6 +52,7 @@ export const captainRepository = {
     availabilityStatus?: CaptainAvailabilityStatus;
     companyId?: string;
     branchId?: string;
+    createdByUserId?: string;
     page: number;
     pageSize: number;
   }) {
@@ -59,6 +62,7 @@ export const captainRepository = {
     if (params.availabilityStatus) where.availabilityStatus = params.availabilityStatus;
     if (params.companyId) where.companyId = params.companyId;
     if (params.branchId) where.branchId = params.branchId;
+    if (params.createdByUserId) where.createdByUserId = params.createdByUserId;
 
     const { skip, take } = normalizePaginationForPrisma(params);
 

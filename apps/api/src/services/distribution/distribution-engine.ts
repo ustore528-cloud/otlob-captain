@@ -26,13 +26,21 @@ import { countCompletedAutoRounds, pickCaptainForAutoOffer } from "./round-robin
 import { captainPrepaidBalanceService } from "../captain-prepaid-balance.service.js";
 import { assertOrderAndCaptainSameCompany } from "../tenant-scope.service.js";
 import { orderStoreListSelect } from "../../repositories/order-store-enrichment.js";
+import { assertCaptainSupervisorScopeForOrderTx } from "./supervisor-order-scope.js";
 
 /**
  * Default Prisma interactive transaction timeout is 5s. Distribution txs run several writes + notifications
  * against a remote DB — latency can exceed 5s → P2028 "Transaction already closed" and HTTP 500.
  */
 const DISTRIBUTION_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 30_000 } as const;
-type DistributionRequestContext = { requestId?: string };
+export type DistributionRequestContext = {
+  requestId?: string;
+  /**
+   * When true (e.g. SUPER_ADMIN / COMPANY_ADMIN / legacy ADMIN), skip store–captain
+   * supervisor link match for SUPERVISOR_LINKED — same idea as read-path bypass in `supervisor-order-read-scope`.
+   */
+  bypassSupervisorLinkScope?: boolean;
+};
 type AssignmentPath = "automatic" | "manual";
 
 function logEngineTiming(
@@ -309,7 +317,7 @@ export class DistributionEngine {
     }
 
     const pool = await tx.captain.findMany({
-      where: eligibleCaptainsForAutoDistribution(order.branchId),
+      where: eligibleCaptainsForAutoDistribution(order.branchId, order.ownerUserId ?? null),
       orderBy: { id: "asc" },
     });
 
@@ -527,6 +535,39 @@ export class DistributionEngine {
 
       await this.offerNextAutoCaptainTx(tx, orderId, actorUserId);
 
+      return tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
+    }, DISTRIBUTION_TRANSACTION_OPTIONS);
+  }
+
+  async startAutoDistributionVisible(orderId: string, actorUserId: string | null, requestId?: string) {
+    return prisma.$transaction(async (tx) => {
+      await lockOrderDistributionTx(tx, orderId);
+      const order = await loadOrder(tx, orderId);
+      assertOrderOperationalForDistribution(order);
+      if (order.distributionMode !== DistributionMode.AUTO) {
+        throw new AppError(400, "Order distribution mode is not AUTO", "INVALID_STATE");
+      }
+      if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.CONFIRMED) {
+        throw new AppError(409, "Order is not awaiting distribution", "INVALID_STATE");
+      }
+      await tx.orderAssignmentLog.updateMany({
+        where: { orderId, responseStatus: AssignmentResponseStatus.PENDING },
+        data: {
+          responseStatus: AssignmentResponseStatus.CANCELLED,
+          notes: "Cancelled: start visible auto distribution",
+        },
+      });
+      await tx.order.update({
+        where: { id: orderId },
+        data: { lastDistributionResetAt: new Date() },
+      });
+      await this.offerNextAutoCaptainTx(
+        tx,
+        orderId,
+        actorUserId,
+        { manualMultiOrderOverrideEnabled: true, overrideSource: "AUTO_VISIBLE_BATCH" },
+        requestId,
+      );
       return tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
     }, DISTRIBUTION_TRANSACTION_OPTIONS);
   }
@@ -795,15 +836,23 @@ export class DistributionEngine {
       if (!captain) {
         throw new AppError(400, "Captain not eligible for manual assignment", "CAPTAIN_UNAVAILABLE");
       }
-      await captainPrepaidBalanceService.assertCanReceiveOrderTx(tx, captain.id, {
-        assignmentPath: "manual",
-        allowManualOverride: true,
-      });
       const targetCaptain = captain;
       assertOrderAndCaptainSameCompany(
         { companyId: order.companyId, branchId: order.branchId },
         { companyId: targetCaptain.companyId, branchId: targetCaptain.branchId },
       );
+      if (order.ownerUserId && targetCaptain.createdByUserId !== order.ownerUserId) {
+        throw new AppError(403, "Captain does not belong to this order owner's fleet.", "OWNER_MISMATCH");
+      }
+      if (!ctx.bypassSupervisorLinkScope) {
+        await assertCaptainSupervisorScopeForOrderTx(tx, order, {
+          supervisorUserId: targetCaptain.supervisorUserId ?? null,
+        });
+      }
+      await captainPrepaidBalanceService.assertCanReceiveOrderTx(tx, captain.id, {
+        assignmentPath: "manual",
+        allowManualOverride: true,
+      });
       logEngineTiming("manual_assign", "captain_lookup_and_checks_done", {
         requestId: ctx.requestId,
         orderId,
@@ -1002,15 +1051,23 @@ export class DistributionEngine {
       if (!captain) {
         throw new AppError(400, "Captain not eligible for reassignment", "CAPTAIN_UNAVAILABLE");
       }
-      await captainPrepaidBalanceService.assertCanReceiveOrderTx(tx, captain.id, {
-        assignmentPath: "manual",
-        allowManualOverride: true,
-      });
       const targetCaptain = captain;
       assertOrderAndCaptainSameCompany(
         { companyId: order.companyId, branchId: order.branchId },
         { companyId: targetCaptain.companyId, branchId: targetCaptain.branchId },
       );
+      if (order.ownerUserId && targetCaptain.createdByUserId !== order.ownerUserId) {
+        throw new AppError(403, "Captain does not belong to this order owner's fleet.", "OWNER_MISMATCH");
+      }
+      if (!ctx.bypassSupervisorLinkScope) {
+        await assertCaptainSupervisorScopeForOrderTx(tx, order, {
+          supervisorUserId: targetCaptain.supervisorUserId ?? null,
+        });
+      }
+      await captainPrepaidBalanceService.assertCanReceiveOrderTx(tx, captain.id, {
+        assignmentPath: "manual",
+        allowManualOverride: true,
+      });
       logEngineTiming("reassign", "captain_lookup_and_checks_done", {
         requestId: ctx.requestId,
         orderId,

@@ -4,6 +4,7 @@ import { validate } from "../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { requireRoles } from "../../middlewares/rbac.middleware.js";
 import { ROLE_GROUPS } from "../../lib/rbac-roles.js";
+import { rolesWithCapability } from "../../rbac/permissions.js";
 import {
   CreateOrderBodySchema,
   ListOrdersQuerySchema,
@@ -12,37 +13,41 @@ import {
   ReassignBodySchema,
   ManualAssignBodySchema,
   DragDropAssignBodySchema,
+  AutoAssignVisibleBodySchema,
   AdminOverrideOrderStatusBodySchema,
 } from "../../validators/orders.schemas.js";
 import { ordersController } from "../../controllers/orders.controller.js";
 
 const router = Router();
+const ordersReadRoles = rolesWithCapability("orders.read");
+const ordersCreateRoles = rolesWithCapability("orders.create");
+const ordersDispatchRoles = rolesWithCapability("orders.dispatch");
 router.use(authMiddleware);
 
 router.post(
   "/",
-  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.storeAdmins),
+  requireRoles(...ordersCreateRoles),
   validate("body", CreateOrderBodySchema),
   asyncHandler(ordersController.create.bind(ordersController)),
 );
 
 router.get(
   "/",
-  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.storeAdmins),
+  requireRoles(...ordersReadRoles),
   validate("query", ListOrdersQuerySchema),
   asyncHandler(ordersController.list.bind(ordersController)),
 );
 
 router.post(
   "/:id/archive",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ordersDispatchRoles),
   validate("params", OrderIdParamSchema),
   asyncHandler(ordersController.archiveOrder.bind(ordersController)),
 );
 
 router.post(
   "/:id/unarchive",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ordersDispatchRoles),
   validate("params", OrderIdParamSchema),
   asyncHandler(ordersController.unarchiveOrder.bind(ordersController)),
 );
@@ -50,7 +55,7 @@ router.post(
 /** Canonical manual override — must match `paths.orders.adminOverrideStatus` in `@captain/shared`. */
 router.post(
   "/:id/override-status",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ordersDispatchRoles),
   validate("params", OrderIdParamSchema),
   validate("body", AdminOverrideOrderStatusBodySchema),
   asyncHandler(ordersController.adminOverrideOrderStatus.bind(ordersController)),
@@ -59,7 +64,7 @@ router.post(
 /** Legacy alias — same handler (older clients / docs). */
 router.post(
   "/:id/admin-override-status",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ordersDispatchRoles),
   validate("params", OrderIdParamSchema),
   validate("body", AdminOverrideOrderStatusBodySchema),
   asyncHandler(ordersController.adminOverrideOrderStatus.bind(ordersController)),
@@ -67,14 +72,14 @@ router.post(
 
 router.get(
   "/:id",
-  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.storeAdmins, ...ROLE_GROUPS.captains),
+  requireRoles(...ordersReadRoles),
   validate("params", OrderIdParamSchema),
   asyncHandler(ordersController.getById.bind(ordersController)),
 );
 
 router.patch(
   "/:id/status",
-  requireRoles(...ROLE_GROUPS.orderOperators, ...ROLE_GROUPS.storeAdmins, ...ROLE_GROUPS.captains),
+  requireRoles(...ordersReadRoles),
   validate("params", OrderIdParamSchema),
   validate("body", UpdateOrderStatusBodySchema),
   asyncHandler(ordersController.updateStatus.bind(ordersController)),
@@ -96,36 +101,43 @@ router.post(
 
 router.post(
   "/:id/reassign",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ordersDispatchRoles),
   validate("params", OrderIdParamSchema),
   validate("body", ReassignBodySchema),
   asyncHandler(ordersController.reassign.bind(ordersController)),
 );
 
 router.post(
+  "/distribution/auto-assign-visible",
+  requireRoles(...ordersDispatchRoles),
+  validate("body", AutoAssignVisibleBodySchema),
+  asyncHandler(ordersController.autoAssignVisible.bind(ordersController)),
+);
+
+router.post(
   "/:id/distribution/auto",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ordersDispatchRoles),
   validate("params", OrderIdParamSchema),
   asyncHandler(ordersController.startAutoDistribution.bind(ordersController)),
 );
 
 router.post(
   "/:id/distribution/resend",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ordersDispatchRoles),
   validate("params", OrderIdParamSchema),
   asyncHandler(ordersController.resendDistribution.bind(ordersController)),
 );
 
 router.post(
   "/:id/distribution/cancel-captain",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ordersDispatchRoles),
   validate("params", OrderIdParamSchema),
   asyncHandler(ordersController.cancelCaptainAssignment.bind(ordersController)),
 );
 
 router.post(
   "/:id/distribution/manual",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ordersDispatchRoles),
   validate("params", OrderIdParamSchema),
   validate("body", ManualAssignBodySchema),
   asyncHandler(ordersController.manualAssign.bind(ordersController)),
@@ -133,7 +145,7 @@ router.post(
 
 router.post(
   "/:id/distribution/drag-drop",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ordersDispatchRoles),
   validate("params", OrderIdParamSchema),
   validate("body", DragDropAssignBodySchema),
   asyncHandler(ordersController.dragDropAssign.bind(ordersController)),

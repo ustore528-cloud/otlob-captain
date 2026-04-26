@@ -1,5 +1,7 @@
-import type { Prisma, User, UserRole } from "@prisma/client";
+import { Prisma, UserRole, type User } from "@prisma/client";
+import { prisma } from "../lib/prisma.js";
 import { hashPassword } from "../lib/password.js";
+import { allocatePublicOwnerCode } from "../lib/public-owner-code.js";
 import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
@@ -90,11 +92,36 @@ export const usersService = {
   },
 
   async create(
-    input: { fullName: string; phone: string; email?: string; password: string; role: UserRole },
+    input: { fullName: string; phone: string; email?: string; password: string; role: UserRole; companyId?: string },
     actorUserId: string,
+    actor?: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
   ) {
+    if (!actor || actor.role !== "SUPER_ADMIN") {
+      throw new AppError(403, "Forbidden", "FORBIDDEN");
+    }
+    const allowedCreateRoles: UserRole[] = ["SUPER_ADMIN", "COMPANY_ADMIN"];
+    if (!allowedCreateRoles.includes(input.role)) {
+      throw new AppError(400, "Only SUPER_ADMIN and COMPANY_ADMIN are allowed for new users", "INVALID_ROLE");
+    }
     const passwordHash = await hashPassword(input.password);
     try {
+      if (input.role === UserRole.COMPANY_ADMIN) {
+        const publicOwnerCode = await allocatePublicOwnerCode(prisma);
+        const user = await prisma.user.create({
+          data: {
+            fullName: input.fullName,
+            phone: input.phone,
+            email: input.email,
+            passwordHash,
+            role: UserRole.COMPANY_ADMIN,
+            isActive: true,
+            company: { connect: { id: input.companyId! } },
+            publicOwnerCode,
+          },
+        });
+        await activityService.log(actorUserId, "USER_CREATED", "user", user.id, { role: user.role });
+        return toPublicUser(user);
+      }
       const user = await userRepository.create({
         fullName: input.fullName,
         phone: input.phone,

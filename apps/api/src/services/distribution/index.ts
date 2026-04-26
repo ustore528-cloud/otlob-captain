@@ -1,7 +1,7 @@
 import { $Enums, OrderStatus, type UserRole } from "@prisma/client";
 import type { AssignmentType, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
-import { distributionEngine } from "./distribution-engine.js";
+import { distributionEngine, type DistributionRequestContext } from "./distribution-engine.js";
 import { AppError } from "../../utils/errors.js";
 import { emitOrderUpdated, emitToCaptain } from "../../realtime/hub.js";
 import { CAPTAIN_SOCKET_EVENTS } from "../../realtime/captain-events.js";
@@ -10,7 +10,12 @@ import { emitCaptainAssignmentEnded } from "../../realtime/order-emits.js";
 import { logDistributionTimeout } from "./distribution-timeout-log.js";
 import { pushNotificationService } from "../push-notification.service.js";
 import { assertStaffCanAccessCaptain, assertStaffCanAccessOrder } from "../tenant-scope.service.js";
-import type { AppRole } from "../../lib/rbac-roles.js";
+import {
+  isCompanyAdminRole,
+  isLegacyAdminRole,
+  isSuperAdminRole,
+  type AppRole,
+} from "../../lib/rbac-roles.js";
 
 type OrderCaptainEmit = {
   id: string;
@@ -20,13 +25,24 @@ type OrderCaptainEmit = {
   branchId: string;
   assignedCaptain: { userId: string } | null;
 } | null;
-type DistributionRequestContext = { requestId?: string };
 type StaffDistributionScope = {
   userId: string;
   role: AppRole;
   companyId: string | null;
   branchId: string | null;
 };
+
+function mergeEngineCtx(
+  ctx: DistributionRequestContext,
+  actorScope?: StaffDistributionScope,
+): DistributionRequestContext {
+  return {
+    ...ctx,
+    bypassSupervisorLinkScope: actorScope
+      ? isSuperAdminRole(actorScope.role) || isCompanyAdminRole(actorScope.role) || isLegacyAdminRole(actorScope.role)
+      : false,
+  };
+}
 
 async function assertDispatcherCanAccessDistributionTargets(
   orderId: string,
@@ -36,7 +52,13 @@ async function assertDispatcherCanAccessDistributionTargets(
   if (!actorScope) return;
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    select: { companyId: true, branchId: true },
+    select: {
+      companyId: true,
+      branchId: true,
+      ownerUserId: true,
+      createdByUserId: true,
+      assignedCaptain: { select: { createdByUserId: true } },
+    },
   });
   if (!order) throw new AppError(404, "Order not found", "NOT_FOUND");
   await assertStaffCanAccessOrder(actorScope, order);
@@ -44,7 +66,7 @@ async function assertDispatcherCanAccessDistributionTargets(
   if (!captainId) return;
   const captain = await prisma.captain.findUnique({
     where: { id: captainId },
-    select: { companyId: true, branchId: true },
+    select: { companyId: true, branchId: true, createdByUserId: true },
   });
   if (!captain) return;
   await assertStaffCanAccessCaptain(actorScope, captain);
@@ -238,6 +260,75 @@ export const distributionService = {
     return order;
   },
 
+  autoAssignVisible: async (
+    input: { orderIds: string[]; zoneId?: string | null },
+    actorUserId: string | null,
+    actorScope?: StaffDistributionScope,
+    ctx: DistributionRequestContext = {},
+  ) => {
+    const startedAt = Date.now();
+    // eslint-disable-next-line no-console
+    console.info("[distribution:auto-assign-visible] request started", {
+      requestId: ctx.requestId ?? null,
+      actorUserId,
+      visibleOrderIdsCount: input.orderIds.length,
+      zoneId: input.zoneId ?? null,
+    });
+    const uniqueOrderIds = [...new Set(input.orderIds)];
+    let assignedCount = 0;
+    let skippedCount = 0;
+    const skipped: Array<{ orderId: string; reason: string }> = [];
+
+    const availableCaptainsCount = await prisma.captain.count({
+      where: {
+        isActive: true,
+        availabilityStatus: "AVAILABLE",
+        user: { isActive: true, role: "CAPTAIN" },
+      },
+    });
+    // eslint-disable-next-line no-console
+    console.info("[distribution:auto-assign-visible] pool snapshot", {
+      requestId: ctx.requestId ?? null,
+      availableCaptainsCount,
+    });
+
+    for (const orderId of uniqueOrderIds) {
+      try {
+        await assertDispatcherCanAccessDistributionTargets(orderId, actorScope);
+        const result = await distributionEngine.startAutoDistributionVisible(orderId, actorUserId, ctx.requestId);
+        if (result?.assignedCaptain) {
+          assignedCount += 1;
+          emitCaptainDistributionSocket(result, "OFFER");
+        } else {
+          skippedCount += 1;
+          skipped.push({ orderId, reason: "No available captain" });
+        }
+      } catch (error) {
+        skippedCount += 1;
+        skipped.push({
+          orderId,
+          reason: error instanceof AppError ? error.message : "Skipped by validation or state",
+        });
+      }
+    }
+
+    // eslint-disable-next-line no-console
+    console.info("[distribution:auto-assign-visible] request completed", {
+      requestId: ctx.requestId ?? null,
+      visibleOrderIdsCount: uniqueOrderIds.length,
+      availableCaptainsCount,
+      assignedCount,
+      skippedCount,
+      durationMs: Date.now() - startedAt,
+    });
+    return {
+      success: true,
+      assignedCount,
+      skippedCount,
+      skipped,
+    };
+  },
+
   resendToDistribution: async (
     orderId: string,
     actorUserId: string | null,
@@ -326,7 +417,13 @@ export const distributionService = {
       msFromEnter: Date.now() - t0,
     });
     try {
-      const order = await distributionEngine.assignManualOverride(orderId, captainId, assignmentType, actorUserId, ctx);
+      const order = await distributionEngine.assignManualOverride(
+        orderId,
+        captainId,
+        assignmentType,
+        actorUserId,
+        mergeEngineCtx(ctx, actorScope),
+      );
       const afterEngine = Date.now();
       logActionTiming("manual_assign", "engine_done", {
         requestId: ctx.requestId,
@@ -385,7 +482,7 @@ export const distributionService = {
       msFromEnter: Date.now() - t0,
     });
     try {
-      const order = await distributionEngine.reassign(orderId, captainId, actorUserId, ctx);
+      const order = await distributionEngine.reassign(orderId, captainId, actorUserId, mergeEngineCtx(ctx, actorScope));
       logActionTiming("reassign", "engine_done", {
         requestId: ctx.requestId,
         orderId,

@@ -1,7 +1,13 @@
 import type { UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/errors.js";
-import { isLegacyAdminRole, isOrderOperatorRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
+import {
+  isCompanyAdminRole,
+  isLegacyAdminRole,
+  isOrderOperatorRole,
+  isSuperAdminRole,
+  type AppRole,
+} from "../lib/rbac-roles.js";
 
 export type StaffTenantOrderListFilter = { companyId?: string; branchId?: string };
 
@@ -51,6 +57,17 @@ export async function resolveStaffTenantOrderListFilter(actor: {
       "Company scope is required on your account for this operation.",
       "TENANT_SCOPE_REQUIRED",
     );
+  }
+
+  // Captain supervisor must always stay scoped (company + branch).
+  if (actor.role === "CAPTAIN_SUPERVISOR") {
+    if (!branchId) {
+      throw new AppError(
+        403,
+        "Branch scope is required on CAPTAIN_SUPERVISOR accounts.",
+        "TENANT_BRANCH_REQUIRED",
+      );
+    }
   }
 
   if (branchId) {
@@ -164,7 +181,13 @@ export function assertOrderAndCaptainSameCompany(
 
 export async function assertStaffCanAccessOrder(
   actor: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
-  order: { companyId: string; branchId: string },
+  order: {
+    companyId: string;
+    branchId: string;
+    ownerUserId?: string | null;
+    createdByUserId?: string | null;
+    assignedCaptain?: { createdByUserId?: string | null } | null;
+  },
 ): Promise<void> {
   if (!isOrderOperatorRole(actor.role)) return;
   if (isSuperAdminRole(actor.role)) return;
@@ -175,11 +198,19 @@ export async function assertStaffCanAccessOrder(
   if (scope.branchId && order.branchId !== scope.branchId) {
     throw new AppError(403, "Forbidden", "FORBIDDEN");
   }
+  if (isCompanyAdminRole(actor.role)) {
+    const steward = order.ownerUserId ?? order.createdByUserId ?? null;
+    const viaSteward = steward === actor.userId;
+    const viaCaptain = order.assignedCaptain?.createdByUserId === actor.userId;
+    if (!viaSteward && !viaCaptain) {
+      throw new AppError(403, "Forbidden", "FORBIDDEN");
+    }
+  }
 }
 
 export async function assertStaffCanAccessCaptain(
   actor: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
-  captain: { companyId: string; branchId: string },
+  captain: { companyId: string; branchId: string; createdByUserId?: string | null },
 ): Promise<void> {
   if (!isOrderOperatorRole(actor.role)) return;
   if (isSuperAdminRole(actor.role)) return;
@@ -189,5 +220,10 @@ export async function assertStaffCanAccessCaptain(
   }
   if (scope.branchId && captain.branchId !== scope.branchId) {
     throw new AppError(403, "Forbidden", "FORBIDDEN");
+  }
+  if (actor.role === "COMPANY_ADMIN") {
+    if (!captain.createdByUserId || captain.createdByUserId !== actor.userId) {
+      throw new AppError(403, "Forbidden", "FORBIDDEN");
+    }
   }
 }

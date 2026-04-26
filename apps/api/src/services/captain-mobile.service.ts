@@ -49,6 +49,8 @@ export type AssignmentOverflowItemDto = {
   status: OrderStatus;
   customerPhone: string;
   amount: string;
+  /** Persisted delivery fee; null on legacy rows. */
+  deliveryFee: string | null;
   cashCollection: string;
   pickupAddress: string;
   dropoffAddress: string;
@@ -309,6 +311,7 @@ export const captainMobileService = {
               status: true,
               customerPhone: true,
               amount: true,
+              deliveryFee: true,
               cashCollection: true,
               pickupAddress: true,
               dropoffAddress: true,
@@ -329,6 +332,7 @@ export const captainMobileService = {
           status: true,
           customerPhone: true,
           amount: true,
+          deliveryFee: true,
           cashCollection: true,
           pickupAddress: true,
           dropoffAddress: true,
@@ -355,6 +359,7 @@ export const captainMobileService = {
         status: log.order.status,
         customerPhone: log.order.customerPhone,
         amount: log.order.amount.toString(),
+        deliveryFee: log.order.deliveryFee != null ? log.order.deliveryFee.toString() : null,
         cashCollection: log.order.cashCollection.toString(),
         pickupAddress: log.order.pickupAddress,
         dropoffAddress: log.order.dropoffAddress,
@@ -377,6 +382,7 @@ export const captainMobileService = {
         status: o.status,
         customerPhone: o.customerPhone,
         amount: o.amount.toString(),
+        deliveryFee: o.deliveryFee != null ? o.deliveryFee.toString() : null,
         cashCollection: o.cashCollection.toString(),
         pickupAddress: o.pickupAddress,
         dropoffAddress: o.dropoffAddress,
@@ -392,14 +398,13 @@ export const captainMobileService = {
   async getOrderById(userId: string, orderId: string) {
     const cap = await captainRepository.findByUserId(userId);
     if (!cap) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
-    const order = await ordersService.getById(orderId, {
+    return ordersService.getById(orderId, {
       role: "CAPTAIN",
       userId,
       storeId: null,
       companyId: cap.companyId,
       branchId: cap.branchId,
     });
-    return toOrderDetailDto(order);
   },
 
   async updateAvailability(userId: string, availabilityStatus: CaptainAvailabilityStatus) {

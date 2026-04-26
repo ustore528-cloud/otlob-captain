@@ -148,6 +148,24 @@ export const ordersController = {
     return res.json(ok(data));
   },
 
+  autoAssignVisible: async (req: Request, res: Response) => {
+    const body = req.body as { orderIds: string[]; zoneId?: string };
+    const data = await distributionService.autoAssignVisible(
+      { orderIds: body.orderIds, zoneId: body.zoneId ?? null },
+      req.user!.id,
+      {
+        userId: req.user!.id,
+        role: req.user!.role as AppRole,
+        companyId: req.user!.companyId ?? null,
+        branchId: req.user!.branchId ?? null,
+      },
+      {
+        requestId: `auto-visible-${Date.now().toString(36)}`,
+      },
+    );
+    return res.json(ok(data));
+  },
+
   resendDistribution: async (req: Request, res: Response) => {
     const startedAt = Date.now();
     const orderId = pathParam(req, "id");

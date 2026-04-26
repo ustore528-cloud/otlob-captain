@@ -5,6 +5,7 @@ import { assertOptionalCaptainSupervisorLinkValid } from "../lib/store-superviso
 import { hashPassword } from "../lib/password.js";
 import { captainRepository, captainWithRelationsInclude } from "../repositories/captain.repository.js";
 import { orderRepository } from "../repositories/order.repository.js";
+import { toOrderListItemDto } from "../dto/order.dto.js";
 import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
@@ -13,7 +14,7 @@ import {
   resolveBranchIdForStaffOperation,
   resolveStaffTenantOrderListFilter,
 } from "./tenant-scope.service.js";
-import { isCaptainRole, isOrderOperatorRole, type AppRole } from "../lib/rbac-roles.js";
+import { isCaptainRole, isOrderOperatorRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
 
 function parseOptionalIsoDate(label: string, raw?: string, endOfDay?: boolean): Date | undefined {
   if (!raw?.trim()) return undefined;
@@ -26,6 +27,16 @@ function parseOptionalIsoDate(label: string, raw?: string, endOfDay?: boolean): 
   return d;
 }
 
+function assertCompanyAdminCaptainOwnership(
+  actor: { userId: string; role: AppRole },
+  captain: { createdByUserId?: string | null },
+): void {
+  if (actor.role !== "COMPANY_ADMIN") return;
+  if (!captain.createdByUserId || captain.createdByUserId !== actor.userId) {
+    throw new AppError(403, "Forbidden", "FORBIDDEN");
+  }
+}
+
 export const captainsService = {
   async create(
     input: {
@@ -36,16 +47,105 @@ export const captainsService = {
       vehicleType: string;
       area: string;
       branchId?: string;
+      zoneId?: string;
+      companyId?: string;
       supervisorUserId?: string | null;
     },
     actorUserId: string,
   ) {
     const passwordHash = await hashPassword(input.password);
-    const { companyId, branchId } = await resolveBranchIdForStaffOperation(actorUserId, input.branchId);
-    const supervisorForAssert = input.supervisorUserId
-      ? await userRepository.findById(input.supervisorUserId)
+    const actor = await userRepository.findById(actorUserId);
+    if (!actor) throw new AppError(401, "User not found", "UNAUTHORIZED");
+    const actorRole = actor.role as AppRole;
+    let companyId: string;
+    let branchId: string;
+    let effectiveSupervisorUserId = input.supervisorUserId ?? null;
+    if (actor.role === UserRole.BRANCH_MANAGER) {
+      if (input.companyId) {
+        throw new AppError(400, "companyId is only valid for SUPER_ADMIN.", "COMPANY_ID_NOT_ALLOWED");
+      }
+      if (!actor.companyId || !actor.branchId) {
+        throw new AppError(403, "Branch manager scope is missing", "TENANT_SCOPE_REQUIRED");
+      }
+      if (input.branchId && input.branchId !== actor.branchId) {
+        throw new AppError(403, "Cannot create captain outside your region", "FORBIDDEN");
+      }
+      companyId = actor.companyId;
+      branchId = actor.branchId;
+      // Region supervisor creates captains only under their own supervisor linkage.
+      effectiveSupervisorUserId = actor.id;
+    } else if (isSuperAdminRole(actorRole)) {
+      if (!input.companyId?.trim()) {
+        if (input.branchId || input.zoneId) {
+          throw new AppError(
+            400,
+            "companyId is required when branchId or zoneId is provided for SUPER_ADMIN.",
+            "COMPANY_ID_REQUIRED",
+          );
+        }
+        throw new AppError(
+          400,
+          "companyId is required for SUPER_ADMIN when creating a captain.",
+          "COMPANY_ID_REQUIRED",
+        );
+      }
+      const targetCompanyId = input.companyId.trim();
+      const companyRow = await prisma.company.findFirst({
+        where: { id: targetCompanyId, isActive: true },
+        select: { id: true },
+      });
+      if (!companyRow) {
+        throw new AppError(400, "Invalid or inactive company.", "INVALID_COMPANY");
+      }
+      companyId = targetCompanyId;
+
+      if (input.branchId) {
+        const b = await prisma.branch.findFirst({
+          where: { id: input.branchId, companyId, isActive: true },
+          select: { id: true },
+        });
+        if (!b) {
+          throw new AppError(
+            400,
+            "branchId does not belong to the selected company (or branch is inactive).",
+            "INVALID_BRANCH_FOR_COMPANY",
+          );
+        }
+        branchId = b.id;
+      } else {
+        const branches = await prisma.branch.findMany({
+          where: { companyId, isActive: true },
+          select: { id: true },
+          orderBy: { createdAt: "asc" },
+        });
+        if (branches.length === 0) {
+          throw new AppError(400, "No active branch for this company.", "NO_ACTIVE_BRANCH");
+        }
+        if (branches.length > 1) {
+          throw new AppError(
+            400,
+            "branchId is required when the selected company has more than one active branch.",
+            "BRANCH_REQUIRED",
+          );
+        }
+        const only = branches[0];
+        if (!only) {
+          throw new AppError(500, "Branch resolution failed", "INTERNAL");
+        }
+        branchId = only.id;
+      }
+    } else {
+      if (input.companyId) {
+        throw new AppError(400, "companyId is only valid for SUPER_ADMIN.", "COMPANY_ID_NOT_ALLOWED");
+      }
+      const resolved = await resolveBranchIdForStaffOperation(actorUserId, input.branchId);
+      companyId = resolved.companyId;
+      branchId = resolved.branchId;
+    }
+    const supervisorForAssert = effectiveSupervisorUserId
+      ? await userRepository.findById(effectiveSupervisorUserId)
       : null;
-    if (input.supervisorUserId && !supervisorForAssert) {
+    if (effectiveSupervisorUserId && !supervisorForAssert) {
       throw new AppError(400, "Supervisor user not found", "VALIDATION_ERROR");
     }
     assertOptionalCaptainSupervisorLinkValid({
@@ -53,6 +153,15 @@ export const captainsService = {
       captainCompanyId: companyId,
       captainBranchId: branchId,
     });
+    let zoneConnect: { connect: { id: string } } | undefined;
+    if (input.zoneId) {
+      const z = await prisma.zone.findFirst({
+        where: { id: input.zoneId, isActive: true, city: { companyId } },
+        select: { id: true },
+      });
+      if (!z) throw new AppError(400, "Invalid zone for this company.", "INVALID_ZONE");
+      zoneConnect = { connect: { id: z.id } };
+    }
     try {
       const result = await prisma.$transaction(async (tx) => {
         const user = await tx.user.create({
@@ -70,12 +179,14 @@ export const captainsService = {
             user: { connect: { id: user.id } },
             company: { connect: { id: companyId } },
             branch: { connect: { id: branchId } },
+            createdByUser: { connect: { id: actorUserId } },
             vehicleType: input.vehicleType,
             area: input.area,
             isActive: true,
-            ...(input.supervisorUserId
-              ? { supervisorUser: { connect: { id: input.supervisorUserId } } }
+            ...(effectiveSupervisorUserId
+              ? { supervisorUser: { connect: { id: effectiveSupervisorUserId } } }
               : {}),
+            ...(zoneConnect ? { zone: zoneConnect } : {}),
           },
           include: captainWithRelationsInclude,
         });
@@ -119,6 +230,10 @@ export const captainsService = {
         },
         cap,
       );
+      assertCompanyAdminCaptainOwnership(
+        { userId: opts.userId, role: opts.role },
+        { createdByUserId: cap.createdByUserId ?? null },
+      );
     }
     if (isCaptainRole(opts.role) && cap.userId !== opts.userId) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
@@ -131,6 +246,11 @@ export const captainsService = {
     }
     if (isCaptainRole(opts.role) && input.supervisorUserId !== undefined) {
       throw new AppError(403, "Cannot change supervisor link", "FORBIDDEN");
+    }
+    if (opts.role === UserRole.BRANCH_MANAGER && input.supervisorUserId !== undefined) {
+      if (input.supervisorUserId !== null && input.supervisorUserId !== opts.userId) {
+        throw new AppError(403, "Branch manager can only link captains to self", "FORBIDDEN");
+      }
     }
 
     const data: Prisma.CaptainUpdateInput = {};
@@ -218,6 +338,7 @@ export const captainsService = {
         ...params,
         companyId: tenant.companyId,
         branchId: tenant.branchId,
+        ...(opts.role === "COMPANY_ADMIN" ? { createdByUserId: opts.userId } : {}),
       });
       return { total, items };
     }
@@ -240,6 +361,10 @@ export const captainsService = {
           branchId: actor.branchId ?? null,
         },
         cap,
+      );
+      assertCompanyAdminCaptainOwnership(
+        { userId: actor.userId, role: actor.role },
+        { createdByUserId: cap.createdByUserId ?? null },
       );
     }
     return cap;
@@ -308,7 +433,7 @@ export const captainsService = {
       page: params.page,
       pageSize: params.pageSize,
     });
-    return { total, items };
+    return { total, items: items.map((o) => toOrderListItemDto(o)) };
   },
 
   async deleteCaptain(

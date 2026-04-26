@@ -10,8 +10,11 @@ import {
  * - ملف الكابتن: isActive = true, availabilityStatus = AVAILABLE
  * - نفس فرع الطلب (عزل متعدد المستأجرين)
  */
-export function eligibleCaptainsForAutoDistribution(branchId: string): Prisma.CaptainWhereInput {
-  return {
+export function eligibleCaptainsForAutoDistribution(
+  branchId: string,
+  orderOwnerUserId?: string | null,
+): Prisma.CaptainWhereInput {
+  const base: Prisma.CaptainWhereInput = {
     branchId,
     isActive: true,
     availabilityStatus: CaptainAvailabilityStatus.AVAILABLE,
@@ -20,6 +23,10 @@ export function eligibleCaptainsForAutoDistribution(branchId: string): Prisma.Ca
       role: UserRole.CAPTAIN,
     },
   };
+  if (orderOwnerUserId) {
+    return { ...base, createdByUserId: orderOwnerUserId };
+  }
+  return base;
 }
 
 /**

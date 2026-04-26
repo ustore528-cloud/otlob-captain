@@ -11,9 +11,18 @@ import { dashboardSettingsRoutes } from "./dashboard-settings.routes.js";
 import { geocodeRoutes } from "./geocode.routes.js";
 import { mobileRoutes } from "./mobile/index.js";
 import { customerRoutes } from "./customer.routes.js";
+import { superAdminWalletsRoutes } from "./super-admin-wallets.routes.js";
+import { supervisorCaptainTransferRoutes } from "./supervisor-captain-transfer.routes.js";
+import { walletReadRoutes } from "./wallet-read.routes.js";
+import { reportsRoutes } from "./reports.routes.js";
+import { branchesRoutes } from "./branches.routes.js";
+import { zonesRoutes } from "./zones.routes.js";
+import { companiesRoutes } from "./companies.routes.js";
+import { publicRoutes } from "./public.routes.js";
 
 const v1Router = Router();
 
+v1Router.use("/public", publicRoutes);
 v1Router.use("/auth", authRoutes);
 v1Router.use("/users", usersRoutes);
 v1Router.use("/stores", storesRoutes);
@@ -26,5 +35,12 @@ v1Router.use("/dashboard-settings", dashboardSettingsRoutes);
 v1Router.use("/geocode", geocodeRoutes);
 v1Router.use("/mobile", mobileRoutes);
 v1Router.use("/customer", customerRoutes);
+v1Router.use("/super-admin/wallets", superAdminWalletsRoutes);
+v1Router.use("/supervisor/wallets", supervisorCaptainTransferRoutes);
+v1Router.use("/finance", walletReadRoutes);
+v1Router.use("/reports", reportsRoutes);
+v1Router.use("/branches", branchesRoutes);
+v1Router.use("/zones", zonesRoutes);
+v1Router.use("/companies", companiesRoutes);
 
 export { v1Router };

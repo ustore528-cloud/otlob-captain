@@ -21,7 +21,11 @@ export const CreateCaptainBodySchema = z.object({
   password: z.string().min(8),
   vehicleType: VehicleTypeSchema,
   area: z.string().min(1).max(200).trim(),
+  /** SUPER_ADMIN فقط — شركة الهدف (إلزامي لدور السوبر عند الإنشاء) */
+  companyId: z.string().cuid().optional(),
   branchId: z.string().cuid().optional(),
+  /** منطقة تشغيل اختيارية (ضمن شركة الكابتن) */
+  zoneId: z.string().cuid().optional(),
   /** Staff only — optional link to a company supervisor user */
   supervisorUserId: z.union([z.string().cuid(), z.null()]).optional(),
 });
@@ -67,3 +71,8 @@ export const CaptainPrepaidAdjustmentBodySchema = z.object({
   amount: z.number().finite().refine((value) => value !== 0, "Amount cannot be zero"),
   note: z.string().min(3).max(500).trim(),
 });
+
+export const PrepaidTransactionsQuerySchema = PaginationQuerySchema.extend({
+  from: z.string().optional(),
+  to: z.string().optional(),
+}).refine((d) => Boolean(d.from) === Boolean(d.to), { message: "from and to must be provided together" });

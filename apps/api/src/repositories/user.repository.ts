@@ -8,6 +8,7 @@ const userPublicSelect = {
   phone: true,
   email: true,
   role: true,
+  publicOwnerCode: true,
   companyId: true,
   branchId: true,
   isActive: true,

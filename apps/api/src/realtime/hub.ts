@@ -11,6 +11,8 @@ export function getIo(): Server | null {
 }
 
 export const rooms = {
+  operationsGlobal: () => "ops:global",
+  operationsCompany: (companyId: string) => `ops:company:${companyId}`,
   dispatchersCompany: (companyId: string) => `dispatchers:company:${companyId}`,
   dispatchersBranch: (companyId: string, branchId: string) => `dispatchers:company:${companyId}:branch:${branchId}`,
   store: (id: string) => `store:${id}`,
@@ -39,6 +41,11 @@ export function emitOrderCreated(payload: unknown, scope: DispatcherTenantScope)
 
 export function emitCaptainLocation(payload: unknown, scope: DispatcherTenantScope): void {
   emitToDispatchers("captain:location", payload, scope);
+}
+
+export function emitOperationalGlobal(event: string, payload: unknown, options: { explicitGlobal: true }): void {
+  if (!options.explicitGlobal) return;
+  io?.to(rooms.operationsGlobal()).emit(event, payload);
 }
 
 export function emitToCaptain(captainUserId: string, event: string, payload: unknown): void {

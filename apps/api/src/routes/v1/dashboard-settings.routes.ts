@@ -9,10 +9,10 @@ import { dashboardSettingsController } from "../../controllers/dashboard-setting
 
 const router = Router();
 router.use(authMiddleware);
-router.get("/", requireRoles(...ROLE_GROUPS.orderOperators), asyncHandler(dashboardSettingsController.get.bind(dashboardSettingsController)));
+router.get("/", requireRoles(...ROLE_GROUPS.superAdmins), asyncHandler(dashboardSettingsController.get.bind(dashboardSettingsController)));
 router.patch(
   "/",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ROLE_GROUPS.superAdmins),
   validate("body", DashboardSettingsPatchSchema),
   asyncHandler(dashboardSettingsController.patch.bind(dashboardSettingsController)),
 );

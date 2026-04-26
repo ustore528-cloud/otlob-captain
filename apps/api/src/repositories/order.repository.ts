@@ -2,6 +2,46 @@ import { AssignmentResponseStatus, type Prisma, type OrderStatus } from "@prisma
 import { prisma } from "../lib/prisma.js";
 import { normalizePaginationForPrisma } from "../utils/pagination.js";
 import { orderStoreInclude, orderStoreListSelect } from "./order-store-enrichment.js";
+import { AppError } from "../utils/errors.js";
+
+type StoreConnectEnvelope = { connect?: { id?: string } };
+
+function getConnectedStoreId(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const maybeStore = (data as { store?: StoreConnectEnvelope }).store;
+  const id = maybeStore?.connect?.id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+function hasDirectTenantOverride(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  const payload = data as { company?: unknown; branch?: unknown; companyId?: unknown; branchId?: unknown };
+  return (
+    payload.company !== undefined ||
+    payload.branch !== undefined ||
+    payload.companyId !== undefined ||
+    payload.branchId !== undefined
+  );
+}
+
+async function deriveTenantFromConnectedStore<T extends Prisma.OrderCreateInput | Prisma.OrderUpdateInput>(
+  data: T,
+): Promise<T> {
+  const storeId = getConnectedStoreId(data);
+  if (!storeId) return data;
+  const store = await prisma.store.findUnique({
+    where: { id: storeId },
+    select: { id: true, isActive: true, companyId: true, branchId: true },
+  });
+  if (!store || !store.isActive) {
+    throw new AppError(400, "Store not found or inactive", "BAD_REQUEST");
+  }
+  return {
+    ...data,
+    company: { connect: { id: store.companyId } },
+    branch: { connect: { id: store.branchId } },
+  } as T;
+}
 
 export const orderRepository = {
   findById(id: string) {
@@ -16,9 +56,10 @@ export const orderRepository = {
     });
   },
 
-  create(data: Prisma.OrderCreateInput) {
+  async create(data: Prisma.OrderCreateInput) {
+    const normalizedData = await deriveTenantFromConnectedStore(data);
     return prisma.order.create({
-      data,
+      data: normalizedData,
       include: {
         store: orderStoreInclude,
         assignedCaptain: true,
@@ -27,10 +68,19 @@ export const orderRepository = {
     });
   },
 
-  update(id: string, data: Prisma.OrderUpdateInput) {
+  async update(id: string, data: Prisma.OrderUpdateInput) {
+    const hasStoreConnect = getConnectedStoreId(data) != null;
+    if (!hasStoreConnect && hasDirectTenantOverride(data)) {
+      throw new AppError(
+        400,
+        "Direct companyId/branchId override is not allowed. Change storeId instead.",
+        "INVALID_TENANT_OVERRIDE",
+      );
+    }
+    const normalizedData = await deriveTenantFromConnectedStore(data);
     return prisma.order.update({
       where: { id },
-      data,
+      data: normalizedData,
       include: {
         store: orderStoreInclude,
         assignedCaptain: { include: { user: { select: { id: true, fullName: true, phone: true } } } },
@@ -54,6 +104,7 @@ export const orderRepository = {
      * restrict to `storeId` in set OR `assignedCaptainId` in set (OR combined).
      */
     supervisorReadOr?: { storeIds: string[]; captainIds: string[] };
+    companyAdminOwnerUserId?: string;
   }) {
     const andParts: Prisma.OrderWhereInput[] = [
       /** قوائم التشغيل واللوحة: لا تعرض الطلبات المؤرشفة */
@@ -73,6 +124,17 @@ export const orderRepository = {
       if (storeIds.length > 0) or.push({ storeId: { in: storeIds } });
       if (captainIds.length > 0) or.push({ assignedCaptainId: { in: captainIds } });
       if (or.length > 0) andParts.push({ OR: or });
+    }
+
+    if (params.companyAdminOwnerUserId) {
+      const uid = params.companyAdminOwnerUserId;
+      andParts.push({
+        OR: [
+          { createdByUserId: uid },
+          { ownerUserId: uid },
+          { assignedCaptain: { createdByUserId: uid } },
+        ],
+      });
     }
 
     const where: Prisma.OrderWhereInput = andParts.length === 1 ? andParts[0]! : { AND: andParts };

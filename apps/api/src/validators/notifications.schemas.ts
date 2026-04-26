@@ -10,6 +10,8 @@ export const CreateNotificationBodySchema = z.object({
 
 export const QuickStatusAlertBodySchema = z.object({
   status: z.enum(["PRESSURE", "LOW_ACTIVITY", "RAISE_READINESS", "ON_FIRE"]),
+  global: z.boolean().optional(),
+  targetCompanyId: z.string().cuid().optional(),
 });
 
 export const NotificationIdParamSchema = z.object({

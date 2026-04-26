@@ -39,11 +39,19 @@ export async function geocodePlaceFromParts(country: string | undefined, city: s
   const parts = [t, c].filter(Boolean);
   const q = parts.join(", ");
 
+  const IL = { south: 29.42, north: 33.52, west: 34.12, east: 35.92 };
+  const clampIl = (lat: number, lon: number) => ({
+    lat: Math.min(IL.north, Math.max(IL.south, lat)),
+    lon: Math.min(IL.east, Math.max(IL.west, lon)),
+  });
+
   const url = new URL(NOMINATIM_SEARCH);
   url.searchParams.set("format", "json");
   url.searchParams.set("limit", "1");
   url.searchParams.set("q", q);
   url.searchParams.set("addressdetails", "0");
+  /** تفضيل نتائج داخل إسرائيل (حدود عرض واجهة الخرائط) */
+  url.searchParams.set("countrycodes", "il");
 
   let res: Response;
   try {
@@ -75,11 +83,12 @@ export async function geocodePlaceFromParts(country: string | undefined, city: s
   }
 
   const hit = data[0]!;
-  const lat = Number.parseFloat(hit.lat);
-  const lon = Number.parseFloat(hit.lon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+  const latRaw = Number.parseFloat(hit.lat);
+  const lonRaw = Number.parseFloat(hit.lon);
+  if (!Number.isFinite(latRaw) || !Number.isFinite(lonRaw)) {
     throw new AppError(502, "بيانات غير صالحة من خدمة تحديد الموقع.", "GEOCODE_PARSE");
   }
+  const { lat, lon } = clampIl(latRaw, lonRaw);
 
   let zoom = 11;
   if (hit.boundingbox && hit.boundingbox.length >= 4) {

@@ -19,6 +19,7 @@ type AuthUserRow = {
   isActive: boolean;
   companyId: string | null;
   branchId: string | null;
+  publicOwnerCode: string | null;
 };
 
 async function findAuthUserByPhone(phone: string): Promise<(AuthUserRow & { role: AppRole }) | null> {
@@ -32,7 +33,8 @@ async function findAuthUserByPhone(phone: string): Promise<(AuthUserRow & { role
       role::text AS role,
       is_active AS "isActive",
       company_id AS "companyId",
-      branch_id AS "branchId"
+      branch_id AS "branchId",
+      public_owner_code AS "publicOwnerCode"
     FROM users
     WHERE phone = ${phone}
     LIMIT 1
@@ -53,7 +55,8 @@ async function findAuthUserByEmail(email: string): Promise<(AuthUserRow & { role
       role::text AS role,
       is_active AS "isActive",
       company_id AS "companyId",
-      branch_id AS "branchId"
+      branch_id AS "branchId",
+      public_owner_code AS "publicOwnerCode"
     FROM users
     WHERE email = ${email}
     LIMIT 1
@@ -74,7 +77,8 @@ async function findAuthUserById(userId: string): Promise<(AuthUserRow & { role: 
       role::text AS role,
       is_active AS "isActive",
       company_id AS "companyId",
-      branch_id AS "branchId"
+      branch_id AS "branchId",
+      public_owner_code AS "publicOwnerCode"
     FROM users
     WHERE id = ${userId}
     LIMIT 1
@@ -157,6 +161,7 @@ export const authService = {
         storeId: payload.storeId,
         companyId: payload.companyId,
         branchId: payload.branchId,
+        publicOwnerCode: user.publicOwnerCode,
       },
     };
   },
@@ -226,6 +231,7 @@ export const authService = {
       storeId: p.storeId,
       companyId: p.companyId,
       branchId: p.branchId,
+      publicOwnerCode: user.publicOwnerCode,
     };
   },
 

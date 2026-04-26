@@ -113,10 +113,12 @@ export const captainsController = {
     if (isOrderOperatorRole(req.user!.role)) {
       await captainsService.getById(pathParam(req, "id"), staffActor(req));
     }
-    const q = req.query as { page?: string; pageSize?: string };
+    const q = req.query as { page?: string; pageSize?: string; from?: string; to?: string };
     const data = await captainPrepaidBalanceService.listTransactions(pathParam(req, "id"), {
       page: Number(q.page) || 1,
       pageSize: Number(q.pageSize) || 20,
+      from: q.from,
+      to: q.to,
     });
     return res.json(ok(data));
   },

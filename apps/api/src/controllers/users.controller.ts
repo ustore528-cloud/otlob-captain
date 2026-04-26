@@ -41,7 +41,16 @@ export const usersController = {
   },
 
   create: async (req: Request, res: Response) => {
-    const data = await usersService.create(req.body as Parameters<typeof usersService.create>[0], req.user!.id);
+    const data = await usersService.create(
+      req.body as Parameters<typeof usersService.create>[0],
+      req.user!.id,
+      {
+        userId: req.user!.id,
+        role: req.user!.role,
+        companyId: req.user!.companyId ?? null,
+        branchId: req.user!.branchId ?? null,
+      },
+    );
     return res.status(201).json(ok(data));
   },
 

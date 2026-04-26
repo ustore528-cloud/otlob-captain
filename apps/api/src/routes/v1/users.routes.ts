@@ -3,7 +3,7 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { requireRoles } from "../../middlewares/rbac.middleware.js";
-import { ROLE_GROUPS, isOrderOperatorRole } from "../../lib/rbac-roles.js";
+import { ROLE_GROUPS, isSuperAdminRole } from "../../lib/rbac-roles.js";
 import {
   UserListQuerySchema,
   UserIdParamSchema,
@@ -21,7 +21,7 @@ router.use(authMiddleware);
 
 router.get(
   "/",
-  requireRoles(...ROLE_GROUPS.orderOperators),
+  requireRoles(...ROLE_GROUPS.superAdmins),
   validate("query", UserListQuerySchema),
   asyncHandler(usersController.list.bind(usersController)),
 );
@@ -37,7 +37,7 @@ router.get(
   "/:id",
   validate("params", UserIdParamSchema),
   asyncHandler(async (req, res, next) => {
-    if (!isOrderOperatorRole(req.user!.role) && req.user!.id !== pathParam(req, "id")) {
+    if (!isSuperAdminRole(req.user!.role) && req.user!.id !== pathParam(req, "id")) {
       return next(new AppError(403, "Forbidden", "FORBIDDEN"));
     }
     return usersController.getById(req, res);
@@ -46,7 +46,7 @@ router.get(
 
 router.patch(
   "/:id/active",
-  requireRoles(...ROLE_GROUPS.managementAdmins),
+  requireRoles(...ROLE_GROUPS.superAdmins),
   validate("params", UserIdParamSchema),
   validate("body", UserActiveBodySchema),
   asyncHandler(usersController.setActive.bind(usersController)),

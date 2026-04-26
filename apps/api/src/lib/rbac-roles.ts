@@ -1,21 +1,25 @@
 import type { UserRole } from "@prisma/client";
+import { hasCapability } from "../rbac/permissions.js";
 
 export type LegacyUserRole = "ADMIN" | "STORE";
-export type AppRole = UserRole | LegacyUserRole;
+export type TransitionalUserRole = "CAPTAIN_SUPERVISOR" | "STORE_USER";
+export type AppRole = UserRole | TransitionalUserRole | LegacyUserRole;
 
 export const ROLE_GROUPS = {
   superAdmins: ["SUPER_ADMIN"] as const,
   companyAdmins: ["COMPANY_ADMIN"] as const,
   branchManagers: ["BRANCH_MANAGER"] as const,
-  storeAdmins: ["STORE_ADMIN"] as const,
+  storeAdmins: ["STORE_ADMIN", "STORE_USER"] as const,
+  storeUsers: ["STORE_USER"] as const,
   dispatchers: ["DISPATCHER"] as const,
+  captainSupervisors: ["CAPTAIN_SUPERVISOR"] as const,
   captains: ["CAPTAIN"] as const,
   customers: ["CUSTOMER"] as const,
   legacyAdmins: ["ADMIN"] as const,
   legacyStores: ["STORE"] as const,
-  managementAdmins: ["SUPER_ADMIN", "COMPANY_ADMIN", "BRANCH_MANAGER"] as const,
-  scopedStaff: ["COMPANY_ADMIN", "BRANCH_MANAGER", "DISPATCHER"] as const,
-  orderOperators: ["SUPER_ADMIN", "COMPANY_ADMIN", "BRANCH_MANAGER", "DISPATCHER"] as const,
+  managementAdmins: ["SUPER_ADMIN", "COMPANY_ADMIN"] as const,
+  scopedStaff: ["COMPANY_ADMIN"] as const,
+  orderOperators: ["SUPER_ADMIN", "COMPANY_ADMIN"] as const,
 } as const;
 
 export function isSuperAdminRole(role: AppRole): role is "SUPER_ADMIN" {
@@ -30,8 +34,8 @@ export function isBranchManagerRole(role: AppRole): role is "BRANCH_MANAGER" {
   return role === "BRANCH_MANAGER";
 }
 
-export function isStoreAdminRole(role: AppRole): role is "STORE_ADMIN" | "STORE" {
-  return role === "STORE_ADMIN" || role === "STORE";
+export function isStoreAdminRole(role: AppRole): role is "STORE_ADMIN" | "STORE" | "STORE_USER" {
+  return role === "STORE_ADMIN" || role === "STORE" || role === "STORE_USER";
 }
 
 export function isDispatcherRole(role: AppRole): role is "DISPATCHER" {
@@ -51,11 +55,11 @@ export function isLegacyAdminRole(role: AppRole): role is "ADMIN" {
 }
 
 export function isManagementAdminRole(role: AppRole): boolean {
-  return isSuperAdminRole(role) || isCompanyAdminRole(role) || isBranchManagerRole(role) || isLegacyAdminRole(role);
+  return isSuperAdminRole(role) || isCompanyAdminRole(role) || isLegacyAdminRole(role);
 }
 
 export function isScopedStaffRole(role: AppRole): boolean {
-  return isCompanyAdminRole(role) || isBranchManagerRole(role) || isDispatcherRole(role) || isLegacyAdminRole(role);
+  return isCompanyAdminRole(role) || isLegacyAdminRole(role);
 }
 
 export function isOrderOperatorRole(role: AppRole): boolean {
@@ -63,17 +67,17 @@ export function isOrderOperatorRole(role: AppRole): boolean {
 }
 
 export function canManageCaptains(role: AppRole): boolean {
-  return isOrderOperatorRole(role);
+  return hasCapability(role, "captains.manage");
 }
 
 export function canManageStores(role: AppRole): boolean {
-  return isManagementAdminRole(role);
+  return hasCapability(role, "stores.manage");
 }
 
 export function canManageUsers(role: AppRole): boolean {
-  return isManagementAdminRole(role);
+  return hasCapability(role, "users.create");
 }
 
 export function canUseStaffTracking(role: AppRole): boolean {
-  return isOrderOperatorRole(role);
+  return hasCapability(role, "settings.read");
 }

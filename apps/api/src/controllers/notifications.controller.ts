@@ -37,8 +37,20 @@ export const notificationsController = {
   },
 
   quickStatusAlert: async (req: Request, res: Response) => {
-    const payload = req.body as { status: "PRESSURE" | "LOW_ACTIVITY" | "RAISE_READINESS" | "ON_FIRE" };
-    const data = await notificationService.sendQuickStatusAlert(payload.status, req.user!.id);
+    const payload = req.body as {
+      status: "PRESSURE" | "LOW_ACTIVITY" | "RAISE_READINESS" | "ON_FIRE";
+      global?: boolean;
+      targetCompanyId?: string;
+    };
+    const data = await notificationService.sendQuickStatusAlert(
+      payload.status,
+      {
+        userId: req.user!.id,
+        role: req.user!.role,
+        companyId: req.user!.companyId,
+      },
+      { global: payload.global, targetCompanyId: payload.targetCompanyId },
+    );
     return res.status(201).json(ok(data));
   },
 };

@@ -14,13 +14,25 @@ export const UserActiveBodySchema = z.object({
   isActive: z.boolean(),
 });
 
-export const CreateUserBodySchema = z.object({
-  fullName: z.string().min(1).max(200),
-  phone: z.string().min(5).max(32),
-  email: z.string().email().optional(),
-  password: z.string().min(8),
-  role: z.nativeEnum(UserRole),
-});
+export const CreateUserBodySchema = z
+  .object({
+    fullName: z.string().min(1).max(200),
+    phone: z.string().min(5).max(32),
+    email: z.string().email().optional(),
+    password: z.string().min(8),
+    role: z.nativeEnum(UserRole),
+    /** مطلوب عند إنشاء مدير شركة — ربط الشركة وإصدار `publicOwnerCode` */
+    companyId: z.string().cuid().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === UserRole.COMPANY_ADMIN && !data.companyId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "companyId is required when role is COMPANY_ADMIN",
+        path: ["companyId"],
+      });
+    }
+  });
 
 const optionalHttpsUrl = z.preprocess(
   (v) => (v === "" ? null : v),

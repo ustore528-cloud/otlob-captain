@@ -7,6 +7,7 @@ import { generateOrderNumber } from "../utils/order-number.js";
 import { activityService } from "./activity.service.js";
 import { distributionService } from "./distribution/index.js";
 import { assertCaptainOrderStatusTransition } from "../domain/order-captain-status.js";
+import { patchOrderStatusTransitionTimestamps } from "../domain/order-status-timestamps.js";
 import { orderStoreInclude } from "../repositories/order-store-enrichment.js";
 import {
   emitCaptainAssignmentEnded,
@@ -15,14 +16,15 @@ import {
 } from "../realtime/order-emits.js";
 import { CAPTAIN_SOCKET_EVENTS } from "../realtime/captain-events.js";
 import { emitToCaptain } from "../realtime/hub.js";
-import { clampOfferExpiredAtToConfiguredWindow } from "./distribution/clamp-offer-expired-at.js";
 import { DISTRIBUTION_TIMEOUT_SECONDS } from "./distribution/constants.js";
 import { lockOrderDistributionTx } from "./distribution/order-lock.js";
 import { logCaptainOrderResponse } from "./captain-order-response-log.js";
 import { resolveOrderCustomerUserId } from "./order-customer-link.js";
 import { notificationService } from "./notifications.service.js";
 import { pushNotificationService } from "./push-notification.service.js";
+import { ORDER_DELIVERED_LEDGER_HOOK_ENABLED, ORDER_STATUS_TX_OPTIONS } from "../config/order-ledger-flags.js";
 import { captainPrepaidBalanceService } from "./captain-prepaid-balance.service.js";
+import { applyDeliveredOrderLedgerTx } from "./order-delivered-ledger.service.js";
 import {
   assertOrderAndCaptainSameCompany,
   assertStaffCanAccessOrder,
@@ -30,41 +32,42 @@ import {
 } from "./tenant-scope.service.js";
 import { assertSupervisorReadAccessForOrder, resolveSupervisorReadScopeForList } from "../lib/supervisor-order-read-scope.js";
 import { isCaptainRole, isOrderOperatorRole, isStoreAdminRole, type AppRole } from "../lib/rbac-roles.js";
+import { resolveCanonicalOrderMoneyOnCreate } from "../domain/order-canonical-money.js";
+import { toOrderDetailDto, toOrderListItemDto } from "../dto/order.dto.js";
 
 function decAmount(v: Prisma.Decimal | null | undefined): string {
   if (v == null) return "0";
   return v.toString();
 }
 
-/** ISO expiry for active captain offer — aligned with mobile `log.expiresAt` (clamped window). */
-function pendingOfferExpiresAtIsoForListItem(order: {
-  status: OrderStatus;
-  assignedCaptainId: string | null;
-  assignmentLogs?: Array<{
-    captainId: string;
-    assignedAt: Date;
-    expiredAt: Date | null;
-    responseStatus: AssignmentResponseStatus;
-  }>;
-}): string | null {
-  if (order.status !== OrderStatus.ASSIGNED || !order.assignedCaptainId) return null;
-  const log = order.assignmentLogs?.find(
-    (l) =>
-      l.responseStatus === AssignmentResponseStatus.PENDING &&
-      l.captainId === order.assignedCaptainId &&
-      l.expiredAt != null,
-  );
-  if (!log) return null;
-  const expAt = log.expiredAt;
-  if (!expAt) return null;
-  const clamped = clampOfferExpiredAtToConfiguredWindow(log.assignedAt, expAt);
-  return clamped ? clamped.toISOString() : null;
+function orderAccessScope(order: {
+  companyId: string;
+  branchId: string;
+  ownerUserId?: string | null;
+  createdByUserId?: string | null;
+  assignedCaptain?: { createdByUserId?: string | null } | null;
+}) {
+  return {
+    companyId: order.companyId,
+    branchId: order.branchId,
+    ownerUserId: order.ownerUserId ?? null,
+    createdByUserId: order.createdByUserId ?? null,
+    assignedCaptain: order.assignedCaptain
+      ? { createdByUserId: order.assignedCaptain.createdByUserId ?? null }
+      : null,
+  };
 }
 
 export const ordersService = {
   async create(
     input: {
       storeId?: string;
+      /**
+       * Frontend-provided tenant fields are ignored; tenant is always derived from store.
+       * Kept here to harden against injected payloads from older/newer clients.
+       */
+      companyId?: string;
+      branchId?: string;
       customerName: string;
       customerPhone: string;
       pickupAddress: string;
@@ -81,6 +84,8 @@ export const ordersService = {
       distributionMode?: "AUTO" | "MANUAL";
       /** اختياري — ربط صريح بحساب عميل؛ وإلا يُستنتج من تطابق الهاتف */
       customerUserId?: string;
+      /** منطقة اختيارية (ضمن شركة المتجر) — لا توسّع نطاق الأمان */
+      zoneId?: string;
     },
     actor: {
       userId: string;
@@ -167,6 +172,33 @@ export const ordersService = {
       customerPhone: input.customerPhone,
     });
 
+    let zoneConnect: { connect: { id: string } } | undefined;
+    if (input.zoneId) {
+      const z = await prisma.zone.findFirst({
+        where: { id: input.zoneId, isActive: true, city: { companyId: store.companyId } },
+        select: { id: true },
+      });
+      if (!z) throw new AppError(400, "Invalid zone for this company.", "INVALID_ZONE");
+      zoneConnect = { connect: { id: z.id } };
+    }
+
+    let ownerConnect: { connect: { id: string } } | undefined;
+    let orderPublicOwnerCode: string | undefined;
+    if (actor.role === UserRole.COMPANY_ADMIN) {
+      ownerConnect = { connect: { id: actor.userId } };
+      const u = await prisma.user.findUnique({
+        where: { id: actor.userId },
+        select: { publicOwnerCode: true },
+      });
+      orderPublicOwnerCode = u?.publicOwnerCode ?? undefined;
+    }
+
+    const resolvedMoney = resolveCanonicalOrderMoneyOnCreate({
+      amount: input.amount,
+      deliveryFee: input.deliveryFee,
+      cashCollection: input.cashCollection,
+    });
+
     const order = await orderRepository.create({
       orderNumber: generateOrderNumber(),
       customerName: input.customerName,
@@ -181,14 +213,17 @@ export const ordersService = {
       dropoffLat: input.dropoffLatitude ?? null,
       dropoffLng: input.dropoffLongitude ?? null,
       area: input.area,
-      amount: new Prisma.Decimal(input.amount),
-      cashCollection: new Prisma.Decimal(input.cashCollection ?? 0),
-      ...(input.deliveryFee != null ? { deliveryFee: new Prisma.Decimal(input.deliveryFee) } : {}),
+      amount: resolvedMoney.amount,
+      cashCollection: resolvedMoney.cashCollection,
+      deliveryFee: resolvedMoney.deliveryFee,
       notes: input.notes ?? null,
       status: OrderStatus.PENDING,
       distributionMode: input.distributionMode ?? DistributionMode.AUTO,
       createdBy: { connect: { id: actor.userId } },
       ...(linkedCustomerUserId ? { customerUser: { connect: { id: linkedCustomerUserId } } } : {}),
+      ...(ownerConnect ? { ownerUser: ownerConnect } : {}),
+      ...(orderPublicOwnerCode ? { orderPublicOwnerCode } : {}),
+      ...(zoneConnect ? { zone: zoneConnect } : {}),
     });
 
     await activityService.log(actor.userId, "ORDER_CREATED", "order", order.id, {});
@@ -227,6 +262,9 @@ export const ordersService = {
       });
       if (tenant.companyId) filters.companyId = tenant.companyId;
       if (tenant.branchId) filters.branchId = tenant.branchId;
+      if (actor.role === "COMPANY_ADMIN") {
+        filters.companyAdminOwnerUserId = actor.userId;
+      }
       const supRead = await resolveSupervisorReadScopeForList({
         userId: actor.userId,
         role: actor.role,
@@ -238,33 +276,7 @@ export const ordersService = {
     const [total, items] = await orderRepository.list(filters);
     return {
       total,
-      items: items.map((o) => ({
-        id: o.id,
-        orderNumber: o.orderNumber,
-        status: o.status,
-        distributionMode: o.distributionMode,
-        customerName: o.customerName,
-        customerPhone: o.customerPhone,
-        pickupAddress: o.pickupAddress,
-        dropoffAddress: o.dropoffAddress,
-        area: o.area,
-        amount: decAmount(o.amount),
-        cashCollection: decAmount(o.cashCollection),
-        notes: o.notes,
-        createdAt: o.createdAt.toISOString(),
-        updatedAt: o.updatedAt.toISOString(),
-        store: o.store,
-        assignedCaptain: o.assignedCaptain
-          ? {
-              id: o.assignedCaptain.id,
-              user: {
-                fullName: o.assignedCaptain.user.fullName,
-                phone: o.assignedCaptain.user.phone,
-              },
-            }
-          : null,
-        pendingOfferExpiresAt: pendingOfferExpiresAtIsoForListItem(o),
-      })),
+      items: items.map((o) => toOrderListItemDto(o)),
     };
   },
 
@@ -291,7 +303,7 @@ export const ordersService = {
           companyId: actor.companyId ?? null,
           branchId: actor.branchId ?? null,
         },
-        { companyId: order.companyId, branchId: order.branchId },
+        orderAccessScope(order),
       );
       await assertSupervisorReadAccessForOrder(
         {
@@ -314,7 +326,7 @@ export const ordersService = {
         order.assignedCaptainId === cap.id || order.assignmentLogs.some((l) => l.captainId === cap.id);
       if (!allowed) throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
-    return order;
+    return toOrderDetailDto(order);
   },
 
   async updateStatus(
@@ -342,7 +354,7 @@ export const ordersService = {
           companyId: actor.companyId ?? null,
           branchId: actor.branchId ?? null,
         },
-        { companyId: existing.companyId, branchId: existing.branchId },
+        orderAccessScope(existing),
       );
     }
 
@@ -367,22 +379,35 @@ export const ordersService = {
 
     if (existing.status === status) return existing;
 
-    const order = await prisma.$transaction(async (tx) => {
-      const updated = await tx.order.update({
-        where: { id },
-        data: { status },
-        include: {
-          assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 15 },
-          store: orderStoreInclude,
-          assignedCaptain: true,
-        },
-      });
-      if (status === OrderStatus.DELIVERED) {
-        await captainPrepaidBalanceService.deductForDeliveredOrderTx(tx, id, actorUserId);
-      }
-      await activityService.logTx(tx, actorUserId, "ORDER_STATUS_CHANGED", "order", id, { status });
-      return updated;
-    });
+    const order = await prisma.$transaction(
+      async (tx) => {
+        const snap = await tx.order.findUnique({
+          where: { id },
+          select: { pickedUpAt: true, deliveredAt: true },
+        });
+        if (!snap) throw new AppError(404, "Order not found", "NOT_FOUND");
+        const timestampData = patchOrderStatusTransitionTimestamps(snap, status);
+        const updated = await tx.order.update({
+          where: { id },
+          data: { status, ...timestampData },
+          include: {
+            assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 15 },
+            store: orderStoreInclude,
+            assignedCaptain: true,
+          },
+        });
+        if (status === OrderStatus.DELIVERED) {
+          if (ORDER_DELIVERED_LEDGER_HOOK_ENABLED) {
+            await applyDeliveredOrderLedgerTx(tx, id, actorUserId);
+          } else {
+            await captainPrepaidBalanceService.deductForDeliveredOrderTx(tx, id, actorUserId);
+          }
+        }
+        await activityService.logTx(tx, actorUserId, "ORDER_STATUS_CHANGED", "order", id, { status });
+        return updated;
+      },
+      ORDER_STATUS_TX_OPTIONS,
+    );
     emitDispatcherOrderUpdated(order);
     if (order.assignedCaptain?.userId) {
       emitCaptainOrderUpdated(order.assignedCaptain.userId, order);
@@ -619,31 +644,7 @@ export const ordersService = {
     return {
       total,
       items: items.map((o) => ({
-        id: o.id,
-        orderNumber: o.orderNumber,
-        status: o.status,
-        distributionMode: o.distributionMode,
-        customerName: o.customerName,
-        customerPhone: o.customerPhone,
-        pickupAddress: o.pickupAddress,
-        dropoffAddress: o.dropoffAddress,
-        area: o.area,
-        amount: decAmount(o.amount),
-        cashCollection: decAmount(o.cashCollection),
-        notes: o.notes,
-        createdAt: o.createdAt.toISOString(),
-        updatedAt: o.updatedAt.toISOString(),
-        store: o.store,
-        assignedCaptain: o.assignedCaptain
-          ? {
-              id: o.assignedCaptain.id,
-              user: {
-                fullName: o.assignedCaptain.user.fullName,
-                phone: o.assignedCaptain.user.phone,
-              },
-            }
-          : null,
-        pendingOfferExpiresAt: pendingOfferExpiresAtIsoForListItem(o),
+        ...toOrderListItemDto(o),
         archivedAt: o.archivedAt?.toISOString() ?? null,
       })),
     };
@@ -674,17 +675,31 @@ export const ordersService = {
 
     const quick = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { status: true, archivedAt: true, companyId: true, branchId: true },
+      select: {
+        status: true,
+        archivedAt: true,
+        companyId: true,
+        branchId: true,
+        ownerUserId: true,
+        createdByUserId: true,
+        assignedCaptain: { select: { createdByUserId: true } },
+      },
     });
     if (!quick) throw new AppError(404, "Order not found", "NOT_FOUND");
     await assertStaffCanAccessOrder(
       {
         userId: actor.userId,
-          role: actor.role,
+        role: actor.role,
         companyId: actor.companyId ?? null,
         branchId: actor.branchId ?? null,
       },
-      { companyId: quick.companyId, branchId: quick.branchId },
+      orderAccessScope({
+        companyId: quick.companyId,
+        branchId: quick.branchId,
+        ownerUserId: quick.ownerUserId,
+        createdByUserId: quick.createdByUserId,
+        assignedCaptain: quick.assignedCaptain,
+      }),
     );
     if (quick.archivedAt) {
       throw new AppError(409, "ألغِ أرشفة الطلب قبل تعديل الحالة", "ORDER_ARCHIVED");
@@ -697,66 +712,78 @@ export const ordersService = {
 
     let releasedCaptainUserId: string | null = null;
 
-    await prisma.$transaction(async (tx) => {
-      await lockOrderDistributionTx(tx, orderId);
-      const before = await tx.order.findUnique({
-        where: { id: orderId },
-        include: { assignedCaptain: { include: { user: { select: { id: true } } } } },
-      });
-      if (!before) throw new AppError(404, "Order not found", "NOT_FOUND");
-      if (before.archivedAt) {
-        throw new AppError(409, "ألغِ أرشفة الطلب قبل تعديل الحالة", "ORDER_ARCHIVED");
-      }
-      if (before.status === targetStatus) {
-        return;
-      }
+    await prisma.$transaction(
+      async (tx) => {
+        await lockOrderDistributionTx(tx, orderId);
+        const before = await tx.order.findUnique({
+          where: { id: orderId },
+          include: { assignedCaptain: { include: { user: { select: { id: true } } } } },
+        });
+        if (!before) throw new AppError(404, "Order not found", "NOT_FOUND");
+        if (before.archivedAt) {
+          throw new AppError(409, "ألغِ أرشفة الطلب قبل تعديل الحالة", "ORDER_ARCHIVED");
+        }
+        if (before.status === targetStatus) {
+          return;
+        }
 
-      await tx.orderAssignmentLog.updateMany({
-        where: { orderId, responseStatus: AssignmentResponseStatus.PENDING },
-        data: {
-          responseStatus: AssignmentResponseStatus.CANCELLED,
-          notes: "Cancelled: admin manual status override",
-        },
-      });
+        await tx.orderAssignmentLog.updateMany({
+          where: { orderId, responseStatus: AssignmentResponseStatus.PENDING },
+          data: {
+            responseStatus: AssignmentResponseStatus.CANCELLED,
+            notes: "Cancelled: admin manual status override",
+          },
+        });
 
-      const clearCaptain =
-        targetStatus === OrderStatus.PENDING ||
-        targetStatus === OrderStatus.CONFIRMED ||
-        targetStatus === OrderStatus.CANCELLED;
+        const clearCaptain =
+          targetStatus === OrderStatus.PENDING ||
+          targetStatus === OrderStatus.CONFIRMED ||
+          targetStatus === OrderStatus.CANCELLED;
 
-      const prevCaptainUserId = before.assignedCaptain?.user?.id ?? null;
-      if (clearCaptain && prevCaptainUserId) {
-        releasedCaptainUserId = prevCaptainUserId;
-      }
+        const prevCaptainUserId = before.assignedCaptain?.user?.id ?? null;
+        if (clearCaptain && prevCaptainUserId) {
+          releasedCaptainUserId = prevCaptainUserId;
+        }
 
-      await tx.order.update({
-        where: { id: orderId },
-        data: {
-          status: targetStatus,
-          ...(clearCaptain ? { assignedCaptainId: null } : {}),
-          ...(targetStatus === OrderStatus.PENDING ? { distributionMode: DistributionMode.AUTO } : {}),
-        },
-      });
-
-      if (targetStatus === OrderStatus.DELIVERED) {
-        await captainPrepaidBalanceService.deductForDeliveredOrderTx(tx, orderId, actor.userId);
-      }
-
-      await activityService.logTx(tx, actor.userId, "ORDER_ADMIN_STATUS_OVERRIDE", "order", orderId, {
-        from: before.status,
-        to: targetStatus,
-      });
-
-      if (clearCaptain && prevCaptainUserId) {
-        await notificationService.notifyCaptainTx(
-          tx,
-          prevCaptainUserId,
-          "ORDER_ADMIN_RESET",
-          "تحديث الطلب من التوزيع",
-          `تم تعديل حالة الطلب ${before.orderNumber} من لوحة الإشراف — قد لا يعود مُسنداً إليك.`,
+        const timestampData = patchOrderStatusTransitionTimestamps(
+          { pickedUpAt: before.pickedUpAt, deliveredAt: before.deliveredAt },
+          targetStatus,
         );
-      }
-    });
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            status: targetStatus,
+            ...(clearCaptain ? { assignedCaptainId: null } : {}),
+            ...(targetStatus === OrderStatus.PENDING ? { distributionMode: DistributionMode.AUTO } : {}),
+            ...timestampData,
+          },
+        });
+
+        if (targetStatus === OrderStatus.DELIVERED) {
+          if (ORDER_DELIVERED_LEDGER_HOOK_ENABLED) {
+            await applyDeliveredOrderLedgerTx(tx, orderId, actor.userId);
+          } else {
+            await captainPrepaidBalanceService.deductForDeliveredOrderTx(tx, orderId, actor.userId);
+          }
+        }
+
+        await activityService.logTx(tx, actor.userId, "ORDER_ADMIN_STATUS_OVERRIDE", "order", orderId, {
+          from: before.status,
+          to: targetStatus,
+        });
+
+        if (clearCaptain && prevCaptainUserId) {
+          await notificationService.notifyCaptainTx(
+            tx,
+            prevCaptainUserId,
+            "ORDER_ADMIN_RESET",
+            "تحديث الطلب من التوزيع",
+            `تم تعديل حالة الطلب ${before.orderNumber} من لوحة الإشراف — قد لا يعود مُسنداً إليك.`,
+          );
+        }
+      },
+      ORDER_STATUS_TX_OPTIONS,
+    );
 
     const order = await orderRepository.findById(orderId);
     if (!order) throw new AppError(500, "Order update failed", "INTERNAL");
@@ -788,7 +815,7 @@ export const ordersService = {
         companyId: actor.companyId ?? null,
         branchId: actor.branchId ?? null,
       },
-      { companyId: existing.companyId, branchId: existing.branchId },
+      orderAccessScope(existing),
     );
     if (existing.archivedAt) {
       throw new AppError(409, "الطلب مؤرشف مسبقاً", "ALREADY_ARCHIVED");
@@ -842,7 +869,7 @@ export const ordersService = {
         companyId: actor.companyId ?? null,
         branchId: actor.branchId ?? null,
       },
-      { companyId: existing.companyId, branchId: existing.branchId },
+      orderAccessScope(existing),
     );
     if (!existing.archivedAt) {
       throw new AppError(409, "الطلب غير مؤرشف", "NOT_ARCHIVED");

@@ -1,7 +1,31 @@
-import { CaptainBalanceTransactionType, OrderStatus, Prisma } from "@prisma/client";
+import {
+  CaptainBalanceTransactionType,
+  LedgerEntryType,
+  OrderStatus,
+  Prisma,
+  WalletOwnerType,
+} from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import {
+  CAPTAIN_PREPAID_LEDGER_MUTATION_TX_OPTIONS,
+  LEDGER_REF_CAPTAIN_PREPAID_OP,
+  financePrepaidChargeClientIdempotencyKey,
+  prepaidAdjustLedgerIdempotencyKey,
+  prepaidChargeLedgerIdempotencyKey,
+} from "../config/captain-prepaid-ledger.js";
+import { isCompanyAdminRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
+import type { CaptainBalanceTransaction } from "@prisma/client";
+import {
+  DISTRIBUTION_GATING_SHADOW_LOG,
+  DISTRIBUTION_GATING_USE_ALIGNED_BALANCE,
+} from "../config/distribution-gating-flags.js";
+import { ORDER_DELIVERED_LEDGER_HOOK_ENABLED } from "../config/order-ledger-flags.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
+import { buildCaptainReadAlignment, getBalanceForPrepaidProductChecks } from "./captain-read-alignment.js";
+import { appendLedgerEntryInTx, ensureWalletAccountInTx } from "./ledger/index.js";
+import { resolveDeliveryFeeForCommission } from "../domain/order-delivery-fee-for-commission.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -20,11 +44,6 @@ function decString(value: Prisma.Decimal.Value): string {
   return money(value).toFixed(2);
 }
 
-function deliveryFeeFromOrder(order: { cashCollection: Prisma.Decimal }): Prisma.Decimal {
-  // Current order model stores the delivery fee submitted by dashboard forms in cashCollection.
-  return money(order.cashCollection);
-}
-
 async function getSettingsTx(tx: Tx) {
   return tx.dashboardSettings.upsert({
     where: { id: SETTINGS_ID },
@@ -41,6 +60,8 @@ function resolvePolicy(
     prepaidEnabled: boolean;
     minimumBalanceToReceiveOrders: Prisma.Decimal | null;
   },
+  /** Must match read-alignment display rule when `DISTRIBUTION_GATING_USE_ALIGNED_BALANCE` (see `getBalanceForPrepaidProductChecks`). */
+  balanceForPrepaidProductChecks: Prisma.Decimal,
 ) {
   const systemEnabled = settings.prepaidCaptainsEnabled;
   const captainEnabled = captain.prepaidEnabled;
@@ -53,7 +74,7 @@ function resolvePolicy(
   const minimumBalance = money(
     captain.minimumBalanceToReceiveOrders ?? settings.prepaidMinimumBalanceToReceiveOrders ?? ZERO,
   );
-  const balance = money(captain.prepaidBalance);
+  const balance = money(balanceForPrepaidProductChecks);
   const blockedFromReceivingOrders = effectiveEnabled && (balance.lte(0) || balance.lt(minimumBalance));
   const lowBalance = effectiveEnabled && !blockedFromReceivingOrders && balance.lte(minimumBalance.plus(10));
 
@@ -82,6 +103,7 @@ async function loadCaptainPolicyTx(tx: Tx, captainId: string) {
     select: {
       id: true,
       userId: true,
+      companyId: true,
       prepaidBalance: true,
       commissionPercent: true,
       prepaidEnabled: true,
@@ -92,7 +114,30 @@ async function loadCaptainPolicyTx(tx: Tx, captainId: string) {
     },
   });
   if (!captain) throw new AppError(404, "Captain not found", "NOT_FOUND");
-  return { settings, captain, policy: resolvePolicy(settings, captain) };
+  const wallet = await tx.walletAccount.findUnique({
+    where: { ownerType_ownerId: { ownerType: WalletOwnerType.CAPTAIN, ownerId: captainId } },
+    select: { balanceCached: true },
+  });
+  const balanceForPrepaidProductChecks = getBalanceForPrepaidProductChecks({
+    useAligned: DISTRIBUTION_GATING_USE_ALIGNED_BALANCE,
+    captainPrepaid: captain.prepaidBalance,
+    walletBalanceCached: wallet?.balanceCached ?? null,
+  });
+  if (DISTRIBUTION_GATING_SHADOW_LOG && wallet) {
+    const p = money(captain.prepaidBalance);
+    const w = money(wallet.balanceCached);
+    if (!p.equals(w)) {
+      // eslint-disable-next-line no-console
+      console.warn("[captain-prepaid] gating balance shadow (prepaid ≠ wallet)", {
+        captainId,
+        prepaid: p.toFixed(2),
+        wallet: w.toFixed(2),
+        gating: money(balanceForPrepaidProductChecks).toFixed(2),
+        useAligned: DISTRIBUTION_GATING_USE_ALIGNED_BALANCE,
+      });
+    }
+  }
+  return { settings, captain, policy: resolvePolicy(settings, captain, balanceForPrepaidProductChecks) };
 }
 
 function summaryDto(input: {
@@ -114,7 +159,8 @@ function summaryDto(input: {
   return {
     captainId: input.captain.id,
     currentBalance: decString(input.policy.currentBalance),
-    prepaidBalance: decString(input.policy.currentBalance),
+    /** Prepaid *book* (`Captain.prepaidBalance`); `currentBalance` follows policy (aligned with wallet when gating flag on). */
+    prepaidBalance: decString(input.captain.prepaidBalance),
     commissionPercent: input.policy.commissionPercent.toFixed(2),
     prepaidEnabled: input.policy.prepaidEnabled,
     captainPrepaidEnabled: input.captain.prepaidEnabled,
@@ -171,13 +217,120 @@ export const captainPrepaidBalanceService = {
     );
   },
 
+  /**
+   * Commission for a delivered order: **percent × delivery fee** (see `resolveDeliveryFeeForCommission`).
+   * For application on the unified ledger (ignores prepaidEnabled).
+   */
+  async resolveDeliveredCommissionForLedgerTx(
+    tx: Tx,
+    order: {
+      assignedCaptainId: string | null;
+      amount: Prisma.Decimal;
+      deliveryFee: Prisma.Decimal | null;
+      cashCollection: Prisma.Decimal;
+    },
+  ): Promise<{
+    commission: Prisma.Decimal;
+    captainId: string;
+    deliveryFee: Prisma.Decimal;
+    commissionPercent: Prisma.Decimal;
+  } | null> {
+    if (!order.assignedCaptainId) return null;
+    const { captain, policy } = await loadCaptainPolicyTx(tx, order.assignedCaptainId);
+    const deliveryFee = resolveDeliveryFeeForCommission(order);
+    const commission = this.calculateCommission(deliveryFee, policy.commissionPercent);
+    if (commission.lte(ZERO)) return null;
+    return {
+      commission,
+      captainId: captain.id,
+      deliveryFee,
+      commissionPercent: policy.commissionPercent,
+    };
+  },
+
+  /**
+   * بعد `ORDER_DELIVERED_CAPTAIN_DEDUCTION` في الدفتر: يعكس نفس خصم العمولة في رصيد الباقة المدفوعة مسبقاً
+   * عند `policy.prepaidEnabled` فقط. يجب استدعاؤه داخل نفس `tx` بعد تثبيت سطر الدفتر.
+   */
+  async mirrorDeliveredPrepaidDeductionAfterLedgerTx(
+    tx: Tx,
+    input: {
+      order: { id: string; orderNumber: string };
+      comm: {
+        commission: Prisma.Decimal;
+        captainId: string;
+        deliveryFee: Prisma.Decimal;
+        commissionPercent: Prisma.Decimal;
+      };
+      actorUserId: string | null;
+    },
+  ): Promise<void> {
+    if (!ORDER_DELIVERED_LEDGER_HOOK_ENABLED) return;
+
+    const { captain, policy } = await loadCaptainPolicyTx(tx, input.comm.captainId);
+    if (!policy.prepaidEnabled) return;
+
+    const commission = money(input.comm.commission);
+    if (commission.lte(ZERO)) return;
+
+    const existing = await tx.captainBalanceTransaction.findFirst({
+      where: {
+        captainId: input.comm.captainId,
+        orderId: input.order.id,
+        type: CaptainBalanceTransactionType.DEDUCTION,
+      },
+      select: { id: true },
+    });
+    if (existing) return;
+
+    const deliveryFee = money(input.comm.deliveryFee);
+    const nextBalance = money(captain.prepaidBalance.minus(commission));
+
+    await tx.captain.update({
+      where: { id: captain.id },
+      data: {
+        prepaidBalance: nextBalance,
+        totalDeducted: { increment: commission },
+        lastBalanceUpdatedAt: new Date(),
+      },
+    });
+
+    await tx.captainBalanceTransaction.create({
+      data: {
+        captainId: captain.id,
+        type: CaptainBalanceTransactionType.DEDUCTION,
+        amount: commission,
+        balanceAfter: nextBalance,
+        commissionPercentSnapshot: policy.commissionPercent,
+        deliveryFeeSnapshot: deliveryFee,
+        orderId: input.order.id,
+        note: `تم خصم العمولة بعد تسليم الطلب ${input.order.orderNumber}`,
+        createdBy: input.actorUserId,
+      },
+    });
+
+    await activityService.logTx(tx, input.actorUserId, "CAPTAIN_PREPAID_DEDUCTED", "captain", captain.id, {
+      orderId: input.order.id,
+      orderNumber: input.order.orderNumber,
+      deliveryFee: deliveryFee.toFixed(2),
+      commissionPercent: policy.commissionPercent.toFixed(2),
+      commission: commission.toFixed(2),
+      balanceAfter: nextBalance.toFixed(2),
+    });
+  },
+
   async deductForDeliveredOrderTx(tx: Tx, orderId: string, actorUserId: string | null) {
+    if (ORDER_DELIVERED_LEDGER_HOOK_ENABLED) {
+      return { skipped: true as const, reason: "LEDGER_DELIVERED_HOOK_ACTIVE" as const };
+    }
     const order = await tx.order.findUnique({
       where: { id: orderId },
       select: {
         id: true,
         orderNumber: true,
         status: true,
+        amount: true,
+        deliveryFee: true,
         cashCollection: true,
         assignedCaptainId: true,
       },
@@ -197,7 +350,7 @@ export const captainPrepaidBalanceService = {
     const { captain, policy } = await loadCaptainPolicyTx(tx, order.assignedCaptainId);
     if (!policy.prepaidEnabled) return { skipped: true as const, reason: "PREPAID_DISABLED" as const };
 
-    const deliveryFee = deliveryFeeFromOrder(order);
+    const deliveryFee = resolveDeliveryFeeForCommission(order);
     const commission = this.calculateCommission(deliveryFee, policy.commissionPercent);
     if (commission.lte(0)) return { skipped: true as const, reason: "ZERO_COMMISSION" as const };
 
@@ -241,35 +394,202 @@ export const captainPrepaidBalanceService = {
     const amount = money(input.amount);
     if (amount.lte(0)) throw new AppError(400, "Amount must be greater than zero", "BAD_REQUEST");
 
-    return prisma.$transaction(async (tx) => {
-      const { captain, policy } = await loadCaptainPolicyTx(tx, captainId);
-      const nextBalance = money(captain.prepaidBalance.plus(amount));
-      const transaction = await tx.captainBalanceTransaction.create({
-        data: {
-          captainId,
-          type: CaptainBalanceTransactionType.CHARGE,
+    return prisma.$transaction(
+      async (tx) => {
+        const { captain, policy } = await loadCaptainPolicyTx(tx, captainId);
+        const opId = randomUUID();
+        const wallet = await ensureWalletAccountInTx(tx, {
+          ownerType: WalletOwnerType.CAPTAIN,
+          ownerId: captainId,
+          companyId: captain.companyId,
+        });
+        await appendLedgerEntryInTx(tx, {
+          walletAccountId: wallet.id,
+          entryType: LedgerEntryType.CAPTAIN_PREPAID_CHARGE,
           amount,
-          balanceAfter: nextBalance,
-          commissionPercentSnapshot: policy.commissionPercent,
-          note: input.note?.trim() || "تم شحن الرصيد بنجاح",
-          createdBy: actorUserId,
-        },
-      });
-      await tx.captain.update({
-        where: { id: captainId },
-        data: {
-          prepaidBalance: nextBalance,
-          totalCharged: { increment: amount },
-          lastBalanceUpdatedAt: new Date(),
-        },
-      });
-      await activityService.logTx(tx, actorUserId, "CAPTAIN_PREPAID_CHARGED", "captain", captainId, {
-        amount: amount.toFixed(2),
-        balanceAfter: nextBalance.toFixed(2),
-        note: input.note ?? null,
-      });
-      return transaction;
-    });
+          idempotencyKey: prepaidChargeLedgerIdempotencyKey(opId),
+          createdByUserId: actorUserId,
+          referenceType: LEDGER_REF_CAPTAIN_PREPAID_OP,
+          referenceId: opId,
+          metadata: { captainId, leg: "prepaid_charge" },
+        });
+
+        const nextBalance = money(captain.prepaidBalance.plus(amount));
+        const transaction = await tx.captainBalanceTransaction.create({
+          data: {
+            captainId,
+            type: CaptainBalanceTransactionType.CHARGE,
+            amount,
+            balanceAfter: nextBalance,
+            commissionPercentSnapshot: policy.commissionPercent,
+            note: input.note?.trim() || "تم شحن الرصيد بنجاح",
+            createdBy: actorUserId,
+            prepaidLedgerOperationId: opId,
+          },
+        });
+        await tx.captain.update({
+          where: { id: captainId },
+          data: {
+            prepaidBalance: nextBalance,
+            totalCharged: { increment: amount },
+            lastBalanceUpdatedAt: new Date(),
+          },
+        });
+        await activityService.logTx(tx, actorUserId, "CAPTAIN_PREPAID_CHARGED", "captain", captainId, {
+          actorUserId,
+          targetCaptainId: captainId,
+          companyId: captain.companyId,
+          amount: amount.toFixed(2),
+          reason: input.note ?? "CAPTAIN_PREPAID_CHARGE",
+          balanceAfter: nextBalance.toFixed(2),
+          note: input.note ?? null,
+        });
+        return transaction;
+      },
+      { ...CAPTAIN_PREPAID_LEDGER_MUTATION_TX_OPTIONS },
+    );
+  },
+
+  /**
+   * Hardened prepaid charge: client `idempotencyKey` + `reason`, namespaced ledger key (no double-credit).
+   * Use `POST /api/v1/finance/captains/:captainId/prepaid-charge` (COMPANY_ADMIN or SUPER_ADMIN).
+   * Company Admin: `captain.companyId` must match `actor.companyId` (steward/createdBy rules are not used here).
+   * Legacy `chargeCaptain` (random op id) is unchanged.
+   */
+  async chargeCaptainWithClientIdempotency(input: {
+    actor: { userId: string; role: AppRole; companyId: string | null; branchId: string | null };
+    captainId: string;
+    amount: Prisma.Decimal | string | number;
+    reason: string;
+    idempotencyKey: string;
+  }): Promise<{
+    idempotent: boolean;
+    transaction: CaptainBalanceTransaction;
+    ledgerEntryId: string;
+    balanceAfter: string;
+    prepaidBalance: string;
+  }> {
+    const { actor, captainId } = input;
+    const reason = input.reason.trim();
+    if (!reason) {
+      throw new AppError(400, "Reason is required", "REASON_REQUIRED");
+    }
+    const clientIdem = input.idempotencyKey.trim();
+    if (!clientIdem) {
+      throw new AppError(400, "idempotencyKey is required", "LEDGER_IDEMPOTENCY_KEY_REQUIRED");
+    }
+    const amount = money(input.amount);
+    if (amount.lte(0)) {
+      throw new AppError(400, "Amount must be greater than zero", "BAD_REQUEST");
+    }
+
+    let flow: "company_admin" | "super_admin";
+    if (isSuperAdminRole(actor.role)) {
+      flow = "super_admin";
+    } else if (isCompanyAdminRole(actor.role)) {
+      if (!actor.companyId) {
+        throw new AppError(403, "Company scope is required on your account for this operation.", "TENANT_SCOPE_REQUIRED");
+      }
+      flow = "company_admin";
+    } else {
+      throw new AppError(403, "Forbidden", "FORBIDDEN");
+    }
+
+    const ledgerIdempotencyKey = financePrepaidChargeClientIdempotencyKey(flow, captainId, clientIdem);
+    const operationRefId = ledgerIdempotencyKey;
+    const sourceMeta =
+      flow === "company_admin" ? "company_admin_captain_prepaid_charge" : "super_admin_captain_prepaid_charge";
+
+    return prisma.$transaction(
+      async (tx) => {
+        const { captain, policy } = await loadCaptainPolicyTx(tx, captainId);
+        if (isCompanyAdminRole(actor.role)) {
+          if (captain.companyId !== actor.companyId) {
+            throw new AppError(403, "Forbidden", "FORBIDDEN");
+          }
+        }
+
+        const wallet = await ensureWalletAccountInTx(tx, {
+          ownerType: WalletOwnerType.CAPTAIN,
+          ownerId: captainId,
+          companyId: captain.companyId,
+        });
+
+        const r = await appendLedgerEntryInTx(tx, {
+          walletAccountId: wallet.id,
+          entryType: LedgerEntryType.CAPTAIN_PREPAID_CHARGE,
+          amount,
+          idempotencyKey: ledgerIdempotencyKey,
+          createdByUserId: actor.userId,
+          referenceType: LEDGER_REF_CAPTAIN_PREPAID_OP,
+          referenceId: operationRefId,
+          metadata: {
+            captainId,
+            leg: "prepaid_charge",
+            source: sourceMeta,
+            reason,
+            actorUserId: actor.userId,
+          },
+        });
+
+        if (r.idempotent) {
+          const existing = await tx.captainBalanceTransaction.findFirst({
+            where: { prepaidLedgerOperationId: r.entry.referenceId },
+          });
+          if (!existing) {
+            throw new AppError(500, "Inconsistent ledger without matching balance transaction", "INTERNAL");
+          }
+          const cap = await tx.captain.findUniqueOrThrow({ where: { id: captainId } });
+          return {
+            idempotent: true,
+            transaction: existing,
+            ledgerEntryId: r.entry.id,
+            balanceAfter: decString(cap.prepaidBalance),
+            prepaidBalance: decString(cap.prepaidBalance),
+          };
+        }
+
+        const nextBalance = money(captain.prepaidBalance.plus(amount));
+        const transaction = await tx.captainBalanceTransaction.create({
+          data: {
+            captainId,
+            type: CaptainBalanceTransactionType.CHARGE,
+            amount,
+            balanceAfter: nextBalance,
+            commissionPercentSnapshot: policy.commissionPercent,
+            note: reason,
+            createdBy: actor.userId,
+            prepaidLedgerOperationId: operationRefId,
+          },
+        });
+        await tx.captain.update({
+          where: { id: captainId },
+          data: {
+            prepaidBalance: nextBalance,
+            totalCharged: { increment: amount },
+            lastBalanceUpdatedAt: new Date(),
+          },
+        });
+        await activityService.logTx(tx, actor.userId, "CAPTAIN_PREPAID_CHARGED", "captain", captainId, {
+          actorUserId: actor.userId,
+          targetCaptainId: captainId,
+          companyId: captain.companyId,
+          amount: amount.toFixed(2),
+          reason,
+          reasonSource: "finance_prepaid_api",
+          balanceAfter: nextBalance.toFixed(2),
+          idempotencyKey: clientIdem,
+        });
+        return {
+          idempotent: false,
+          transaction,
+          ledgerEntryId: r.entry.id,
+          balanceAfter: decString(nextBalance),
+          prepaidBalance: decString(nextBalance),
+        };
+      },
+      { ...CAPTAIN_PREPAID_LEDGER_MUTATION_TX_OPTIONS },
+    );
   },
 
   async adjustCaptain(captainId: string, input: { amount: number; note: string }, actorUserId: string) {
@@ -277,40 +597,65 @@ export const captainPrepaidBalanceService = {
     if (amount.eq(0)) throw new AppError(400, "Adjustment amount cannot be zero", "BAD_REQUEST");
     if (!input.note.trim()) throw new AppError(400, "Adjustment note is required", "BAD_REQUEST");
 
-    return prisma.$transaction(async (tx) => {
-      const { captain, policy } = await loadCaptainPolicyTx(tx, captainId);
-      const nextBalance = money(captain.prepaidBalance.plus(amount));
-      const transaction = await tx.captainBalanceTransaction.create({
-        data: {
-          captainId,
-          type: CaptainBalanceTransactionType.ADJUSTMENT,
+    return prisma.$transaction(
+      async (tx) => {
+        const { captain, policy } = await loadCaptainPolicyTx(tx, captainId);
+        const opId = randomUUID();
+        const wallet = await ensureWalletAccountInTx(tx, {
+          ownerType: WalletOwnerType.CAPTAIN,
+          ownerId: captainId,
+          companyId: captain.companyId,
+        });
+        await appendLedgerEntryInTx(tx, {
+          walletAccountId: wallet.id,
+          entryType: LedgerEntryType.CAPTAIN_PREPAID_ADJUSTMENT,
           amount,
-          balanceAfter: nextBalance,
-          commissionPercentSnapshot: policy.commissionPercent,
-          note: input.note.trim(),
-          createdBy: actorUserId,
-        },
-      });
-      await tx.captain.update({
-        where: { id: captainId },
-        data: {
-          prepaidBalance: nextBalance,
-          lastBalanceUpdatedAt: new Date(),
-        },
-      });
-      await activityService.logTx(tx, actorUserId, "CAPTAIN_PREPAID_ADJUSTED", "captain", captainId, {
-        amount: amount.toFixed(2),
-        balanceAfter: nextBalance.toFixed(2),
-        note: input.note,
-      });
-      return transaction;
-    });
+          idempotencyKey: prepaidAdjustLedgerIdempotencyKey(opId),
+          createdByUserId: actorUserId,
+          referenceType: LEDGER_REF_CAPTAIN_PREPAID_OP,
+          referenceId: opId,
+          metadata: { captainId, leg: "prepaid_adjust" },
+        });
+
+        const nextBalance = money(captain.prepaidBalance.plus(amount));
+        const transaction = await tx.captainBalanceTransaction.create({
+          data: {
+            captainId,
+            type: CaptainBalanceTransactionType.ADJUSTMENT,
+            amount,
+            balanceAfter: nextBalance,
+            commissionPercentSnapshot: policy.commissionPercent,
+            note: input.note.trim(),
+            createdBy: actorUserId,
+            prepaidLedgerOperationId: opId,
+          },
+        });
+        await tx.captain.update({
+          where: { id: captainId },
+          data: {
+            prepaidBalance: nextBalance,
+            lastBalanceUpdatedAt: new Date(),
+          },
+        });
+        await activityService.logTx(tx, actorUserId, "CAPTAIN_PREPAID_ADJUSTED", "captain", captainId, {
+          actorUserId,
+          targetCaptainId: captainId,
+          companyId: captain.companyId,
+          amount: amount.toFixed(2),
+          reason: input.note,
+          balanceAfter: nextBalance.toFixed(2),
+          note: input.note,
+        });
+        return transaction;
+      },
+      { ...CAPTAIN_PREPAID_LEDGER_MUTATION_TX_OPTIONS },
+    );
   },
 
   async getSummary(captainId: string) {
     return prisma.$transaction(async (tx) => {
       const { captain, policy } = await loadCaptainPolicyTx(tx, captainId);
-      const [lastCharge, lastDeduction, deliveredAvg] = await Promise.all([
+      const [lastCharge, lastDeduction, deliveredFeeAvgRows, wallet] = await Promise.all([
         tx.captainBalanceTransaction.findFirst({
           where: { captainId, type: CaptainBalanceTransactionType.CHARGE },
           orderBy: { createdAt: "desc" },
@@ -321,34 +666,73 @@ export const captainPrepaidBalanceService = {
           orderBy: { createdAt: "desc" },
           select: { createdAt: true },
         }),
-        tx.order.aggregate({
-          where: { assignedCaptainId: captainId, status: OrderStatus.DELIVERED },
-          _avg: { cashCollection: true },
+        tx.$queryRaw<Array<{ avg: Prisma.Decimal | null }>>(
+          Prisma.sql`
+            SELECT AVG(
+              COALESCE(o.delivery_fee, GREATEST(0::numeric, o.cash_collection - o.amount))
+            ) AS avg
+            FROM orders o
+            WHERE o.assigned_captain_id = ${captainId}
+              AND o.status::text = 'DELIVERED'
+          `,
+        ),
+        tx.walletAccount.findUnique({
+          where: { ownerType_ownerId: { ownerType: WalletOwnerType.CAPTAIN, ownerId: captainId } },
+          select: { balanceCached: true },
         }),
       ]);
-      const averageDeliveryFee = money(deliveredAvg._avg.cashCollection ?? 0);
+      const averageDeliveryFee = money(deliveredFeeAvgRows[0]?.avg ?? 0);
       const estimatedCommission = this.calculateCommission(averageDeliveryFee, policy.commissionPercent);
       const estimatedRemainingOrders = estimatedCommission.gt(0)
         ? Math.max(0, Math.floor(policy.currentBalance.div(estimatedCommission).toNumber()))
         : null;
 
-      return summaryDto({
-        captain,
-        policy,
-        lastChargeAt: lastCharge?.createdAt ?? null,
-        lastDeductionAt: lastDeduction?.createdAt ?? null,
-        estimatedRemainingOrders,
+      const readAlignment = buildCaptainReadAlignment({
+        captainPrepaid: captain.prepaidBalance,
+        walletBalanceCached: wallet?.balanceCached ?? null,
       });
+
+      return {
+        ...summaryDto({
+          captain,
+          policy,
+          lastChargeAt: lastCharge?.createdAt ?? null,
+          lastDeductionAt: lastDeduction?.createdAt ?? null,
+          estimatedRemainingOrders,
+        }),
+        readAlignment,
+      };
     });
   },
 
-  async listTransactions(captainId: string, params: { page: number; pageSize: number }) {
+  async listTransactions(
+    captainId: string,
+    params: { page: number; pageSize: number; from?: string; to?: string },
+  ) {
     const page = Math.max(1, params.page);
     const pageSize = Math.min(100, Math.max(1, params.pageSize));
+    const hasRange = Boolean(params.from && params.to);
+    let createdAt: { gte: Date; lte: Date } | undefined;
+    if (hasRange) {
+      const fromMs = Date.parse(params.from!);
+      const toMs = Date.parse(params.to!);
+      if (Number.isNaN(fromMs) || Number.isNaN(toMs)) {
+        throw new AppError(400, "from and to must be valid ISO-8601 datetimes", "INVALID_RANGE");
+      }
+      if (fromMs > toMs) throw new AppError(400, "from must be on or before to", "INVALID_RANGE");
+      if (toMs - fromMs > 90 * 24 * 60 * 60 * 1000) {
+        throw new AppError(400, "Date range may not exceed 90 days", "REPORT_RANGE_TOO_LARGE");
+      }
+      createdAt = { gte: new Date(fromMs), lte: new Date(toMs) };
+    }
+    const where: Prisma.CaptainBalanceTransactionWhereInput = {
+      captainId,
+      ...(createdAt ? { createdAt } : {}),
+    };
     const [total, items] = await prisma.$transaction([
-      prisma.captainBalanceTransaction.count({ where: { captainId } }),
+      prisma.captainBalanceTransaction.count({ where }),
       prisma.captainBalanceTransaction.findMany({
-        where: { captainId },
+        where,
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,

@@ -2,6 +2,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { notificationRepository } from "../repositories/notification.repository.js";
 import { activityService } from "./activity.service.js";
+import { isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
+import { AppError } from "../utils/errors.js";
 
 export type QuickStatusCode = "PRESSURE" | "LOW_ACTIVITY" | "RAISE_READINESS" | "ON_FIRE";
 
@@ -54,14 +56,73 @@ export const notificationService = {
     return notificationRepository.markAllRead(userId);
   },
 
-  async sendQuickStatusAlert(status: QuickStatusCode, actorUserId: string) {
+  async sendQuickStatusAlert(
+    status: QuickStatusCode,
+    actor: {
+      userId: string;
+      role: AppRole;
+      companyId: string | null;
+    },
+    options?: {
+      /**
+       * SUPER_ADMIN only:
+       * - global=true => explicit global broadcast.
+       * - targetCompanyId => company-scoped broadcast.
+       */
+      global?: boolean;
+      targetCompanyId?: string;
+    },
+  ) {
     const label = QUICK_STATUS_LABEL[status];
+    const globalRequested = options?.global === true;
+    const targetCompanyId = options?.targetCompanyId ?? null;
+
+    if (!isSuperAdminRole(actor.role)) {
+      if (!actor.companyId) {
+        throw new AppError(
+          403,
+          "Company scope is required on your account for quick status alerts.",
+          "TENANT_SCOPE_REQUIRED",
+        );
+      }
+      if (globalRequested) {
+        throw new AppError(403, "Global broadcast is only allowed for super admin.", "FORBIDDEN");
+      }
+    }
+
+    if (globalRequested && targetCompanyId) {
+      throw new AppError(400, "Use either global or targetCompanyId, not both.", "INVALID_SCOPE");
+    }
+    if (isSuperAdminRole(actor.role) && !globalRequested && !targetCompanyId) {
+      throw new AppError(
+        400,
+        "Super admin must set global=true or provide targetCompanyId.",
+        "SCOPE_REQUIRED",
+      );
+    }
+
+    const where: Prisma.CaptainWhereInput = {
+      isActive: true,
+      user: { isActive: true },
+      ...(isSuperAdminRole(actor.role)
+        ? globalRequested
+          ? {}
+          : { companyId: targetCompanyId ?? actor.companyId ?? undefined }
+        : { companyId: actor.companyId! }),
+    };
+
     const captains = await prisma.captain.findMany({
-      where: { isActive: true, user: { isActive: true } },
-      select: { userId: true },
+      where,
+      select: { userId: true, companyId: true },
     });
     if (captains.length === 0) {
-      await activityService.log(actorUserId, "QUICK_STATUS_ALERT", "notification", "none", { status, label, count: 0 });
+      await activityService.log(actor.userId, "QUICK_STATUS_ALERT", "notification", "none", {
+        status,
+        label,
+        count: 0,
+        scope: globalRequested ? "global" : "company",
+        targetCompanyId: targetCompanyId ?? actor.companyId ?? null,
+      });
       return { status, label, sent: 0 };
     }
 
@@ -73,10 +134,12 @@ export const notificationService = {
         body: `حالة الشغل الآن: ${label}`,
       })),
     });
-    await activityService.log(actorUserId, "QUICK_STATUS_ALERT", "notification", status, {
+    await activityService.log(actor.userId, "QUICK_STATUS_ALERT", "notification", status, {
       status,
       label,
       count: captains.length,
+      scope: globalRequested ? "global" : "company",
+      targetCompanyId: targetCompanyId ?? actor.companyId ?? null,
     });
     return { status, label, sent: captains.length };
   },
