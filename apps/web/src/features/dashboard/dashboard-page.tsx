@@ -1,12 +1,12 @@
 import { Suspense, lazy, useEffect, useState } from "react";
-import { Bell, Radio, Truck } from "lucide-react";
+import { Bell, Copy, Link2, Radio, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/layout/stat-card";
 import { QueryErrorLine } from "@/features/dashboard/components/query-error-line";
 import { useActivityList, useDashboardStats, useNotifications, useSendQuickStatusAlert, type QuickStatusCode } from "@/hooks";
-import { canListOrdersRole, isDispatchRole } from "@/lib/rbac-roles";
+import { canListOrdersRole, isCompanyAdminRole, isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 
 const DashboardMapSettingsCardLazy = lazy(() =>
@@ -65,6 +65,40 @@ export function DashboardPage() {
           </Button>
         }
       />
+
+      {user && isCompanyAdminRole(user.role) && user.publicOwnerCode ? (
+        <Card className="border-primary/25 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">رابط الطلبات الخاص بك</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              كود المدير: <span className="font-mono font-medium text-foreground">{user.publicOwnerCode}</span>
+            </p>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => {
+                const url = `${window.location.origin}/request/${encodeURIComponent(user.publicOwnerCode!)}`;
+                void navigator.clipboard.writeText(url);
+              }}
+            >
+              <Copy className="ms-1 size-4 opacity-80" />
+              نسخ الرابط
+            </Button>
+            <Button type="button" variant="secondary" asChild>
+              <a
+                href={`${window.location.origin}/request/${encodeURIComponent(user.publicOwnerCode!)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Link2 className="ms-1 size-4 opacity-80" />
+                فتح صفحة الطلب
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {dashboard.isLoading && !stats ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

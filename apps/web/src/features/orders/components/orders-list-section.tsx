@@ -1,20 +1,26 @@
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FORM_CONTROL_CLASS } from "@/components/ui/form-field-classes";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { LoadingBlock } from "@/components/ui/loading-block";
+import { TableShell } from "@/components/ui/table-shell";
 import { orderStatusBadgeVariant, orderStatusLabel } from "@/lib/order-status";
-import { ORDER_STATUS_FILTER_OPTIONS } from "@/features/orders/constants";
+import { ORDER_STATUS_FILTER_VALUES } from "@/features/orders/constants";
+import { storeSubscriptionLabel } from "@/lib/store-subscription-label";
+import { tableDateLocale } from "@/i18n/date-locale";
 import { ADMIN_OVERRIDE_TARGET_STATUSES, type AdminOverrideTargetStatus } from "@/hooks";
 import type { OrderListItem, OrderStatus } from "@/types/api";
+import { OrderFinancialStrip } from "@/features/orders/components/order-financial-strip";
 
 function canArchiveOrderStatus(status: OrderStatus): boolean {
   return !["ACCEPTED", "PICKED_UP", "IN_TRANSIT"].includes(status);
 }
-
-const selectClass =
-  "h-10 rounded-lg border border-card-border bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
 
 type Props = {
   search: string;
@@ -29,11 +35,15 @@ type Props = {
   onAuto: (orderId: string) => void;
   onManual: (order: OrderListItem) => void;
   onResend: (orderId: string) => void;
+  onReassign: (order: OrderListItem) => void;
   onCancelCaptain: (orderId: string) => void;
   autoPendingOrderId: string | null;
   resendPendingOrderId: string | null;
   cancelPendingOrderId: string | null;
-  archivePending?: boolean;
+  /** تعطيل زر «إعادة تعيين» فقط للصف الذي يُنفَّذ عليه الطلب */
+  reassignPendingOrderId: string | null;
+  /** تعطيل زر «إزالة من القائمة» فقط للصف الذي يُنفَّذ عليه الطلب */
+  archivePendingOrderId: string | null;
   onArchive?: (order: OrderListItem) => void;
   archiveConfirmOrder: OrderListItem | null;
   onArchiveConfirmClose: () => void;
@@ -45,6 +55,9 @@ type Props = {
   onAdminOverrideClose: () => void;
   onAdminOverrideConfirm: () => void;
   adminOverridePending: boolean;
+  /** تعطيل زر «تعديل الحالة» في الجدول فقط للصف الذي يُنفَّذ عليه الطلب */
+  adminOverrideRowPendingOrderId: string | null;
+  onOpenDetail?: (order: OrderListItem) => void;
 };
 
 export function OrdersListSection({
@@ -60,11 +73,13 @@ export function OrdersListSection({
   onAuto,
   onManual,
   onResend,
+  onReassign,
   onCancelCaptain,
   autoPendingOrderId,
   resendPendingOrderId,
   cancelPendingOrderId,
-  archivePending = false,
+  reassignPendingOrderId,
+  archivePendingOrderId,
   onArchive,
   archiveConfirmOrder,
   onArchiveConfirmClose,
@@ -76,66 +91,71 @@ export function OrdersListSection({
   onAdminOverrideClose,
   onAdminOverrideConfirm,
   adminOverridePending,
+  adminOverrideRowPendingOrderId,
+  onOpenDetail,
 }: Props) {
+  const { t, i18n } = useTranslation();
+  const dateLocale = tableDateLocale(i18n.resolvedLanguage ?? i18n.language);
+
   return (
-    <Card className="border-card-border shadow-sm">
-      <CardHeader className="grid gap-4 sm:flex sm:flex-row sm:items-end sm:justify-between">
+    <Card className="border-card-border shadow-sm ring-1 ring-card-border/70">
+      <CardHeader className="grid gap-4 border-b border-card-border/70 pb-5 sm:flex sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <CardTitle className="text-base">تصفية</CardTitle>
-          <CardDescription>رقم الطلب أو هاتف العميل، وحسب الحالة</CardDescription>
+          <CardTitle className="text-base">{t("orders.list.filterTitle")}</CardTitle>
+          <CardDescription>{t("orders.list.filterDesc")}</CardDescription>
         </div>
         <div className="flex flex-wrap gap-3">
           <div className="grid gap-1">
-            <Label className="text-xs text-muted">بحث</Label>
+            <Label className="text-xs text-muted">{t("orders.list.searchLabel")}</Label>
             <Input
               dir="ltr"
               className="w-56 text-left"
-              placeholder="Order # أو phone"
+              placeholder={t("orders.list.searchPlaceholder")}
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
             />
           </div>
           <div className="grid gap-1">
-            <Label className="text-xs text-muted">الحالة</Label>
-            <select className={selectClass} value={status} onChange={(e) => onStatusChange(e.target.value)}>
-              {ORDER_STATUS_FILTER_OPTIONS.map((o) => (
-                <option key={o.value || "all"} value={o.value}>
-                  {o.label}
+            <Label className="text-xs text-muted">{t("orders.list.statusLabel")}</Label>
+            <select className={FORM_CONTROL_CLASS} value={status} onChange={(e) => onStatusChange(e.target.value)}>
+              {ORDER_STATUS_FILTER_VALUES.map((v) => (
+                <option key={v || "all"} value={v}>
+                  {v === "" ? t("orders.list.statusAll") : t(`orderStatus.${v}`)}
                 </option>
               ))}
             </select>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
+      <CardContent className="grid gap-3 pt-4">
         {filterNote ? <p className="mb-3 text-xs text-muted">{filterNote}</p> : null}
         {loading ? (
-          <p className="text-sm text-muted">جارٍ التحميل…</p>
+          <LoadingBlock message={t("orders.list.loading")} compact />
         ) : error ? (
-          <p className="text-sm text-red-600">{error.message}</p>
+          <InlineAlert variant="error">{error.message}</InlineAlert>
+        ) : rows.length === 0 ? (
+          <EmptyState title={t("orders.list.emptyTitle")} description={t("orders.list.emptyDesc")} className="py-10" />
         ) : (
           <>
           <Modal
             open={Boolean(adminOverrideOrder)}
             onClose={onAdminOverrideClose}
-            title="تعديل الحالة — إجراء إشرافي"
-            description="يغيّر حالة الطلب مباشرة (للمشرفين فقط). عند اختيار «بانتظار التوزيع» أو «تجهيز» أو «ملغى» يُلغى تعيين الكابتن الحالي وتُلغى عروض التوزيع المعلّقة. لا يُستخدم بديلاً عن مسارات التوزيع العادية."
+            title={t("orders.list.adminModalTitle")}
+            description={t("orders.list.adminModalDesc")}
           >
             <div className="grid gap-3">
               {adminOverrideOrder ? (
                 <p className="text-sm text-muted">
-                  الطلب{" "}
-                  <span className="font-mono" dir="ltr">
-                    {adminOverrideOrder.orderNumber}
-                  </span>{" "}
-                  — الحالة الحالية:{" "}
-                  <span className="font-medium">{orderStatusLabel(adminOverrideOrder.status)}</span>
+                  {t("orders.list.adminOrderLine", {
+                    number: adminOverrideOrder.orderNumber,
+                    status: orderStatusLabel(adminOverrideOrder.status),
+                  })}
                 </p>
               ) : null}
               <div className="grid gap-1">
-                <Label className="text-xs text-muted">الحالة المستهدفة</Label>
+                <Label className="text-xs text-muted">{t("orders.list.adminTargetLabel")}</Label>
                 <select
-                  className={selectClass}
+                  className={FORM_CONTROL_CLASS}
                   value={adminOverrideTarget}
                   onChange={(e) => onAdminOverrideTargetChange(e.target.value as AdminOverrideTargetStatus)}
                 >
@@ -148,10 +168,10 @@ export function OrdersListSection({
               </div>
               <div className="flex flex-wrap justify-end gap-2 pt-1">
                 <Button type="button" variant="secondary" onClick={onAdminOverrideClose}>
-                  إلغاء
+                  {t("common.cancel")}
                 </Button>
                 <Button type="button" variant="default" disabled={adminOverridePending} onClick={onAdminOverrideConfirm}>
-                  تأكيد التعديل الإشرافي
+                  {t("orders.list.adminConfirm")}
                 </Button>
               </div>
             </div>
@@ -159,28 +179,32 @@ export function OrdersListSection({
           <Modal
             open={Boolean(archiveConfirmOrder)}
             onClose={onArchiveConfirmClose}
-            title="إزالة الطلب من القائمة التشغيلية؟"
-            description="لن يُحذف الصف من قاعدة البيانات — يُخفى من قوائم التشغيل والإحصاءات الافتراضية (بما فيها بعد التسليم). الطلبات المرتبطة بحساب عميل تبقى في سجل العميل. يمكن استرجاع العرض لاحقاً عبر واجهة الإدارة (إلغاء الأرشفة)."
+            title={t("orders.list.archiveTitle")}
+            description={t("orders.list.archiveDesc")}
           >
             <div className="flex flex-wrap justify-end gap-2">
               <Button type="button" variant="secondary" onClick={onArchiveConfirmClose}>
-                إلغاء
+                {t("common.cancel")}
               </Button>
-              <Button type="button" variant="default" disabled={archivePending} onClick={onArchiveConfirm}>
-                تأكيد الإزالة
+              <Button type="button" variant="default" disabled={Boolean(archivePendingOrderId)} onClick={onArchiveConfirm}>
+                {t("orders.list.archiveConfirm")}
               </Button>
             </div>
           </Modal>
-          <table className="w-full min-w-[920px] border-separate border-spacing-0 text-sm">
+          <TableShell>
+          <table className="w-full min-w-[1100px] border-separate border-spacing-0 text-sm md:min-w-[1180px]">
             <thead>
-              <tr className="text-muted">
-                <th className="border-b border-card-border px-3 py-2 text-right font-medium">الطلب</th>
-                <th className="border-b border-card-border px-3 py-2 text-right font-medium">الحالة</th>
-                <th className="border-b border-card-border px-3 py-2 text-right font-medium">العميل</th>
-                <th className="border-b border-card-border px-3 py-2 text-right font-medium">المتجر</th>
-                <th className="border-b border-card-border px-3 py-2 text-right font-medium">المنطقة</th>
-                <th className="border-b border-card-border px-3 py-2 text-right font-medium">تاريخ</th>
-                <th className="border-b border-card-border px-3 py-2 text-right font-medium">إجراءات</th>
+              <tr className="bg-muted/30 text-muted">
+                <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colOrder")}</th>
+                <th className="border-b border-card-border px-3 py-2 text-left font-medium" dir="ltr">
+                  {t("orders.list.colFinancials")}
+                </th>
+                <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colStatus")}</th>
+                <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colCustomer")}</th>
+                <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colStore")}</th>
+                <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colArea")}</th>
+                <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colDate")}</th>
+                <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colActions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -188,6 +212,14 @@ export function OrdersListSection({
                 <tr key={o.id} className="hover:bg-accent/40">
                   <td className="border-b border-card-border px-3 py-3 align-top font-mono text-xs" dir="ltr">
                     {o.orderNumber}
+                  </td>
+                  <td className="border-b border-card-border px-3 py-3 align-top min-w-[200px] max-w-[260px]">
+                    <OrderFinancialStrip
+                      amount={o.amount}
+                      cashCollection={o.cashCollection}
+                      deliveryFee={o.deliveryFee ?? null}
+                      variant="list"
+                    />
                   </td>
                   <td className="border-b border-card-border px-3 py-3 align-top">
                     <Badge variant={orderStatusBadgeVariant(o.status)}>{orderStatusLabel(o.status)}</Badge>
@@ -198,13 +230,53 @@ export function OrdersListSection({
                       {o.customerPhone}
                     </div>
                   </td>
-                  <td className="border-b border-card-border px-3 py-3 align-top text-xs">{o.store.name}</td>
+                  <td className="border-b border-card-border px-3 py-3 align-top text-xs">
+                    <div className="font-medium text-foreground">{o.store.name}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <Badge variant="muted" className="font-normal">
+                        {storeSubscriptionLabel(o.store.subscriptionType)}
+                      </Badge>
+                      <span className="font-mono text-[10px] text-muted" dir="ltr">
+                        {o.store.subscriptionType}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-muted">
+                      {t("orders.list.supervisor")}:{" "}
+                      {o.store.supervisorUser ? (
+                        <>
+                          {o.store.supervisorUser.fullName}
+                          <span className="mx-0.5">·</span>
+                          <span dir="ltr">{o.store.supervisorUser.phone}</span>
+                        </>
+                      ) : (
+                        t("orders.list.noSupervisor")
+                      )}
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-muted">
+                      {t("orders.list.region")}:{" "}
+                      {o.store.primaryRegion ? (
+                        <>
+                          {o.store.primaryRegion.name}
+                          <span className="mx-0.5 font-mono text-[10px]" dir="ltr">
+                            ({o.store.primaryRegion.code})
+                          </span>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </div>
+                  </td>
                   <td className="border-b border-card-border px-3 py-3 align-top text-xs">{o.area}</td>
                   <td className="border-b border-card-border px-3 py-3 align-top text-xs text-muted" dir="ltr">
-                    {new Date(o.createdAt).toLocaleString("ar-SA")}
+                    {new Date(o.createdAt).toLocaleString(dateLocale, { hour12: false })}
                   </td>
                   <td className="border-b border-card-border px-3 py-3 align-top">
                     <div className="flex flex-wrap gap-2">
+                      {onOpenDetail ? (
+                        <Button type="button" size="sm" variant="secondary" onClick={() => onOpenDetail(o)}>
+                          {t("orders.list.detail")}
+                        </Button>
+                      ) : null}
                       {canDispatch && (o.status === "PENDING" || o.status === "CONFIRMED") ? (
                         <Button
                           size="sm"
@@ -212,12 +284,12 @@ export function OrdersListSection({
                           disabled={autoPendingOrderId === o.id}
                           onClick={() => onAuto(o.id)}
                         >
-                          توزيع تلقائي
+                          {t("orders.list.autoDist")}
                         </Button>
                       ) : null}
                       {canDispatch ? (
                         <Button size="sm" variant="secondary" onClick={() => onManual(o)}>
-                          تعيين يدوي
+                          {t("orders.list.manualAssign")}
                         </Button>
                       ) : null}
                       {canDispatch && o.status !== "DELIVERED" && o.status !== "CANCELLED" ? (
@@ -227,7 +299,19 @@ export function OrdersListSection({
                           disabled={resendPendingOrderId === o.id}
                           onClick={() => onResend(o.id)}
                         >
-                          إعادة توزيع
+                          {t("orders.list.redistribute")}
+                        </Button>
+                      ) : null}
+                      {canDispatch &&
+                      o.assignedCaptain &&
+                      (o.status === "ASSIGNED" || o.status === "ACCEPTED" || o.status === "PICKED_UP") ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={reassignPendingOrderId === o.id}
+                          onClick={() => onReassign(o)}
+                        >
+                          {t("orders.list.reassign")}
                         </Button>
                       ) : null}
                       {canDispatch &&
@@ -247,11 +331,11 @@ export function OrdersListSection({
                           type="button"
                           size="sm"
                           variant="secondary"
-                          className="border-amber-200/80 text-amber-950 hover:bg-amber-50 dark:border-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-950/40"
-                          disabled={adminOverridePending}
+                          className="border-amber-200/80 text-amber-950 hover:bg-amber-50"
+                          disabled={adminOverrideRowPendingOrderId === o.id}
                           onClick={() => onAdminOverrideOpen(o)}
                         >
-                          تعديل الحالة (إشراف)
+                          {t("orders.list.adminOverride")}
                         </Button>
                       ) : null}
                       {canDispatch && onArchive && canArchiveOrderStatus(o.status) ? (
@@ -259,11 +343,11 @@ export function OrdersListSection({
                           type="button"
                           size="sm"
                           variant="secondary"
-                          className="border-red-200 text-red-800 hover:bg-red-50 dark:border-red-900/50 dark:text-red-200 dark:hover:bg-red-950/40"
-                          disabled={archivePending}
+                          className="border-red-200 text-red-800 hover:bg-red-50"
+                          disabled={archivePendingOrderId === o.id}
                           onClick={() => onArchive(o)}
                         >
-                          إزالة من القائمة
+                          {t("orders.list.removeFromList")}
                         </Button>
                       ) : null}
                     </div>
@@ -272,6 +356,7 @@ export function OrdersListSection({
               ))}
             </tbody>
           </table>
+          </TableShell>
           </>
         )}
       </CardContent>

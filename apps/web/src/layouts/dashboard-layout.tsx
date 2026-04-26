@@ -2,7 +2,14 @@ import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { DashboardSidebar } from "@/layouts/dashboard/dashboard-sidebar";
 import { useDashboardSocketInvalidate } from "@/layouts/dashboard/use-dashboard-socket-invalidate";
-import { canListOrdersRole, isDispatchRole } from "@/lib/rbac-roles";
+import {
+  canAccessCaptainsPage,
+  canAccessFinancePage,
+  canAccessIncubatorHost,
+  canAccessUsersPage,
+  canListOrdersRole,
+  isDispatchRole,
+} from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function DashboardLayout() {
@@ -14,14 +21,22 @@ export function DashboardLayout() {
   const role = user?.role;
   const isDispatch = isDispatchRole(role);
   const canOrders = canListOrdersRole(role);
+  const canFinance = canAccessFinancePage(role);
+  const canReports = canFinance;
+  const canUsers = canAccessUsersPage(role);
+  const canIncubator = canAccessIncubatorHost(role);
+  const canCaptains = canAccessCaptainsPage(role);
 
   const nav = {
     canNewOrder: canOrders,
     canDistribution: isDispatch,
-    canIncubatorHost: isDispatch,
+    canIncubatorHost: canIncubator,
     canOrders,
-    canCaptains: isDispatch,
-    canUsers: isDispatch,
+    canCaptains,
+    canStores: isDispatch,
+    canUsers,
+    canFinance,
+    canReports,
   };
 
   useEffect(() => {
@@ -44,8 +59,10 @@ export function DashboardLayout() {
           void navigate("/login", { replace: true });
         }}
       />
-      <main className="min-w-0 p-4 sm:p-6 lg:p-10">
-        <Outlet />
+      <main className="min-w-0 p-4 sm:p-6 lg:p-8 xl:p-10">
+        <div className="mx-auto w-full max-w-[1600px]">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

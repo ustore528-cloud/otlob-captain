@@ -1,35 +1,45 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Radio } from "lucide-react";
+import { Navigate } from "react-router-dom";
 import {
   useAdminOverrideOrderStatus,
   useArchiveOrder,
   useAssignOrderToCaptain,
   useCancelOrderCaptainAssignment,
   useCaptains,
+  useOrderDetail,
   useOrders,
+  useReassignOrder,
   useResendOrderToDistribution,
   useStartOrderAutoDistribution,
   type AdminOverrideTargetStatus,
 } from "@/hooks";
+import { OrderDetailModal } from "@/features/orders/components/order-detail-modal";
 import { ManualAssignModal } from "@/features/shared/manual-assign-modal";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { OrdersListSection } from "@/features/orders/components/orders-list-section";
 import { ORDERS_PAGE_INITIAL_LIST_PARAMS } from "@/router/loaders";
-import { isDispatchRole } from "@/lib/rbac-roles";
+import { canListOrdersRole, isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { OrderListItem } from "@/types/api";
 
 export function OrdersPageView() {
+  const { t } = useTranslation();
   const role = useAuthStore((s) => s.user?.role);
   const [status, setStatus] = useState(ORDERS_PAGE_INITIAL_LIST_PARAMS.status);
   const [q, setQ] = useState("");
   const [manualOrder, setManualOrder] = useState<OrderListItem | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<OrderListItem | null>(null);
+  const [reassignOrder, setReassignOrder] = useState<OrderListItem | null>(null);
   const [statusOverrideOrder, setStatusOverrideOrder] = useState<OrderListItem | null>(null);
   const [statusOverrideTarget, setStatusOverrideTarget] = useState<AdminOverrideTargetStatus>("PENDING");
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
 
   const canDispatch = isDispatchRole(role);
+  const canReadOrders = canListOrdersRole(role);
+  if (!canReadOrders) return <Navigate to="/" replace />;
 
   const orderParams = useMemo(() => {
     const t = q.trim();
@@ -44,13 +54,15 @@ export function OrdersPageView() {
   }, [status, q]);
 
   const orders = useOrders(orderParams);
+  const orderDetail = useOrderDetail(detailOrderId, { enabled: Boolean(detailOrderId) });
   const captains = useCaptains(
     { page: 1, pageSize: 100 },
-    { enabled: Boolean(manualOrder) && canDispatch },
+    { enabled: canDispatch && (Boolean(manualOrder) || Boolean(reassignOrder)) },
   );
 
   const auto = useStartOrderAutoDistribution();
   const resend = useResendOrderToDistribution();
+  const reassign = useReassignOrder();
   const cancelCaptain = useCancelOrderCaptainAssignment();
   const archiveOrder = useArchiveOrder();
   const adminOverrideStatus = useAdminOverrideOrderStatus();
@@ -63,25 +75,31 @@ export function OrdersPageView() {
         : resend.variables.orderId
       : null;
   const cancelPendingOrderId = cancelCaptain.isPending ? cancelCaptain.variables : null;
+  const reassignPendingOrderId =
+    reassign.isPending && reassign.variables ? reassign.variables.orderId : null;
+  const archivePendingOrderId = archiveOrder.isPending ? archiveOrder.variables ?? null : null;
+  const adminOverrideRowPendingOrderId =
+    adminOverrideStatus.isPending && adminOverrideStatus.variables
+      ? adminOverrideStatus.variables.orderId
+      : null;
 
   const rows = orders.data?.items ?? [];
 
   const filterNote = useMemo(() => {
     if (!q.trim()) return null;
-    return /^[\d+\s()-]{5,}$/.test(q.trim())
-      ? "يبحث في هاتف العميل."
-      : "يبحث في رقم الطلب (نص جزئي).";
-  }, [q]);
+    return /^[\d+\s()-]{5,}$/.test(q.trim()) ? t("orders.filter.byPhone") : t("orders.filter.byOrderNumber");
+  }, [q, t]);
 
   return (
     <div className="grid gap-8">
       <PageHeader
-        title="الطلبات"
-        description="بحث وتصفية، تعيين يدوي، وإعادة التوزيع للصلاحيات المخولة."
+        title={t("orders.page.title")}
+        description={t("orders.page.description")}
+        divider
         actions={
           <Button type="button" variant="secondary" onClick={() => void orders.refetch()} disabled={orders.isFetching}>
             <Radio className="opacity-80" />
-            تحديث
+            {t("common.refresh")}
           </Button>
         }
       />
@@ -99,11 +117,13 @@ export function OrdersPageView() {
         onAuto={(id) => auto.mutate(id)}
         onManual={setManualOrder}
         onResend={(id) => resend.mutate({ orderId: id, clickAtMs: performance.now(), source: "orders-table-resend" })}
+        onReassign={(order) => setReassignOrder(order)}
         onCancelCaptain={(id) => cancelCaptain.mutate(id)}
         autoPendingOrderId={autoPendingOrderId}
         resendPendingOrderId={resendPendingOrderId}
         cancelPendingOrderId={cancelPendingOrderId}
-        archivePending={archiveOrder.isPending}
+        reassignPendingOrderId={reassignPendingOrderId}
+        archivePendingOrderId={archivePendingOrderId}
         onArchive={canDispatch ? (o) => setArchiveTarget(o) : undefined}
         archiveConfirmOrder={archiveTarget}
         onArchiveConfirmClose={() => setArchiveTarget(null)}
@@ -129,6 +149,16 @@ export function OrdersPageView() {
           );
         }}
         adminOverridePending={adminOverrideStatus.isPending}
+        adminOverrideRowPendingOrderId={adminOverrideRowPendingOrderId}
+        onOpenDetail={(o) => setDetailOrderId(o.id)}
+      />
+
+      <OrderDetailModal
+        open={Boolean(detailOrderId)}
+        onClose={() => setDetailOrderId(null)}
+        loading={orderDetail.isLoading}
+        error={orderDetail.isError ? (orderDetail.error as Error) : null}
+        order={orderDetail.data}
       />
 
       <ManualAssignModal
@@ -149,6 +179,27 @@ export function OrdersPageView() {
               },
               { onSuccess: () => setManualOrder(null) },
             );
+        }}
+      />
+
+      <ManualAssignModal
+        open={Boolean(reassignOrder)}
+        onClose={() => setReassignOrder(null)}
+        title={t("manualAssign.reassignTitle")}
+        description={
+          reassignOrder ? t("manualAssign.reassignDescription", { order: reassignOrder.orderNumber }) : undefined
+        }
+        orderLabel={reassignOrder?.orderNumber ?? ""}
+        captains={captains.data?.items ?? []}
+        isPending={reassign.isPending}
+        onSubmit={(captainId) => {
+          if (!reassignOrder) return;
+          reassign.mutate(
+            { orderId: reassignOrder.id, captainId },
+            {
+              onSuccess: () => setReassignOrder(null),
+            },
+          );
         }}
       />
     </div>

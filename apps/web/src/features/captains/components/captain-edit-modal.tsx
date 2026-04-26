@@ -1,15 +1,16 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { FORM_CONTROL_CLASS } from "@/components/ui/form-field-classes";
 import { Input } from "@/components/ui/input";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { Label } from "@/components/ui/label";
-import { useUpdateCaptain } from "@/hooks";
+import { useUpdateCaptain, useUsers } from "@/hooks";
+import { isBranchManagerRole } from "@/lib/rbac-roles";
+import { useAuthStore } from "@/stores/auth-store";
 import type { CaptainListItem } from "@/types/api";
 
 const VEHICLE_TYPES = ["بسكليت", "دراجه ناريه", "سيارة", "شحن نقل"] as const;
-const selectClass =
-  "h-10 w-full rounded-lg border border-card-border bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
-
 type Props = {
   captain: CaptainListItem | null;
   open: boolean;
@@ -18,10 +19,20 @@ type Props = {
 
 export function CaptainEditModal({ captain, open, onClose }: Props) {
   const update = useUpdateCaptain();
+  const role = useAuthStore((s) => s.user?.role);
+  const me = useAuthStore((s) => s.user);
+  const isRegionSupervisor = isBranchManagerRole(role);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [vehicleType, setVehicleType] = useState<string>(VEHICLE_TYPES[1]);
   const [area, setArea] = useState("");
+  const [supervisorUserId, setSupervisorUserId] = useState<string>("");
+  const supervisorsBranch = useUsers({ page: 1, pageSize: 100, role: "BRANCH_MANAGER" });
+  const supervisorsDispatch = useUsers({ page: 1, pageSize: 100, role: "DISPATCHER" });
+  const supervisors = [
+    ...(supervisorsBranch.data?.items ?? []),
+    ...(supervisorsDispatch.data?.items ?? []),
+  ];
 
   useEffect(() => {
     if (!captain) return;
@@ -29,6 +40,7 @@ export function CaptainEditModal({ captain, open, onClose }: Props) {
     setPhone(captain.user.phone);
     setVehicleType(captain.vehicleType);
     setArea(captain.area);
+    setSupervisorUserId(captain.supervisorUser?.id ?? "");
   }, [captain]);
 
   function onSubmit(e: FormEvent) {
@@ -42,6 +54,7 @@ export function CaptainEditModal({ captain, open, onClose }: Props) {
           phone: phone.trim(),
           vehicleType: vehicleType as (typeof VEHICLE_TYPES)[number],
           area: area.trim(),
+          supervisorUserId: isRegionSupervisor ? me?.id ?? null : supervisorUserId || null,
         },
       },
       { onSuccess: () => onClose() },
@@ -65,7 +78,7 @@ export function CaptainEditModal({ captain, open, onClose }: Props) {
           <Label htmlFor="edit-cap-vehicle">نوع المركبة</Label>
           <select
             id="edit-cap-vehicle"
-            className={selectClass}
+            className={FORM_CONTROL_CLASS}
             value={vehicleType}
             onChange={(e) => setVehicleType(e.target.value)}
           >
@@ -80,7 +93,27 @@ export function CaptainEditModal({ captain, open, onClose }: Props) {
           <Label htmlFor="edit-cap-area">المنطقة</Label>
           <Input id="edit-cap-area" value={area} onChange={(e) => setArea(e.target.value)} required maxLength={200} />
         </div>
-        {update.isError ? <p className="text-sm text-red-600">{(update.error as Error).message}</p> : null}
+        {isRegionSupervisor ? (
+          <InlineAlert variant="info">كمشرف منطقة، ربط الكابتن بالمشرف يبقى على حسابك.</InlineAlert>
+        ) : (
+          <div className="grid gap-2">
+            <Label htmlFor="edit-cap-supervisor">المشرف</Label>
+            <select
+              id="edit-cap-supervisor"
+              className={FORM_CONTROL_CLASS}
+              value={supervisorUserId}
+              onChange={(e) => setSupervisorUserId(e.target.value)}
+            >
+              <option value="">بدون مشرف</option>
+              {supervisors.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.fullName} — {u.role}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {update.isError ? <InlineAlert variant="error">{(update.error as Error).message}</InlineAlert> : null}
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             إلغاء

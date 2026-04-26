@@ -6,7 +6,7 @@ import { CaptainGuidanceCard } from "@/features/captains/components/captain-guid
 import { CaptainEditModal } from "@/features/captains/components/captain-edit-modal";
 import { CaptainOrdersReportModal } from "@/features/captains/components/captain-orders-report-modal";
 import { CaptainsRosterCard } from "@/features/captains/components/captains-roster-card";
-import { isDispatchRole, isManagementAdminRole } from "@/lib/rbac-roles";
+import { canAccessCaptainsPage, canChargeCaptainBalance, isManagementAdminRole, isSuperAdminRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { CaptainListItem } from "@/types/api";
 
@@ -15,26 +15,30 @@ export function CaptainsPageView() {
   const [reportCap, setReportCap] = useState<CaptainListItem | null>(null);
   const [editCap, setEditCap] = useState<CaptainListItem | null>(null);
 
-  const isAdmin = isManagementAdminRole(role);
+  const canManageCaptains = isManagementAdminRole(role);
+  const canCharge = canChargeCaptainBalance(role);
+  const canDelete = isSuperAdminRole(role);
 
-  if (!isDispatchRole(role)) return <Navigate to="/" replace />;
+  if (!canAccessCaptainsPage(role)) return <Navigate to="/" replace />;
 
   return (
     <div className="grid gap-8">
       <PageHeader
         title="الكباتن"
         description="إدارة الحسابات، التفعيل، التعديل، التقرير (طلبات مع فلترة)، وحذف نهائي للمدير عند عدم وجود طلبات نشطة."
+        divider
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <AddCaptainFormCard />
+        {canManageCaptains ? <AddCaptainFormCard /> : null}
         <CaptainGuidanceCard />
       </div>
 
       <CaptainsRosterCard
         onOpenReport={setReportCap}
-        onOpenEdit={setEditCap}
-        canDelete={isAdmin}
+        onOpenEdit={canManageCaptains ? setEditCap : () => {}}
+        canManage={canManageCaptains && canCharge}
+        canDelete={canDelete}
       />
 
       <CaptainOrdersReportModal captain={reportCap} open={Boolean(reportCap)} onClose={() => setReportCap(null)} />

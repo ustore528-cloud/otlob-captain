@@ -4,19 +4,30 @@ import {
   assignmentOfferSecondsLeft,
   captainMapVisual,
 } from "@/features/distribution/captain-map-visual";
+import { toast } from "sonner";
 
 type Props = {
   captains: ActiveMapCaptain[];
   onDropOrderOnCaptain: (orderId: string, captainId: string) => void;
   pendingOrderIds?: string[];
   pendingCaptainIds?: string[];
+  /** Same as map — used with `getData` fallback for supervisor-linked UI guard. */
+  activeDragOrderId: string | null;
+  /** When set, drop is blocked if this returns false (roster in-scope check). */
+  dropAllow?: (orderId: string, captainId: string) => boolean;
+  onDropRejectedByGuard?: () => void;
 };
+
+const defaultReassignHint = "هذا الكابتن خارج نطاق مشرف المتجر لهذا الطلب (أو اختر من القائمة المتوافقة).";
 
 export function CaptainQuickDropPanel({
   captains,
   onDropOrderOnCaptain,
   pendingOrderIds = [],
   pendingCaptainIds = [],
+  activeDragOrderId,
+  dropAllow,
+  onDropRejectedByGuard = () => toast.error(defaultReassignHint),
 }: Props) {
   const [, setCountdownTick] = useState(0);
   const pendingOrderSet = useMemo(() => new Set(pendingOrderIds), [pendingOrderIds]);
@@ -51,12 +62,22 @@ export function CaptainQuickDropPanel({
               style={{ borderColor: vis.border, backgroundColor: vis.bg }}
               onDragOver={(e) => {
                 e.preventDefault();
-                e.dataTransfer.dropEffect = "copy";
+                const fromDt =
+                  e.dataTransfer.getData("application/x-order-id") || e.dataTransfer.getData("text/plain");
+                const orderId = (activeDragOrderId || fromDt || "").trim() || null;
+                const ok = !orderId || !dropAllow || dropAllow(orderId, c.id);
+                e.dataTransfer.dropEffect = ok ? "copy" : "none";
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                const orderId = e.dataTransfer.getData("application/x-order-id") || e.dataTransfer.getData("text/plain");
+                const fromDt =
+                  e.dataTransfer.getData("application/x-order-id") || e.dataTransfer.getData("text/plain");
+                const orderId = (fromDt || activeDragOrderId || "").trim();
                 if (!orderId || pendingOrderSet.has(orderId)) return;
+                if (dropAllow && !dropAllow(orderId, c.id)) {
+                  onDropRejectedByGuard();
+                  return;
+                }
                 onDropOrderOnCaptain(orderId, c.id);
               }}
             >

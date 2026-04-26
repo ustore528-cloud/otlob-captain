@@ -20,6 +20,20 @@ export const paths = {
     root: `${API_V1}/stores`,
     byId: (id: string) => `${API_V1}/stores/${id}`,
   },
+  /** قائمة شركات نشطة — SUPER_ADMIN فقط */
+  companies: {
+    root: `${API_V1}/companies`,
+  },
+  branches: {
+    root: `${API_V1}/branches`,
+  },
+  zones: {
+    root: `${API_V1}/zones`,
+  },
+  public: {
+    requestContext: (code: string) => `${API_V1}/public/request-context/${encodeURIComponent(code)}`,
+    orders: `${API_V1}/public/orders`,
+  },
   captains: {
     root: `${API_V1}/captains`,
     byId: (id: string) => `${API_V1}/captains/${id}`,
@@ -45,6 +59,7 @@ export const paths = {
     distributionManual: (id: string) => `${API_V1}/orders/${id}/distribution/manual`,
     distributionDragDrop: (id: string) => `${API_V1}/orders/${id}/distribution/drag-drop`,
     distributionCancelCaptain: (id: string) => `${API_V1}/orders/${id}/distribution/cancel-captain`,
+    distributionAutoAssignVisible: `${API_V1}/orders/distribution/auto-assign-visible`,
     /** مسار إشرافي — ADMIN/DISPATCHER فقط (`POST` body: `{ status }`) */
     adminOverrideStatus: (id: string) => `${API_V1}/orders/${id}/override-status`,
   },
@@ -66,6 +81,36 @@ export const paths = {
   },
   geocode: {
     place: `${API_V1}/geocode/place`,
+  },
+  superAdminWallets: {
+    storeTopUp: (storeId: string) => `${API_V1}/super-admin/wallets/stores/${storeId}/top-up`,
+    supervisorUserTopUp: (userId: string) => `${API_V1}/super-admin/wallets/supervisor-users/${userId}/top-up`,
+    supervisorUserAdjustment: (userId: string) => `${API_V1}/super-admin/wallets/supervisor-users/${userId}/adjustment`,
+    companyTopUp: (companyId: string) => `${API_V1}/super-admin/wallets/company/${companyId}/top-up`,
+  },
+  /** محفظة المشرف → كابتن (JWT: مشرف فرع/موزع) */
+  supervisorWallets: {
+    transferToCaptain: `${API_V1}/supervisor/wallets/transfers/to-captain`,
+  },
+  /** أرصدة ودفتر أستاذ (قراءة فقط) */
+  finance: {
+    storeWallet: (storeId: string) => `${API_V1}/finance/stores/${storeId}/wallet`,
+    /** COMPANY_ADMIN — body: amount, reason, idempotencyKey, optional currency */
+    companyAdminStoreTopUp: (storeId: string) => `${API_V1}/finance/stores/${storeId}/company-top-up`,
+    captainWallet: (captainId: string) => `${API_V1}/finance/captains/${captainId}/wallet`,
+    /** COMPANY_ADMIN / SUPER_ADMIN — body: amount, reason, idempotencyKey */
+    companyAdminCaptainPrepaid: (captainId: string) => `${API_V1}/finance/captains/${captainId}/prepaid-charge`,
+    supervisorMe: `${API_V1}/finance/wallets/supervisor/me`,
+    companyWalletMe: `${API_V1}/finance/company-wallet/me`,
+    companyWalletById: (companyId: string) => `${API_V1}/finance/company-wallet/${companyId}`,
+    ledgerEntries: (walletAccountId: string) => `${API_V1}/finance/wallet-accounts/${walletAccountId}/ledger-entries`,
+    ledgerActivity: (walletAccountId: string) => `${API_V1}/finance/wallet-accounts/${walletAccountId}/ledger-activity`,
+  },
+  /** تقارير تشغيلية (قراءة، موظفو تشغيل) */
+  reports: {
+    reconciliationSummary: `${API_V1}/reports/reconciliation-summary`,
+    deliveredCommissions: `${API_V1}/reports/delivered-commissions`,
+    ordersHistory: `${API_V1}/reports/orders-history`,
   },
   /** طلبات حساب العميل (JWT بدور CUSTOMER) */
   customer: {

@@ -1,4 +1,12 @@
-export { apiFetch, paths, apiBaseUrl, ApiError, type ApiSuccess, type ApiFail } from "./http";
+export {
+  apiFetch,
+  paths,
+  apiBaseUrl,
+  ApiError,
+  IDEMPOTENCY_KEY_HEADER,
+  type ApiSuccess,
+  type ApiFail,
+} from "./http";
 export { queryKeys, type OrdersListParams, type CaptainsListParams, type UsersListParams } from "./query-keys";
 export { createApiClient, type ApiClient, type GetToken } from "./client";
 export type { CreateOrderPayload, OrdersListQuery } from "./services/orders";

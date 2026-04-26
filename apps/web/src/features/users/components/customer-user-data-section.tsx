@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { clampLatLng, clampLatLngPair, ISRAEL_LEAFLET_MAX_BOUNDS, ISRAEL_MAP_DEFAULT_CENTER, ISRAEL_MAP_DEFAULT_ZOOM } from "@/lib/israel-map-bounds";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,7 +58,12 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
     const host = mapHostRef.current;
     if (!host || mapRef.current) return;
 
-    const map = L.map(host, { zoomControl: true }).setView([24.7136, 46.6753], 11);
+    const maxBounds = L.latLngBounds(ISRAEL_LEAFLET_MAX_BOUNDS);
+    const map = L.map(host, {
+      zoomControl: true,
+      maxBounds,
+      maxBoundsViscosity: 1,
+    }).setView(ISRAEL_MAP_DEFAULT_CENTER, ISRAEL_MAP_DEFAULT_ZOOM);
     mapRef.current = map;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -66,8 +72,9 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
 
     const seed = dropoffCoords;
     if (seed) {
-      map.setView([seed.lat, seed.lng], 15);
-      markerRef.current = L.circleMarker([seed.lat, seed.lng], {
+      const s = clampLatLngPair([seed.lat, seed.lng]);
+      map.setView(s, 15);
+      markerRef.current = L.circleMarker(s, {
         radius: 8,
         color: "#2563eb",
         weight: 2,
@@ -77,18 +84,19 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
     }
 
     map.on("click", (ev) => {
-      const lat = Number(ev.latlng.lat.toFixed(6));
-      const lng = Number(ev.latlng.lng.toFixed(6));
+      const cl = clampLatLng(ev.latlng.lat, ev.latlng.lng);
+      const lat = Number(cl.lat.toFixed(6));
+      const lng = Number(cl.lng.toFixed(6));
       setDropoffCoords({ lat, lng });
       if (!markerRef.current) {
-        markerRef.current = L.circleMarker(ev.latlng, {
+        markerRef.current = L.circleMarker(clampLatLngPair([ev.latlng.lat, ev.latlng.lng]), {
           radius: 8,
           color: "#2563eb",
           weight: 2,
           fillColor: "#3b82f6",
           fillOpacity: 0.9,
         }).addTo(map);
-      } else markerRef.current.setLatLng(ev.latlng);
+      } else markerRef.current.setLatLng(clampLatLngPair([ev.latlng.lat, ev.latlng.lng]));
     });
 
     return () => {

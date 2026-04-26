@@ -9,6 +9,7 @@ import { isStoreAdminRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { clampLatLng, clampLatLngPair, ISRAEL_LEAFLET_MAX_BOUNDS, ISRAEL_MAP_DEFAULT_CENTER, ISRAEL_MAP_DEFAULT_ZOOM } from "@/lib/israel-map-bounds";
 
 export function NewOrderForm() {
   const user = useAuthStore((s) => s.user);
@@ -37,25 +38,31 @@ export function NewOrderForm() {
     const host = mapHostRef.current;
     if (!host || mapRef.current) return;
 
-    const map = L.map(host, { zoomControl: true }).setView([24.7136, 46.6753], 11);
+    const maxBounds = L.latLngBounds(ISRAEL_LEAFLET_MAX_BOUNDS);
+    const map = L.map(host, {
+      zoomControl: true,
+      maxBounds,
+      maxBoundsViscosity: 1,
+    }).setView(ISRAEL_MAP_DEFAULT_CENTER, ISRAEL_MAP_DEFAULT_ZOOM);
     mapRef.current = map;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
     }).addTo(map);
     requestAnimationFrame(() => map.invalidateSize());
     map.on("click", (ev) => {
-      const lat = Number(ev.latlng.lat.toFixed(6));
-      const lng = Number(ev.latlng.lng.toFixed(6));
+      const cl = clampLatLng(ev.latlng.lat, ev.latlng.lng);
+      const lat = Number(cl.lat.toFixed(6));
+      const lng = Number(cl.lng.toFixed(6));
       setDropoffCoords({ lat, lng });
       if (!markerRef.current) {
-        markerRef.current = L.circleMarker(ev.latlng, {
+        markerRef.current = L.circleMarker(clampLatLngPair([ev.latlng.lat, ev.latlng.lng]), {
           radius: 8,
           color: "#2563eb",
           weight: 2,
           fillColor: "#3b82f6",
           fillOpacity: 0.9,
         }).addTo(map);
-      } else markerRef.current.setLatLng(ev.latlng);
+      } else markerRef.current.setLatLng(clampLatLngPair([ev.latlng.lat, ev.latlng.lng]));
     });
 
     return () => {
@@ -76,8 +83,8 @@ export function NewOrderForm() {
     const dropoffAddress = String(form.get("dropoffAddress") ?? "").trim();
     const area = String(form.get("area") ?? "").trim();
     const amount = Number(form.get("amount") ?? 0);
-    const cashCollectionRaw = String(form.get("cashCollection") ?? "").trim();
-    const cashCollection = cashCollectionRaw ? Number(cashCollectionRaw) : undefined;
+    const deliveryFeeRaw = String(form.get("deliveryFee") ?? "").trim();
+    const deliveryFee = deliveryFeeRaw ? Number(deliveryFeeRaw) : 0;
     const locationLink = String(form.get("locationLink") ?? "").trim();
 
     if (!customerName) next.customerName = "اسم العميل مطلوب.";
@@ -88,9 +95,9 @@ export function NewOrderForm() {
     if (!pickupAddress) next.pickupAddress = "عنوان الاستلام مطلوب.";
     if (!dropoffAddress) next.dropoffAddress = "عنوان التسليم مطلوب.";
     if (!area) next.area = "المنطقة مطلوبة.";
-    if (!Number.isFinite(amount) || amount <= 0) next.amount = "سعر الطلب يجب أن يكون أكبر من صفر.";
-    if (cashCollection !== undefined && (!Number.isFinite(cashCollection) || cashCollection < 0)) {
-      next.cashCollection = "تكلفة التوصيل يجب أن تكون رقمًا موجبًا أو صفر.";
+    if (!Number.isFinite(amount) || amount <= 0) next.amount = "مبلغ المتجر يجب أن يكون أكبر من صفر.";
+    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
+      next.deliveryFee = "رسوم التوصيل يجب أن تكون رقمًا موجبًا أو صفر.";
     }
     if (includeMapPin && !dropoffCoords) {
       next.dropoffCoords = "فعّلت خيار الخريطة — اضغط على الخريطة لتحديد موقع التسليم.";
@@ -134,7 +141,9 @@ export function NewOrderForm() {
         dropoffAddress: String(form.get("dropoffAddress") ?? "").trim(),
         area: String(form.get("area") ?? "").trim(),
         amount: Number(form.get("amount") ?? 0),
-        cashCollection: form.get("cashCollection") ? Number(form.get("cashCollection")) : undefined,
+        deliveryFee: String(form.get("deliveryFee") ?? "").trim()
+          ? Number(form.get("deliveryFee"))
+          : 0,
         ...(includeMapPin && dropoffCoords
           ? { dropoffLatitude: dropoffCoords.lat, dropoffLongitude: dropoffCoords.lng }
           : {}),
@@ -216,7 +225,7 @@ export function NewOrderForm() {
           {errors.area ? <p className="text-xs text-red-600">{errors.area}</p> : null}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="amount">سعر الطلب</Label>
+          <Label htmlFor="amount">مبلغ المتجر</Label>
           <Input
             id="amount"
             name="amount"
@@ -230,17 +239,18 @@ export function NewOrderForm() {
           {errors.amount ? <p className="text-xs text-red-600">{errors.amount}</p> : null}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="cashCollection">تكلفة التوصيل (اختياري)</Label>
+          <Label htmlFor="deliveryFee">رسوم التوصيل</Label>
           <Input
-            id="cashCollection"
-            name="cashCollection"
+            id="deliveryFee"
+            name="deliveryFee"
             type="number"
             inputMode="decimal"
             min={0}
             step="0.01"
-            className={errorClass("cashCollection")}
+            className={errorClass("deliveryFee")}
           />
-          {errors.cashCollection ? <p className="text-xs text-red-600">{errors.cashCollection}</p> : null}
+          {errors.deliveryFee ? <p className="text-xs text-red-600">{errors.deliveryFee}</p> : null}
+          <p className="text-xs text-muted">اترك 0 للتوصيل المجاني. إجمالي التحصيل من العميل يُحسب على الخادم (مبلغ المتجر + الرسوم).</p>
         </div>
 
         <div className="grid gap-3 sm:col-span-2">

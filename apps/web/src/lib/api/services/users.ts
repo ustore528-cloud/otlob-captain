@@ -7,6 +7,7 @@ export type CreateUserPayload = {
   email?: string;
   password: string;
   role: string;
+  companyId?: string;
 };
 
 export type UsersListQuery = {

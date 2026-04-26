@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FORM_CONTROL_CLASS } from "@/components/ui/form-field-classes";
 import { Input } from "@/components/ui/input";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { Label } from "@/components/ui/label";
+import { LoadingBlock } from "@/components/ui/loading-block";
 import { Badge } from "@/components/ui/badge";
+import { StatTile } from "@/components/ui/stat-tile";
+import { TableShell } from "@/components/ui/table-shell";
 import { useCaptainOrdersReport, useCaptainStats } from "@/hooks";
 import { orderStatusBadgeVariant, orderStatusLabel } from "@/lib/order-status";
-import { ORDER_STATUS_FILTER_OPTIONS } from "@/features/orders/constants";
+import { ORDER_STATUS_FILTER_VALUES } from "@/features/orders/constants";
 import type { CaptainListItem } from "@/types/api";
 import type { CaptainOrdersQueryParams } from "@/lib/api/query-keys";
-
-const selectClass =
-  "h-10 rounded-lg border border-card-border bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
 
 type Props = {
   captain: CaptainListItem | null;
@@ -40,6 +44,7 @@ function buildQueryParams(f: {
 }
 
 export function CaptainOrdersReportModal({ captain, open, onClose }: Props) {
+  const { t } = useTranslation();
   const captainId = captain?.id ?? null;
   const stats = useCaptainStats(captainId, { enabled: open && Boolean(captainId) });
 
@@ -76,19 +81,13 @@ export function CaptainOrdersReportModal({ captain, open, onClose }: Props) {
         <div className="grid gap-3 rounded-xl border border-card-border bg-background/50 p-4 text-sm">
           <p className="text-xs font-medium text-muted">ملخص سريع</p>
           {stats.isLoading ? (
-            <p className="text-muted">جارٍ التحميل…</p>
+            <LoadingBlock compact />
           ) : stats.isError ? (
-            <p className="text-red-600">{(stats.error as Error).message}</p>
+            <InlineAlert variant="error">{(stats.error as Error).message}</InlineAlert>
           ) : stats.data ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div>
-                <div className="text-xs text-muted">طلبات مسلّمة</div>
-                <div className="text-lg font-semibold tabular-nums">{stats.data.ordersDelivered}</div>
-              </div>
-              <div>
-                <div className="text-xs text-muted">طلبات نشطة مع الكابتن</div>
-                <div className="text-lg font-semibold tabular-nums">{stats.data.activeOrders}</div>
-              </div>
+              <StatTile label="طلبات مسلّمة" value={stats.data.ordersDelivered} />
+              <StatTile label="طلبات نشطة مع الكابتن" value={stats.data.activeOrders} />
               <div className="sm:col-span-1">
                 <div className="text-xs text-muted">آخر موقع</div>
                 {stats.data.lastLocation ? (
@@ -110,7 +109,7 @@ export function CaptainOrdersReportModal({ captain, open, onClose }: Props) {
               <Label className="text-xs text-muted">من تاريخ</Label>
               <Input
                 type="date"
-                className={selectClass}
+                className={FORM_CONTROL_CLASS}
                 value={f.from}
                 onChange={(e) => setF((p) => ({ ...p, page: 1, from: e.target.value }))}
               />
@@ -119,7 +118,7 @@ export function CaptainOrdersReportModal({ captain, open, onClose }: Props) {
               <Label className="text-xs text-muted">إلى تاريخ</Label>
               <Input
                 type="date"
-                className={selectClass}
+                className={FORM_CONTROL_CLASS}
                 value={f.to}
                 onChange={(e) => setF((p) => ({ ...p, page: 1, to: e.target.value }))}
               />
@@ -145,13 +144,13 @@ export function CaptainOrdersReportModal({ captain, open, onClose }: Props) {
             <div className="grid gap-1">
               <Label className="text-xs text-muted">حالة الطلب</Label>
               <select
-                className={selectClass}
+                className={FORM_CONTROL_CLASS}
                 value={f.status}
                 onChange={(e) => setF((p) => ({ ...p, page: 1, status: e.target.value }))}
               >
-                {ORDER_STATUS_FILTER_OPTIONS.map((o) => (
-                  <option key={o.value || "all"} value={o.value}>
-                    {o.label}
+                {ORDER_STATUS_FILTER_VALUES.map((v) => (
+                  <option key={v || "all"} value={v}>
+                    {v === "" ? t("orders.list.statusAll") : t(`orderStatus.${v}`)}
                   </option>
                 ))}
               </select>
@@ -159,16 +158,18 @@ export function CaptainOrdersReportModal({ captain, open, onClose }: Props) {
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-card-border">
+        <TableShell className="rounded-xl">
           {orders.isLoading ? (
-            <p className="p-4 text-sm text-muted">جارٍ تحميل الطلبات…</p>
+            <LoadingBlock compact message="جارٍ تحميل الطلبات…" />
           ) : orders.isError ? (
-            <p className="p-4 text-sm text-red-600">{(orders.error as Error).message}</p>
+            <InlineAlert variant="error" className="m-3">
+              {(orders.error as Error).message}
+            </InlineAlert>
           ) : (
             <>
               <table className="w-full min-w-[760px] border-separate border-spacing-0 text-sm">
                 <thead>
-                  <tr className="text-muted">
+                  <tr className="bg-muted/30 text-muted">
                     <th className="border-b border-card-border px-3 py-2 text-right font-medium">الطلب</th>
                     <th className="border-b border-card-border px-3 py-2 text-right font-medium">الحالة</th>
                     <th className="border-b border-card-border px-3 py-2 text-right font-medium">العميل</th>
@@ -202,7 +203,9 @@ export function CaptainOrdersReportModal({ captain, open, onClose }: Props) {
                 </tbody>
               </table>
               {orders.data && orders.data.items.length === 0 ? (
-                <p className="p-4 text-sm text-muted">لا توجد طلبات مطابقة.</p>
+                <div className="p-3">
+                  <EmptyState title="لا توجد طلبات مطابقة" description="جرّب توسيع الفترة الزمنية أو إزالة بعض المرشحات." />
+                </div>
               ) : null}
               {orders.data ? (
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-card-border px-3 py-2 text-xs text-muted">
@@ -233,7 +236,7 @@ export function CaptainOrdersReportModal({ captain, open, onClose }: Props) {
               ) : null}
             </>
           )}
-        </div>
+        </TableShell>
 
         <div className="flex justify-end">
           <Button type="button" variant="secondary" onClick={onClose}>

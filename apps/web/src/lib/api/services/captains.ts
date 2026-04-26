@@ -15,6 +15,11 @@ export type CreateCaptainPayload = {
   password: string;
   vehicleType: string;
   area: string;
+  /** SUPER_ADMIN — target company (required for that role). */
+  companyId?: string;
+  /** Required when the tenant has multiple active branches and the actor is not a region-scoped manager. */
+  branchId?: string;
+  zoneId?: string;
 };
 
 export type CaptainsListQuery = {
@@ -86,6 +91,7 @@ export type UpdateCaptainPayload = {
   minimumBalanceToReceiveOrders?: number | null;
   fullName?: string;
   phone?: string;
+  supervisorUserId?: string | null;
 };
 
 export function updateCaptain(token: string, id: string, body: UpdateCaptainPayload) {
@@ -107,11 +113,13 @@ export function getCaptainPrepaidSummary(token: string, id: string): Promise<Cap
 export function listCaptainPrepaidTransactions(
   token: string,
   id: string,
-  q: { page?: number; pageSize?: number } = {},
+  q: { page?: number; pageSize?: number; from?: string; to?: string } = {},
 ): Promise<Paginated<CaptainPrepaidTransaction>> {
   const p = new URLSearchParams();
   p.set("page", String(q.page ?? 1));
   p.set("pageSize", String(q.pageSize ?? 20));
+  if (q.from) p.set("from", q.from);
+  if (q.to) p.set("to", q.to);
   return apiFetch<Paginated<CaptainPrepaidTransaction>>(`${paths.captains.prepaidTransactions(id)}?${p.toString()}`, {
     token,
   });

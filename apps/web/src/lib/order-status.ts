@@ -1,17 +1,7 @@
+import i18n from "@/i18n/i18n";
 import type { OrderStatus } from "@/types/api";
 
 export type OrderBadgeVariant = "default" | "success" | "warning" | "danger" | "muted";
-
-const labels: Record<OrderStatus, string> = {
-  PENDING: "بانتظار التوزيع",
-  CONFIRMED: "تجهيز",
-  ASSIGNED: "مُعيَّن",
-  ACCEPTED: "مقبول",
-  PICKED_UP: "تم الاستلام",
-  IN_TRANSIT: "قيد التوصيل",
-  DELIVERED: "تم التسليم",
-  CANCELLED: "ملغى",
-};
 
 const badgeVariant: Record<OrderStatus, OrderBadgeVariant> = {
   PENDING: "default",
@@ -25,7 +15,8 @@ const badgeVariant: Record<OrderStatus, OrderBadgeVariant> = {
 };
 
 export function orderStatusLabel(s: OrderStatus): string {
-  return labels[s] ?? s;
+  const key = `orderStatus.${s}`;
+  return i18n.exists(key) ? String(i18n.t(key)) : s;
 }
 
 export function orderStatusBadgeVariant(s: OrderStatus): OrderBadgeVariant {

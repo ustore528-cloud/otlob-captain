@@ -8,6 +8,7 @@ import { DashboardMapPicker, type DashboardMapPickerHandle } from "./dashboard-m
 import { resolveDashboardMapView } from "@/features/distribution/map-default-view";
 import { useDashboardSettings, useUpdateDashboardSettings } from "@/hooks";
 import { api } from "@/lib/api/singleton";
+import { clampLatLng, ISRAEL_MAP_DEFAULT_CENTER, ISRAEL_MAP_DEFAULT_ZOOM } from "@/lib/israel-map-bounds";
 import type { DashboardSettingsDto } from "@/types/api";
 
 function applyDto(d: DashboardSettingsDto) {
@@ -28,9 +29,9 @@ export function DashboardMapSettingsCard() {
 
   const [mapCountry, setMapCountry] = useState("");
   const [mapCityRegion, setMapCityRegion] = useState("");
-  const [latitude, setLatitude] = useState(24.7136);
-  const [longitude, setLongitude] = useState(46.6753);
-  const [zoom, setZoom] = useState(11);
+  const [latitude, setLatitude] = useState(ISRAEL_MAP_DEFAULT_CENTER[0]);
+  const [longitude, setLongitude] = useState(ISRAEL_MAP_DEFAULT_CENTER[1]);
+  const [zoom, setZoom] = useState(ISRAEL_MAP_DEFAULT_ZOOM);
   const [prepaidCaptainsEnabled, setPrepaidCaptainsEnabled] = useState(false);
   const [prepaidDefaultCommissionPercent, setPrepaidDefaultCommissionPercent] = useState("15");
   const [prepaidAllowCaptainCustomCommission, setPrepaidAllowCaptainCustomCommission] = useState(true);
@@ -60,8 +61,9 @@ export function DashboardMapSettingsCard() {
 
   const onViewChange = useCallback((next: { latitude: number; longitude: number; zoom: number }) => {
     setGeocodeHint(null);
-    setLatitude(next.latitude);
-    setLongitude(next.longitude);
+    const cl = clampLatLng(next.latitude, next.longitude);
+    setLatitude(cl.lat);
+    setLongitude(cl.lng);
     setZoom(next.zoom);
   }, []);
 
@@ -81,8 +83,9 @@ export function DashboardMapSettingsCard() {
         setGeocodeError("استجابة غير كاملة من الخادم — حاول مجدداً أو حرّك الخريطة يدوياً.");
         return;
       }
-      setLatitude(r.lat);
-      setLongitude(r.lng);
+      const cl = clampLatLng(r.lat, r.lng);
+      setLatitude(cl.lat);
+      setLongitude(cl.lng);
       setZoom(r.zoom);
       const label = r.displayName?.trim() || "";
       const short = label.length > 120 ? `${label.slice(0, 120)}…` : label;
@@ -97,6 +100,7 @@ export function DashboardMapSettingsCard() {
 
   const onSave = () => {
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(zoom)) return;
+    const cl = clampLatLng(latitude, longitude);
     const zi = Math.round(zoom);
     if (zi < 1 || zi > 19) return;
     const commission = Number(prepaidDefaultCommissionPercent);
@@ -107,8 +111,8 @@ export function DashboardMapSettingsCard() {
       {
         mapCountry: mapCountry.trim() || null,
         mapCityRegion: mapCityRegion.trim() || null,
-        mapDefaultLat: latitude,
-        mapDefaultLng: longitude,
+        mapDefaultLat: cl.lat,
+        mapDefaultLng: cl.lng,
         mapDefaultZoom: zi,
         prepaidCaptainsEnabled,
         prepaidDefaultCommissionPercent: commission,

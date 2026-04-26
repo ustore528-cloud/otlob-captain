@@ -1,30 +1,48 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { useToggleUserActive, useUsers } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/layout/page-header";
+import { apiFetch, paths } from "@/lib/api";
 import { userRoleLabel } from "@/lib/user-role";
-import { isDispatchRole, isManagementAdminRole } from "@/lib/rbac-roles";
+import { canAccessUsersPage, isManagementAdminRole, isSuperAdminRole } from "@/lib/rbac-roles";
 import { AddUserFormCard } from "@/features/users/components/add-user-form-card";
 import { UserCard } from "@/features/users/components/user-card";
 import { USER_ROLE_FILTER_OPTIONS } from "@/features/users/constants";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function UsersPageView() {
+  const token = useAuthStore((s) => s.token);
   const me = useAuthStore((s) => s.user);
+  const setSession = useAuthStore((s) => s.setSession);
   const [role, setRole] = useState<string>("");
+  const meQuery = useQuery({
+    queryKey: ["auth", "me", token],
+    queryFn: () => apiFetch<typeof me>(paths.auth.me, { token }),
+    enabled: Boolean(token),
+  });
+  useEffect(() => {
+    if (!token || !meQuery.data) return;
+    if (!me || me.role !== meQuery.data.role) {
+      setSession(token, meQuery.data);
+    }
+  }, [token, me, meQuery.data, setSession]);
+  const effectiveRole = meQuery.data?.role ?? me?.role;
 
   const users = useUsers({ page: 1, pageSize: 80, role });
   const toggle = useToggleUserActive();
   const togglePendingUserId = toggle.isPending ? toggle.variables?.id ?? null : null;
 
-  const isAdmin = isManagementAdminRole(me?.role);
-  const canEditCustomerProfile = isDispatchRole(me?.role);
+  const canCreateUser = isSuperAdminRole(effectiveRole);
+  const canToggleUserActive = isManagementAdminRole(effectiveRole);
+  const canEditCustomerProfile = canAccessUsersPage(effectiveRole);
 
-  if (!isDispatchRole(me?.role)) return <Navigate to="/" replace />;
+  if (!canAccessUsersPage(effectiveRole)) return <Navigate to="/" replace />;
 
   return (
     <div className="grid gap-8">
@@ -45,7 +63,12 @@ export function UsersPageView() {
         }
       />
 
-      {isAdmin ? <AddUserFormCard /> : null}
+      {canCreateUser ? <AddUserFormCard /> : null}
+      {!canCreateUser ? (
+        <InlineAlert variant="info">
+          إنشاء المستخدمين العام متاح فقط لدور SUPER_ADMIN. الدور الحالي: {effectiveRole ?? "غير معروف"}.
+        </InlineAlert>
+      ) : null}
 
       <Card className="border-card-border shadow-sm">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -80,7 +103,7 @@ export function UsersPageView() {
               <UserCard
                 key={u.id}
                 user={u}
-                canToggleActive={isAdmin}
+                canToggleActive={canToggleUserActive}
                 canEditCustomerProfile={canEditCustomerProfile}
                 togglePending={togglePendingUserId === u.id}
                 onToggleActive={(id, next) => toggle.mutate({ id, isActive: next })}

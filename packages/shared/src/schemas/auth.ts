@@ -16,10 +16,14 @@ export const AuthUserSchema = z.object({
   id: z.string(),
   fullName: z.string(),
   phone: z.string(),
-  email: z.string().nullable(),
+  email: z.string().nullable().optional(),
   role: UserRoleSchema,
-  isActive: z.boolean(),
-  storeId: z.string().nullable(),
+  isActive: z.boolean().optional(),
+  storeId: z.string().nullable().optional(),
+  companyId: z.string().nullable().optional(),
+  branchId: z.string().nullable().optional(),
+  /** رمز صفحة الطلبات العامة لمدير الشركة */
+  publicOwnerCode: z.string().nullable().optional(),
 });
 
 export type AuthUser = z.infer<typeof AuthUserSchema>;

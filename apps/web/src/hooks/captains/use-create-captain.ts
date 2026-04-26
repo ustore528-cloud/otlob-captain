@@ -13,7 +13,9 @@ export function useCreateCaptain() {
       await qc.invalidateQueries({ queryKey: queryKeys.captains.root });
       await qc.invalidateQueries({ queryKey: queryKeys.users.root });
       await qc.invalidateQueries({ queryKey: queryKeys.dashboard.root });
+      await qc.invalidateQueries({ queryKey: queryKeys.zones.root });
       await qc.invalidateQueries({ queryKey: queryKeys.tracking.root });
+      await qc.invalidateQueries({ queryKey: queryKeys.companies.root });
     },
     onError: (e) => toastApiError(e, "تعذر إنشاء الكابتن"),
   });

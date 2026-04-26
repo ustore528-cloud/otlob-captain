@@ -1,7 +1,13 @@
 import { queryKeys } from "@/lib/api/query-keys";
 import { api } from "@/lib/api/singleton";
 import { loadDashboardStats } from "@/lib/dashboard-stats";
-import { canListOrdersRole, isDispatchRole } from "@/lib/rbac-roles";
+import {
+  canAccessCaptainsPage,
+  canAccessIncubatorHost,
+  canAccessUsersPage,
+  canListOrdersRole,
+  isDispatchRole,
+} from "@/lib/rbac-roles";
 import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -56,6 +62,9 @@ export async function newOrderLoader() {
 }
 
 export async function incubatorHostLoader() {
+  const token = useAuthStore.getState().token;
+  const role = useAuthStore.getState().user?.role;
+  if (!token || !canAccessIncubatorHost(role)) return null;
   return null;
 }
 
@@ -81,7 +90,7 @@ export async function distributionLoader() {
 export async function captainsLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
-  if (!token || !isDispatchRole(role)) return null;
+  if (!token || !canAccessCaptainsPage(role)) return null;
   void queryClient.prefetchQuery({
     queryKey: queryKeys.captains.list({ page: 1, pageSize: 100 }),
     queryFn: () => api.captains.list({ page: 1, pageSize: 100 }),
@@ -89,10 +98,21 @@ export async function captainsLoader() {
   return null;
 }
 
-export async function usersLoader() {
+export async function storesLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
   if (!token || !isDispatchRole(role)) return null;
+  void queryClient.prefetchQuery({
+    queryKey: queryKeys.stores.list(1, 100),
+    queryFn: () => api.stores.list(1, 100),
+  });
+  return null;
+}
+
+export async function usersLoader() {
+  const token = useAuthStore.getState().token;
+  const role = useAuthStore.getState().user?.role;
+  if (!token || !canAccessUsersPage(role)) return null;
   const params = { page: 1, pageSize: 80, role: "" };
   void queryClient.prefetchQuery({
     queryKey: queryKeys.users.list(params),

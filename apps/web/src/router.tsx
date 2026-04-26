@@ -3,11 +3,14 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { RequireGuest } from "@/components/require-guest";
 import { DashboardLayout } from "@/layouts/dashboard-layout";
 import { CaptainsPage } from "@/pages/captains-page";
+import { StoresPage } from "@/pages/stores-page";
 import { IncubatorHostPage } from "@/pages/incubator-host-page";
 import { LoginPage } from "@/pages/login-page";
+import { PublicRequestPage } from "@/pages/public-request-page";
 import { NewOrderPage } from "@/pages/new-order-page";
 import {
   captainsLoader,
+  storesLoader,
   distributionLoader,
   homeLoader,
   incubatorHostLoader,
@@ -17,6 +20,8 @@ import {
 } from "@/router/loaders";
 
 const HomePageLazy = lazy(() => import("@/pages/home-page").then((m) => ({ default: m.HomePage })));
+const FinancePageLazy = lazy(() => import("@/pages/finance-page").then((m) => ({ default: m.FinancePage })));
+const ReportsPageLazy = lazy(() => import("@/pages/reports-page").then((m) => ({ default: m.ReportsPage })));
 const DistributionPageLazy = lazy(() =>
   import("@/pages/distribution-page").then((m) => ({ default: m.DistributionPage })),
 );
@@ -35,6 +40,10 @@ export const router = createBrowserRouter([
         <LoginPage />
       </RequireGuest>
     ),
+  },
+  {
+    path: "/request/:ownerCode",
+    element: <PublicRequestPage />,
   },
   {
     path: "/",
@@ -70,6 +79,7 @@ export const router = createBrowserRouter([
         loader: ordersLoader,
       },
       { path: "captains", element: <CaptainsPage />, loader: captainsLoader },
+      { path: "stores", element: <StoresPage />, loader: storesLoader },
       {
         path: "users",
         element: (
@@ -78,6 +88,22 @@ export const router = createBrowserRouter([
           </Suspense>
         ),
         loader: usersLoader,
+      },
+      {
+        path: "finance",
+        element: (
+          <Suspense fallback={<RouteSectionSkeleton />}>
+            <FinancePageLazy />
+          </Suspense>
+        ),
+      },
+      {
+        path: "reports",
+        element: (
+          <Suspense fallback={<RouteSectionSkeleton />}>
+            <ReportsPageLazy />
+          </Suspense>
+        ),
       },
     ],
   },

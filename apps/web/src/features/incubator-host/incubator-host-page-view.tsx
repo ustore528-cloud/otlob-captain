@@ -16,12 +16,12 @@ import {
 import { parseIncubatorRawOrder, type IncubatorParseResult } from "@/features/incubator-host/parse-incubator-order";
 import { useIncubatorCreateOrderWithDistribution } from "@/hooks";
 import { buildIncubatorOrderNotes } from "@/features/incubator-host/incubator-order-notes";
-import { isDispatchRole } from "@/lib/rbac-roles";
+import { canAccessIncubatorHost } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 
 function useDispatchRole() {
   const role = useAuthStore((s) => s.user?.role);
-  return isDispatchRole(role);
+  return canAccessIncubatorHost(role);
 }
 
 function fieldClass(err?: string) {

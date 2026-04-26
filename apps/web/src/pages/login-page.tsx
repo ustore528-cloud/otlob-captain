@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { apiFetch, paths } from "@/lib/api";
 import { toastApiError } from "@/lib/toast";
 import { useAuthStore } from "@/stores/auth-store";
+import brandWordmark from "@/assets/brand-2in.png";
 
 function parseLoginBody(identifier: string, password: string): LoginBody {
   const id = identifier.trim();
@@ -46,7 +47,8 @@ export function LoginPage() {
     <div className="flex min-h-dvh items-center justify-center p-6">
       <Card className="w-full max-w-md border-card-border bg-card shadow-lg">
         <CardHeader>
-          <CardTitle>اطلب كابتن</CardTitle>
+          <img src={brandWordmark} alt="2in" className="mb-1 h-10 w-auto object-contain self-start" />
+          <CardTitle>2in</CardTitle>
           <CardDescription>تسجيل الدخول إلى لوحة التشغيل</CardDescription>
         </CardHeader>
         <CardContent>

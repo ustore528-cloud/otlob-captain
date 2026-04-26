@@ -6,6 +6,8 @@ import type {
   OrderListItem,
   OrderStatus,
   StoreListItem,
+  StorePrimaryRegionSummary,
+  StoreSupervisorUser,
   UserListItem,
 } from "@/types/api";
 import type { DashboardStats } from "@/lib/dashboard-stats";
@@ -25,11 +27,21 @@ export function mockOrderListItem(over: Partial<OrderListItem> = {}): OrderListI
     area: over.area ?? "الرياض",
     amount: over.amount ?? "100.00",
     cashCollection: over.cashCollection ?? "0.00",
+    deliveryFee: over.deliveryFee !== undefined ? over.deliveryFee : null,
     notes: over.notes ?? null,
     createdAt: over.createdAt ?? new Date().toISOString(),
-    store: over.store ?? { id: "store-1", name: "متجر", area: "الرياض" },
+    updatedAt: over.updatedAt ?? new Date().toISOString(),
+    pendingOfferExpiresAt: over.pendingOfferExpiresAt !== undefined ? over.pendingOfferExpiresAt : null,
+    store: {
+      id: "store-1",
+      name: "متجر",
+      area: "الرياض",
+      subscriptionType: "PUBLIC",
+      supervisorUser: null satisfies StoreSupervisorUser,
+      primaryRegion: null satisfies StorePrimaryRegionSummary,
+      ...over.store,
+    },
     assignedCaptain: over.assignedCaptain ?? null,
-    pendingOfferExpiresAt: over.pendingOfferExpiresAt ?? null,
   };
 }
 
@@ -47,6 +59,7 @@ export function mockCaptainListItem(over: Partial<CaptainListItem> = {}): Captai
       phone: "+966511111111",
       isActive: true,
     },
+    supervisorUser: over.supervisorUser ?? null,
   };
 }
 
@@ -126,6 +139,9 @@ export function mockStoreListItem(over: Partial<StoreListItem> = {}): StoreListI
     area: over.area ?? "الرياض",
     address: over.address ?? "عنوان",
     isActive: over.isActive ?? true,
+    subscriptionType: over.subscriptionType ?? "PUBLIC",
+    supervisorUser: over.supervisorUser ?? null,
+    primaryRegion: over.primaryRegion ?? null,
   };
 }
 

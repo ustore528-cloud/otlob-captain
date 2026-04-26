@@ -1,5 +1,5 @@
 import { apiFetch, paths } from "@/lib/api/http";
-import type { OrderListItem, OrderStatus, Paginated } from "@/types/api";
+import type { OrderDetail, OrderListItem, OrderStatus, Paginated } from "@/types/api";
 
 export type CreateOrderPayload = {
   storeId?: string;
@@ -10,7 +10,11 @@ export type CreateOrderPayload = {
   pickupAddress: string;
   dropoffAddress: string;
   area: string;
+  /** مبلغ المتجر (بدون رسوم التوصيل) */
   amount: number;
+  /** رسوم التوصيل (يسمح بصفر). يُحسب على الخادم: cash_collection = amount + delivery_fee */
+  deliveryFee?: number;
+  /** إجمالي التحصيل من العميل؛ اختياري — الخادم يحسبه من amount + delivery_fee */
   cashCollection?: number;
   dropoffLatitude?: number;
   dropoffLongitude?: number;
@@ -27,6 +31,10 @@ export type OrdersListQuery = {
   customerPhone?: string;
   storeId?: string;
 };
+
+export function getOrderById(token: string, id: string): Promise<OrderDetail> {
+  return apiFetch<OrderDetail>(paths.orders.byId(id), { token });
+}
 
 export function listOrders(token: string, q: OrdersListQuery): Promise<Paginated<OrderListItem>> {
   const p = new URLSearchParams();
@@ -48,6 +56,17 @@ export function distributionAuto(token: string, orderId: string) {
   return apiFetch<unknown>(paths.orders.distributionAuto(orderId), { method: "POST", token });
 }
 
+export function distributionAutoAssignVisible(
+  token: string,
+  body: { orderIds: string[]; zoneId?: string },
+): Promise<{ success: true; assignedCount: number; skippedCount: number; skipped: Array<{ orderId: string; reason: string }> }> {
+  return apiFetch(paths.orders.distributionAutoAssignVisible, {
+    method: "POST",
+    token,
+    body: JSON.stringify(body),
+  });
+}
+
 export function distributionResend(token: string, orderId: string) {
   return apiFetch<unknown>(paths.orders.distributionResend(orderId), { method: "POST", token });
 }
@@ -62,6 +81,14 @@ export function distributionManual(token: string, orderId: string, captainId: st
 
 export function distributionDragDrop(token: string, orderId: string, captainId: string) {
   return apiFetch<unknown>(paths.orders.distributionDragDrop(orderId), {
+    method: "POST",
+    token,
+    body: JSON.stringify({ captainId }),
+  });
+}
+
+export function distributionReassign(token: string, orderId: string, captainId: string) {
+  return apiFetch<unknown>(paths.orders.reassign(orderId), {
     method: "POST",
     token,
     body: JSON.stringify({ captainId }),

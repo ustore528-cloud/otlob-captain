@@ -7,6 +7,7 @@ import {
   type QuickAlertPreset,
 } from "@/features/distribution/build-captain-map-popup";
 import { assignmentOfferSecondsLeft, captainMapVisual } from "@/features/distribution/captain-map-visual";
+import { clampLatLng, clampLatLngPair, ISRAEL_LEAFLET_MAX_BOUNDS } from "@/lib/israel-map-bounds";
 import { api } from "@/lib/api/singleton";
 import { toast, toastApiError, toastSuccess } from "@/lib/toast";
 import "leaflet/dist/leaflet.css";
@@ -30,6 +31,12 @@ type DistributionMapProps = {
   /** مركز الخريطة عند عدم وجود كباتن أو بعد التحميل — من إعدادات اللوحة أو الافتراضي. */
   defaultCenter: [number, number];
   defaultZoom: number;
+  /**
+   * When present: drop on a marker is allowed only if this returns true (e.g. supervisor-linked store + roster match).
+   * Omitted: all drops are attempted (server validates).
+   */
+  dropAllow?: (orderId: string, captainId: string) => boolean;
+  onDropRejectedByGuard?: () => void;
 };
 
 function vehicleGlyph(vehicleType: string): string {
@@ -51,11 +58,27 @@ function bindDropTarget(
   el: Element | null,
   captainId: string,
   onDrop: (orderId: string, captainId: string) => void,
+  options?: {
+    allow?: (orderId: string, captainId: string) => boolean;
+    onDisallowed?: () => void;
+    /** Browsers often omit `getData` until `drop` — use the list’s current drag id when set. */
+    activeDragOrderId: string | null;
+  },
 ) {
   if (!el || !(el instanceof HTMLElement)) return;
   const onDragOver = (e: DragEvent) => {
     e.preventDefault();
-    if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+    const fromDt = (e.dataTransfer?.getData("application/x-order-id") || e.dataTransfer?.getData("text/plain") || "")
+      .trim();
+    const orderId = (options?.activeDragOrderId || fromDt || null) as string | null;
+    if (e.dataTransfer) {
+      const ok = !orderId || !options?.allow || options.allow(orderId, captainId);
+      e.dataTransfer.dropEffect = ok ? "copy" : "none";
+    }
+    if (orderId && options?.allow && !options.allow(orderId, captainId)) {
+      el.classList.remove("ring-2", "ring-primary", "ring-offset-2");
+      return;
+    }
     el.classList.add("ring-2", "ring-primary", "ring-offset-2");
   };
   const onDragLeave = () => {
@@ -65,7 +88,12 @@ function bindDropTarget(
     e.preventDefault();
     el.classList.remove("ring-2", "ring-primary", "ring-offset-2");
     const orderId = e.dataTransfer?.getData("application/x-order-id") || e.dataTransfer?.getData("text/plain");
-    if (orderId) onDrop(orderId, captainId);
+    if (!orderId) return;
+    if (options?.allow && !options.allow(orderId, captainId)) {
+      options.onDisallowed?.();
+      return;
+    }
+    onDrop(orderId, captainId);
   };
   el.addEventListener("dragover", onDragOver);
   el.addEventListener("dragleave", onDragLeave);
@@ -98,6 +126,8 @@ export function DistributionMap({
   draggingOrderId,
   defaultCenter,
   defaultZoom,
+  dropAllow,
+  onDropRejectedByGuard,
 }: DistributionMapProps) {
   /** User panned/zoomed — block automatic camera from polling/countdown/settings. */
   const [userHasMovedMap, setUserHasMovedMap] = useState(false);
@@ -190,7 +220,12 @@ export function DistributionMap({
     const host = hostRef.current;
     if (!host) return;
 
-    const map = L.map(host, { zoomControl: true }).setView(defaultCenter, defaultZoom);
+    const maxBounds = L.latLngBounds(ISRAEL_LEAFLET_MAX_BOUNDS);
+    const map = L.map(host, {
+      zoomControl: true,
+      maxBounds,
+      maxBoundsViscosity: 1,
+    }).setView(clampLatLngPair(defaultCenter), defaultZoom);
     mapRef.current = map;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -260,7 +295,7 @@ export function DistributionMap({
     runProgrammaticCamera(
       map,
       () => {
-        map.setView(defaultCenter, defaultZoom);
+        map.setView(clampLatLngPair(defaultCenter), defaultZoom);
       },
       programmaticCameraRef,
     );
@@ -308,7 +343,8 @@ export function DistributionMap({
         popupAnchor: [0, -42],
       });
 
-      const marker = L.marker([loc.latitude, loc.longitude], { icon });
+      const cl = clampLatLng(loc.latitude, loc.longitude);
+      const marker = L.marker([cl.lat, cl.lng], { icon });
       marker.on("click", (ev: L.LeafletMouseEvent) => {
         ev.originalEvent?.stopPropagation();
         setSelectedCaptainId(c.id);
@@ -316,10 +352,14 @@ export function DistributionMap({
       marker.addTo(group);
 
       const el = marker.getElement() ?? null;
-      const cleanup = bindDropTarget(el, c.id, onAssignDrop);
+      const cleanup = bindDropTarget(el, c.id, onAssignDrop, {
+        allow: dropAllow,
+        onDisallowed: onDropRejectedByGuard,
+        activeDragOrderId: draggingOrderId,
+      });
       if (cleanup) cleanupsRef.current.push(cleanup);
     }
-  }, [captains, onAssignDrop]);
+  }, [captains, onAssignDrop, dropAllow, onDropRejectedByGuard, draggingOrderId]);
 
   /**
    * بطاقة واحدة على الخريطة (ليست على العلامة) — لا تُزال عند `clearLayers`.
@@ -341,7 +381,8 @@ export function DistributionMap({
       return;
     }
 
-    popup.setLatLng([c.lastLocation.latitude, c.lastLocation.longitude]);
+    const cl = clampLatLng(c.lastLocation.latitude, c.lastLocation.longitude);
+    popup.setLatLng([cl.lat, cl.lng]);
     popup.setContent(buildCaptainPopupElement(c, { sendQuickAlertPreset }));
     popup.openOn(map);
     /** لا مؤقت 1 Hz هنا — DOM البطاقة يتحدث مع `captains` / الاختيار فقط (قائمة التواصل تبقى مستقرة). */
@@ -355,10 +396,14 @@ export function DistributionMap({
       map,
       () => {
         if (withLoc.length > 0) {
-          const bounds = L.latLngBounds(withLoc.map((c) => [c.lastLocation!.latitude, c.lastLocation!.longitude]));
-          map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+          const pts = withLoc.map((c) => clampLatLngPair([c.lastLocation!.latitude, c.lastLocation!.longitude]));
+          if (pts.length === 1) {
+            map.setView(pts[0]!, 12);
+          } else {
+            map.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 14 });
+          }
         } else {
-          map.setView(defaultCenter, defaultZoom);
+          map.setView(clampLatLngPair(defaultCenter), defaultZoom);
         }
       },
       programmaticCameraRef,
@@ -374,8 +419,12 @@ export function DistributionMap({
     runProgrammaticCamera(
       map,
       () => {
-        const bounds = L.latLngBounds(withLoc.map((c) => [c.lastLocation!.latitude, c.lastLocation!.longitude]));
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        const pts = withLoc.map((c) => clampLatLngPair([c.lastLocation!.latitude, c.lastLocation!.longitude]));
+        if (pts.length === 1) {
+          map.setView(pts[0]!, 12);
+        } else {
+          map.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 14 });
+        }
       },
       programmaticCameraRef,
     );
@@ -395,8 +444,12 @@ export function DistributionMap({
     runProgrammaticCamera(
       map,
       () => {
-        const bounds = L.latLngBounds(withLoc.map((c) => [c.lastLocation!.latitude, c.lastLocation!.longitude]));
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        const pts = withLoc.map((c) => clampLatLngPair([c.lastLocation!.latitude, c.lastLocation!.longitude]));
+        if (pts.length === 1) {
+          map.setView(pts[0]!, 12);
+        } else {
+          map.fitBounds(L.latLngBounds(pts), { padding: [40, 40], maxZoom: 14 });
+        }
       },
       programmaticCameraRef,
     );
@@ -481,7 +534,7 @@ export function DistributionMap({
           <span className="inline-block h-2 w-2 rounded-full bg-[#2563eb] align-middle ltr:mr-1 rtl:ml-1" /> متاح
         </span>
       </div>
-      <div ref={hostRef} className="h-[min(420px,55vh)] w-full" />
+      <div ref={hostRef} className="h-[calc(100vh-280px)] min-h-[360px] w-full" />
     </div>
   );
 }

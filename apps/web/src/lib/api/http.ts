@@ -62,14 +62,18 @@ function shouldTraceDistributionTiming(path: string): boolean {
   );
 }
 
+/** HTTP header — مطابق لطلب `requireIdempotencyKeyHeader` في الـ API. */
+export const IDEMPOTENCY_KEY_HEADER = "Idempotency-Key" as const;
+
 /**
  * طبقة HTTP خام — يمكن استخدامها لتسجيل الدخول دون `ApiClient`.
+ * يدعم `idempotencyKey` لعناوين مثل `POST` للتمويل.
  */
 export async function apiFetch<T>(
   path: string,
-  init: RequestInit & { token?: string | null } = {},
+  init: RequestInit & { token?: string | null; idempotencyKey?: string } = {},
 ): Promise<T> {
-  const { token, headers, ...rest } = init;
+  const { token, idempotencyKey, headers, ...rest } = init;
   const requestBodyText = typeof rest.body === "string" ? rest.body : "";
   const trace = shouldTraceDistributionTiming(path);
   const t0 = trace ? performance.now() : 0;
@@ -80,6 +84,7 @@ export async function apiFetch<T>(
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
+      ...(idempotencyKey && idempotencyKey.trim() !== "" ? { [IDEMPOTENCY_KEY_HEADER]: idempotencyKey.trim() } : {}),
     },
   });
   const headersAt = trace ? performance.now() : 0;

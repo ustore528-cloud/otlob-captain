@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { clampLatLngPair, ISRAEL_LEAFLET_MAX_BOUNDS } from "@/lib/israel-map-bounds";
 
 function nearlySame(a: number, b: number) {
   return Math.abs(a - b) < 1e-7;
@@ -45,7 +46,12 @@ export const DashboardMapPicker = forwardRef<DashboardMapPickerHandle, Props>(fu
     const host = hostRef.current;
     if (!host) return;
 
-    const map = L.map(host, { zoomControl: true }).setView([latitude, longitude], zoom);
+    const maxBounds = L.latLngBounds(ISRAEL_LEAFLET_MAX_BOUNDS);
+    const map = L.map(host, {
+      zoomControl: true,
+      maxBounds,
+      maxBoundsViscosity: 1,
+    }).setView(clampLatLngPair([latitude, longitude]), zoom);
     mapRef.current = map;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
@@ -61,7 +67,8 @@ export const DashboardMapPicker = forwardRef<DashboardMapPickerHandle, Props>(fu
     map.on("zoomend", emit);
     map.on("click", (e: L.LeafletMouseEvent) => {
       syncingFromProps.current = true;
-      map.setView(e.latlng, map.getZoom(), { animate: true });
+      const p = clampLatLngPair([e.latlng.lat, e.latlng.lng]);
+      map.setView(p, map.getZoom(), { animate: true });
       syncingFromProps.current = false;
       emit();
     });
@@ -81,7 +88,7 @@ export const DashboardMapPicker = forwardRef<DashboardMapPickerHandle, Props>(fu
       return;
     }
     syncingFromProps.current = true;
-    map.setView([latitude, longitude], zoom);
+    map.setView(clampLatLngPair([latitude, longitude]), zoom);
     syncingFromProps.current = false;
   }, [latitude, longitude, zoom]);
 
