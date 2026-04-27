@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { isStoreAdminRole } from "@/lib/rbac-roles";
+import { isCompanyAdminRole, isStoreAdminRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -24,6 +24,7 @@ export function NewOrderForm() {
   const create = useCreateOrder();
 
   const lockedStoreId = isStoreAdminRole(user?.role) ? user?.storeId ?? null : null;
+  const isCompanyAdmin = isCompanyAdminRole(user?.role);
 
   useEffect(() => {
     if (!includeMapPin) {
@@ -92,10 +93,18 @@ export function NewOrderForm() {
     else if (!/^[\d+\s()-]{5,}$/.test(customerPhone)) {
       next.customerPhone = "صيغة رقم الهاتف غير صحيحة.";
     }
-    if (!pickupAddress) next.pickupAddress = "عنوان الاستلام مطلوب.";
-    if (!dropoffAddress) next.dropoffAddress = "عنوان التسليم مطلوب.";
+    if (!pickupAddress) {
+      next.pickupAddress = isCompanyAdmin ? "نقطة الاستلام مطلوبة." : "عنوان الاستلام مطلوب.";
+    }
+    if (!dropoffAddress) {
+      next.dropoffAddress = isCompanyAdmin ? "تفاصيل التسليم مطلوبة." : "عنوان التسليم مطلوب.";
+    }
     if (!area) next.area = "المنطقة مطلوبة.";
-    if (!Number.isFinite(amount) || amount <= 0) next.amount = "مبلغ المتجر يجب أن يكون أكبر من صفر.";
+    if (!Number.isFinite(amount) || amount <= 0) {
+      next.amount = isCompanyAdmin
+        ? "مبلغ الطلب يجب أن يكون أكبر من صفر."
+        : "مبلغ المتجر يجب أن يكون أكبر من صفر.";
+    }
     if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
       next.deliveryFee = "رسوم التوصيل يجب أن تكون رقمًا موجبًا أو صفر.";
     }
@@ -180,18 +189,19 @@ export function NewOrderForm() {
           {errors.customerPhone ? <p className="text-xs text-red-600">{errors.customerPhone}</p> : null}
         </div>
         <div className="grid gap-2 sm:col-span-2">
-          <Label htmlFor="pickupAddress">عنوان الاستلام</Label>
+          <Label htmlFor="pickupAddress">{isCompanyAdmin ? "نقطة الاستلام" : "عنوان الاستلام"}</Label>
           <Input
             id="pickupAddress"
             name="pickupAddress"
             required
             maxLength={500}
             className={errorClass("pickupAddress")}
+            placeholder={isCompanyAdmin ? "مثال: المستودع / المحل / عنوان الجمع" : undefined}
           />
           {errors.pickupAddress ? <p className="text-xs text-red-600">{errors.pickupAddress}</p> : null}
         </div>
         <div className="grid gap-2 sm:col-span-2">
-          <Label htmlFor="dropoffAddress">عنوان التسليم</Label>
+          <Label htmlFor="dropoffAddress">{isCompanyAdmin ? "تفاصيل التسليم" : "عنوان التسليم"}</Label>
           <Input
             id="dropoffAddress"
             name="dropoffAddress"
@@ -225,7 +235,7 @@ export function NewOrderForm() {
           {errors.area ? <p className="text-xs text-red-600">{errors.area}</p> : null}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="amount">مبلغ المتجر</Label>
+          <Label htmlFor="amount">{isCompanyAdmin ? "مبلغ الطلب" : "مبلغ المتجر"}</Label>
           <Input
             id="amount"
             name="amount"
@@ -250,7 +260,10 @@ export function NewOrderForm() {
             className={errorClass("deliveryFee")}
           />
           {errors.deliveryFee ? <p className="text-xs text-red-600">{errors.deliveryFee}</p> : null}
-          <p className="text-xs text-muted">اترك 0 للتوصيل المجاني. إجمالي التحصيل من العميل يُحسب على الخادم (مبلغ المتجر + الرسوم).</p>
+          <p className="text-xs text-muted">
+            اترك 0 للتوصيل المجاني. إجمالي التحصيل من العميل يُحسب على الخادم (
+            {isCompanyAdmin ? "مبلغ الطلب" : "مبلغ المتجر"} + الرسوم).
+          </p>
         </div>
 
         <div className="grid gap-3 sm:col-span-2">

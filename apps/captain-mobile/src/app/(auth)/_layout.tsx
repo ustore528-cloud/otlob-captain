@@ -1,4 +1,5 @@
 import { Redirect, Stack } from "expo-router";
+import { homeTheme } from "@/features/home/theme";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function AuthLayout() {
@@ -12,5 +13,12 @@ export default function AuthLayout() {
     return <Redirect href="/(app)/(tabs)/orders" />;
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: homeTheme.pageBackground },
+      }}
+    />
+  );
 }

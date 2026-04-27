@@ -10,9 +10,18 @@ type Props = {
   breakdown?: OrderFinancialBreakdownDto;
   /** Larger typography for list row vs compact modal line */
   variant?: "list" | "modal";
+  /** e.g. company admins see neutral «order» wording instead of store-specific copy */
+  amountLineKey?: "storeAmount" | "orderAmount";
 };
 
-export function OrderFinancialStrip({ amount, cashCollection, deliveryFee, breakdown, variant = "list" }: Props) {
+export function OrderFinancialStrip({
+  amount,
+  cashCollection,
+  deliveryFee,
+  breakdown,
+  variant = "list",
+  amountLineKey = "storeAmount",
+}: Props) {
   const { t } = useTranslation();
   const br =
     breakdown ??
@@ -31,7 +40,7 @@ export function OrderFinancialStrip({ amount, cashCollection, deliveryFee, break
     <div className="rounded-md border border-card-border bg-muted/15 p-2 text-left" dir="ltr">
       <div className={`grid gap-1 ${labelClass}`}>
         <div className="flex justify-between gap-3">
-          <span>{t("financial.storeAmount")}</span>
+          <span>{t(`financial.${amountLineKey}`)}</span>
           <span className={mono}>{br.orderAmount}</span>
         </div>
         <div className="flex justify-between gap-3">

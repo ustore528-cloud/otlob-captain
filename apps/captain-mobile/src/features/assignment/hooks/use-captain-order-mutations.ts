@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import i18n from "@/i18n/i18n";
 import type { CaptainOrderStatusBody, CurrentAssignmentResponse, MeResponse, OrderDetailDto } from "@/services/api/dto";
 import { ordersService } from "@/services/api/services/orders.service";
 import { captainService } from "@/services/api/services/captain.service";
@@ -25,7 +26,7 @@ async function assertOfferActionAllowed(
   const captainId = me?.captain?.id ?? null;
   if (!captainId) {
     logCaptainOrderInteraction(`${action}_BLOCKED`, { orderId, reason: "NO_CAPTAIN_SESSION_AFTER_FETCH" });
-    throw new Error("تعذّر تجهيز الجلسة. جرّب تحديث الصفحة أو تسجيل الدخول مرة أخرى.");
+    throw new Error(i18n.t("errors.sessionPrepareFailed"));
   }
 
   const assignment = queryClient.getQueryData<CurrentAssignmentResponse>(queryKeys.captain.assignment);
@@ -53,9 +54,7 @@ async function assertOfferActionAllowed(
       fromAssignmentMode: fromA?.mode,
       fromOrderMode: fromO?.mode,
     });
-    throw new Error(
-      "لا يوجد عرض نشط لهذا الطلب. قد تكون المهلة انتهت أو أُعيد التوزيع. اسحب للتحديث.",
-    );
+    throw new Error(i18n.t("errors.noActiveOffer"));
   }
 }
 

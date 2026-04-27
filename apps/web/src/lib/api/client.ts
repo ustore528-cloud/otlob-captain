@@ -70,6 +70,10 @@ export function createApiClient(getToken: GetToken) {
     },
     companies: {
       list: () => companies.listCompanies(t()),
+      create: (body: { name: string }) => companies.createCompany(t(), body),
+      getDeletePreview: (companyId: string) => companies.getCompanyDeletePreview(t(), companyId),
+      archive: (companyId: string, body: { confirmPhrase: string }) =>
+        companies.archiveCompany(t(), companyId, body),
     },
     branches: {
       list: (q?: { companyId?: string }) => branches.listBranches(t(), q ?? {}),

@@ -1,13 +1,6 @@
 import { useMemo } from "react";
-import {
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+import { useTranslation } from "react-i18next";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ScreenHeader } from "@/components/screen-header";
@@ -16,7 +9,8 @@ import { homeTheme } from "@/features/home/theme";
 import { screenStyles } from "@/theme/screen-styles";
 import { useInnerToolBack } from "@/hooks/use-inner-tool-back";
 import { useAuth } from "@/hooks/use-auth";
-import { useCaptainTracking } from "../use-captain-tracking";
+import { formatLocaleDateTimeMs } from "@/features/home/utils/format";
+import { useCaptainTracking } from "@/features/tracking";
 
 function issueIcon(kind: string): keyof typeof Ionicons.glyphMap {
   switch (kind) {
@@ -32,89 +26,94 @@ function issueIcon(kind: string): keyof typeof Ionicons.glyphMap {
 }
 
 export function TrackingScreen() {
+  const { t } = useTranslation();
   const goBack = useInnerToolBack();
   const { isAuthenticated } = useAuth();
-  const { snapshot, setSessionEnabled, refreshPermission } = useCaptainTracking();
+  const { snapshot, refreshPermission } = useCaptainTracking();
 
   const reachabilityLabel = useMemo(() => {
     switch (snapshot.reachability) {
       case "online":
-        return "متصل";
+        return t("tracking.reachabilityOnline");
       case "offline":
-        return "غير متصل";
+        return t("tracking.reachabilityOffline");
       default:
-        return "جارٍ التحقق…";
+        return t("tracking.reachabilityUnknown");
     }
-  }, [snapshot.reachability]);
+  }, [snapshot.reachability, t]);
 
   if (!isAuthenticated) {
     return (
       <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
         <WorkStatusBanner />
-        <ScreenHeader title="التتبع" onBack={goBack} />
-        <Text style={[styles.muted, styles.guestPad]}>سجّل الدخول لإرسال موقعك للخادم.</Text>
+        <ScreenHeader title={t("tracking.title")} onBack={goBack} />
+        <Text style={[styles.muted, styles.guestPad]}>{t("tracking.guest")}</Text>
       </SafeAreaView>
     );
   }
 
+  const trackingCaption = snapshot.sessionEnabled ? t("tracking.trackingOnCaption") : t("tracking.trackingOffCaption");
+
   return (
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
       <WorkStatusBanner />
-      <ScreenHeader title="التتبع" onBack={goBack} />
+      <ScreenHeader title={t("tracking.title")} onBack={goBack} />
       <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sub}>
-          إرسال موقعك دوريًا أثناء عمل التطبيق في المقدّمة. التتبع في الخلفية يُضاف لاحقًا عبر مهمة
-          منفصلة.
-        </Text>
+        <Text style={styles.sub}>{t("tracking.intro")}</Text>
+        <Text style={styles.subSecondary}>{t("tracking.subAvailabilityDriven")}</Text>
 
         <View style={styles.card}>
-          <View style={styles.rowBetween}>
-            <View style={styles.rowStart}>
-              <Text style={styles.cardTitle}>تتبع الموقع</Text>
-              <Text style={styles.cardHint}>POST /mobile/captain/me/location كل ~30 ثانية</Text>
-            </View>
-            <Switch
-              value={snapshot.sessionEnabled}
-              onValueChange={setSessionEnabled}
-              trackColor={{ false: "rgba(43, 43, 43, 0.22)", true: homeTheme.accentMuted }}
-              thumbColor={snapshot.sessionEnabled ? homeTheme.accent : homeTheme.tabBarInactive}
+          <Text style={styles.sectionTitle}>{t("tracking.sectionTrackingControl")}</Text>
+          <View style={styles.availabilityRow}>
+            <Ionicons
+              name={snapshot.sessionEnabled ? "radio-button-on-outline" : "radio-button-off-outline"}
+              size={22}
+              color={snapshot.sessionEnabled ? homeTheme.success : homeTheme.textMuted}
             />
+            <Text style={styles.availabilityCaption}>{trackingCaption}</Text>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>الصلاحيات</Text>
+          <Text style={styles.sectionTitle}>{t("tracking.sectionPermissions")}</Text>
           <StatusRow
-            label="إذن الموقع"
+            label={t("tracking.permissionLabel")}
             value={
               snapshot.permission === "granted"
-                ? "مسموح"
+                ? t("tracking.permissionGranted")
                 : snapshot.permission === "denied"
-                  ? "مرفوض"
-                  : "غير محدد"
+                  ? t("tracking.permissionDenied")
+                  : t("tracking.permissionUnknown")
             }
             ok={snapshot.permission === "granted"}
           />
+          {snapshot.permission !== "granted" ? (
+            <Text style={styles.permissionCallout}>{t("tracking.permissionCallout")}</Text>
+          ) : null}
           <View style={styles.btnRow}>
             <Pressable style={styles.btnSecondary} onPress={() => void refreshPermission()}>
-              <Text style={styles.btnSecondaryText}>إعادة طلب الإذن</Text>
+              <Text style={styles.btnSecondaryText}>{t("tracking.btnRequestAgain")}</Text>
             </Pressable>
             <Pressable style={styles.btnSecondary} onPress={() => void Linking.openSettings()}>
-              <Text style={styles.btnSecondaryText}>إعدادات التطبيق</Text>
+              <Text style={styles.btnSecondaryText}>{t("tracking.btnAppSettings")}</Text>
             </Pressable>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>الحالة</Text>
-          <StatusRow label="الشبكة" value={reachabilityLabel} ok={snapshot.reachability === "online"} />
+          <Text style={styles.sectionTitle}>{t("tracking.sectionStatus")}</Text>
           <StatusRow
-            label="التطبيق"
-            value={snapshot.appInForeground ? "في المقدّمة" : "في الخلفية — الإرسال متوقف مؤقتًا"}
+            label={t("tracking.labelNetwork")}
+            value={reachabilityLabel}
+            ok={snapshot.reachability === "online"}
+          />
+          <StatusRow
+            label={t("tracking.labelApp")}
+            value={snapshot.appInForeground ? t("tracking.appForeground") : t("tracking.appBackground")}
             ok={snapshot.appInForeground}
           />
           <StatusRow
-            label="في انتظار الإرسال"
+            label={t("tracking.labelOutbox")}
             value={String(snapshot.pendingInOutbox)}
             ok={snapshot.pendingInOutbox === 0}
           />
@@ -122,23 +121,23 @@ export function TrackingScreen() {
 
         {snapshot.lastFix ? (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>آخر قراءة GPS</Text>
+            <Text style={styles.sectionTitle}>{t("tracking.sectionLastGps")}</Text>
             <Text style={styles.mono}>
               {snapshot.lastFix.latitude.toFixed(5)}, {snapshot.lastFix.longitude.toFixed(5)}
             </Text>
-            <Text style={styles.time}>
-              {new Date(snapshot.lastFix.recordedAtMs).toLocaleString("ar-SA")}
-            </Text>
+            <Text style={styles.time}>{formatLocaleDateTimeMs(snapshot.lastFix.recordedAtMs)}</Text>
           </View>
         ) : null}
 
         {snapshot.lastServerAck ? (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>آخر تأكيد من الخادم</Text>
+            <Text style={styles.sectionTitle}>{t("tracking.sectionLastServer")}</Text>
             <Text style={styles.mono}>
               {snapshot.lastServerAck.latitude.toFixed(5)}, {snapshot.lastServerAck.longitude.toFixed(5)}
             </Text>
-            <Text style={styles.time}>{new Date(snapshot.lastServerAck.recordedAt).toLocaleString("ar-SA")}</Text>
+            <Text style={styles.time}>
+              {formatLocaleDateTimeMs(new Date(snapshot.lastServerAck.recordedAt).getTime())}
+            </Text>
           </View>
         ) : null}
 
@@ -146,7 +145,7 @@ export function TrackingScreen() {
           <View style={[styles.card, styles.issueCard]}>
             <View style={styles.issueHead}>
               <Ionicons name={issueIcon(snapshot.lastIssue.kind)} size={22} color={homeTheme.gold} />
-              <Text style={styles.issueTitle}>تنبيه</Text>
+              <Text style={styles.issueTitle}>{t("tracking.issueTitle")}</Text>
             </View>
             <Text style={styles.issueBody}>{snapshot.lastIssue.message}</Text>
           </View>
@@ -184,6 +183,13 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: "right",
     marginTop: 8,
+    marginBottom: 8,
+  },
+  subSecondary: {
+    color: homeTheme.textMuted,
+    fontSize: 13,
+    lineHeight: 21,
+    textAlign: "right",
     marginBottom: 16,
   },
   muted: { color: homeTheme.textMuted, textAlign: "right", marginTop: 8 },
@@ -194,22 +200,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: homeTheme.border,
     marginBottom: 12,
+    ...homeTheme.cardShadow,
   },
-  rowBetween: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  rowStart: { flex: 1, alignItems: "flex-end" },
-  cardTitle: { color: homeTheme.text, fontSize: 17, fontWeight: "800", textAlign: "right" },
-  cardHint: { color: homeTheme.textMuted, fontSize: 12, textAlign: "right", marginTop: 4 },
   sectionTitle: {
     color: homeTheme.text,
     fontSize: 15,
     fontWeight: "800",
     textAlign: "right",
     marginBottom: 10,
+  },
+  availabilityRow: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    gap: 10,
+  },
+  availabilityCaption: {
+    flex: 1,
+    color: homeTheme.text,
+    fontSize: 15,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  permissionCallout: {
+    color: homeTheme.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: "right",
+    marginTop: 8,
+    marginBottom: 4,
   },
   statusRow: {
     flexDirection: "row-reverse",

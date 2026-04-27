@@ -14,7 +14,6 @@ import { TableShell } from "@/components/ui/table-shell";
 import { FinanceLedgerTable } from "@/features/finance/components/finance-ledger-table";
 import { LedgerActivityReportSection } from "@/features/finance/components/ledger-activity-report-section";
 import { CompanyAdminCaptainPrepaidModal } from "@/features/finance/components/company-admin-captain-prepaid-modal";
-import { CompanyAdminStoreTopupModal } from "@/features/finance/components/company-admin-store-topup-modal";
 import { SuperAdminCompanyTopupModal } from "@/features/finance/components/super-admin-company-topup-modal";
 import { SuperAdminStoreTopupModal } from "@/features/finance/components/super-admin-store-topup-modal";
 import { SuperAdminSupervisorTopupModal } from "@/features/finance/components/super-admin-supervisor-topup-modal";
@@ -93,33 +92,43 @@ export function FinancePageView() {
   const token = useAuthStore((s) => s.token);
   const authUserId = useAuthStore((s) => s.user?.id);
 
-  const canSeeSupervisor = isSupervisorFinanceRole(role);
-  const canSeeStore = canReadStoreWalletUi(role);
-  const canSeeCaptain = canReadCaptainWalletUi(role);
-  const canSeeCompany = canViewCompanyWalletSection(role);
   const isSuperAdmin = isSuperAdminRole(role);
   const isCompanyAdmin = isCompanyAdminRole(role);
+  const canSeeSupervisor = isSupervisorFinanceRole(role);
+  const canSeeStore = canReadStoreWalletUi(role) && !isCompanyAdmin;
+  const canSeeCaptain = canReadCaptainWalletUi(role);
+  const canSeeCompany = canViewCompanyWalletSection(role);
 
   const [storeTopupOpen, setStoreTopupOpen] = useState(false);
   const [supervisorTopupOpen, setSupervisorTopupOpen] = useState(false);
   const [companyTopupOpen, setCompanyTopupOpen] = useState(false);
   const [supervisorTransferOpen, setSupervisorTransferOpen] = useState(false);
-  const [caStoreTopupOpen, setCaStoreTopupOpen] = useState(false);
   const [caCaptainPrepaidOpen, setCaCaptainPrepaidOpen] = useState(false);
 
   const tabs = useMemo((): FinanceTab[] => {
+    if (isCompanyAdmin) {
+      const t: FinanceTab[] = [];
+      if (canSeeCompany) t.push("company");
+      if (canSeeCaptain) t.push("captain");
+      return t;
+    }
     const t: FinanceTab[] = [];
     if (canSeeSupervisor) t.push("supervisor");
     if (canSeeStore) t.push("store");
     if (canSeeCaptain) t.push("captain");
     if (canSeeCompany) t.push("company");
     return t;
-  }, [canSeeCaptain, canSeeCompany, canSeeStore, canSeeSupervisor]);
+  }, [isCompanyAdmin, canSeeCaptain, canSeeCompany, canSeeStore, canSeeSupervisor]);
 
   const [tab, setTab] = useState<FinanceTab | null>(null);
   useEffect(() => {
     if (tab == null && tabs.length) {
       setTab(tabs[0]!);
+    }
+  }, [tab, tabs]);
+  useEffect(() => {
+    if (tab != null && tabs.length && !tabs.includes(tab)) {
+      setTab(tabs[0] ?? null);
     }
   }, [tab, tabs]);
 
@@ -263,7 +272,7 @@ export function FinancePageView() {
           isSuperAdmin
             ? "عرض أرصدة المحافظ وسجل العمليات. شحن متجر أو مشرف من الأعلى، أو شحن محفظة الشركة من تبويب «محفظة الشركة»."
             : isCompanyAdmin
-              ? "عرض رصيد محفظة الشركة (للقراءة فقط) وأرصدة أخرى حسب صلاحياتك."
+              ? "عرض رصيد محفظة الشركة (للقراءة فقط) ومحفظة الكابتن وشحن باقة الكابتن عند الحاجة — دون إدارة المتاجر من هنا."
               : "عرض أرصدة المحافظ وسجل العمليات."
         }
         actions={
@@ -302,14 +311,11 @@ export function FinancePageView() {
           <CardHeader>
             <CardTitle className="text-base">أدوات مدير الشركة</CardTitle>
             <CardDescription>
-              شحن محفظة متجر أو رصيد باقة كابتن داخل شركتك فقط. يُطلب مبلغ وسبب، ويُولَّد idempotency تلقائياً. لا يوجد شحن
-              لمحفظة الشركة من هنا.
+              شحن رصيد باقة كابتن داخل شركتك فقط. يُطلب مبلغ وسبب، ويُولَّد idempotency تلقائياً. لا يوجد شحن لمحفظة الشركة من
+              هنا.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            <Button type="button" onClick={() => setCaStoreTopupOpen(true)}>
-              شحن رصيد متجر
-            </Button>
             <Button type="button" variant="secondary" onClick={() => setCaCaptainPrepaidOpen(true)}>
               شحن رصيد باقة كابتن
             </Button>
@@ -337,13 +343,6 @@ export function FinancePageView() {
           onClose={() => setCompanyTopupOpen(false)}
           companyId={saCompanyId}
           companyName={saCompanyName}
-        />
-      ) : null}
-      {isCompanyAdmin ? (
-        <CompanyAdminStoreTopupModal
-          open={caStoreTopupOpen}
-          onClose={() => setCaStoreTopupOpen(false)}
-          defaultStoreId={activeTab === "store" ? storeId : null}
         />
       ) : null}
       {isCompanyAdmin ? (
@@ -467,11 +466,6 @@ export function FinancePageView() {
                   ))}
                 </select>
               </label>
-              {isCompanyAdmin ? (
-                <Button type="button" size="sm" onClick={() => setCaStoreTopupOpen(true)}>
-                  شحن رصيد المتجر
-                </Button>
-              ) : null}
             </div>
           ) : null}
 

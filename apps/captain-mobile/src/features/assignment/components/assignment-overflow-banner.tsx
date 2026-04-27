@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { homeTheme } from "@/features/home/theme";
 import type { AssignmentOverflowItemDto } from "@/services/api/dto";
@@ -15,14 +16,12 @@ type Props = {
  * Option C: visible notice when assignable or in-flight orders exist beyond the primary live card.
  */
 export function AssignmentOverflowBanner({ items, warningVisible = false, onRetryWarning }: Props) {
+  const { t } = useTranslation();
   const router = useRouter();
   if (items.length === 0 && !warningVisible) return null;
 
   const n = items.length;
-  const label =
-    n === 1
-      ? "طلب إضافي لا يظهر في البطاقة الرئيسية"
-      : `${n} طلبات إضافية لا تظهر في البطاقة الرئيسية`;
+  const label = n === 1 ? t("overflow.titleOne") : t("overflow.titleMany", { count: n });
 
   return (
     <View style={styles.wrap} accessibilityRole="summary">
@@ -45,18 +44,24 @@ export function AssignmentOverflowBanner({ items, warningVisible = false, onRetr
       {items.length > 0 ? (
         <>
       <Text style={styles.title}>{label}</Text>
-      <Text style={styles.hint}>افتح التفاصيل من القائمة أدناه أو من الأرشيف.</Text>
+      <Text style={styles.hint}>{t("overflow.detailsHint")}</Text>
       {items.map((it) => (
         <Pressable
           key={it.orderId}
           onPress={() => router.push(routes.app.order(it.orderId))}
           style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
           accessibilityRole="button"
-          accessibilityLabel={`طلب ${formatOrderSerial(it.orderNumber)} ${it.kind === "OFFER" ? "عرض" : "نشط"}`}
+          accessibilityLabel={t("overflow.orderA11y", {
+            serial: formatOrderSerial(it.orderNumber, it.displayOrderNo),
+            kind: it.kind === "OFFER" ? t("overflow.kindOffer") : t("overflow.kindActive"),
+          })}
         >
           <Text style={styles.rowMain} numberOfLines={1}>
-            {formatOrderSerial(it.orderNumber)}
-            <Text style={styles.badge}> {it.kind === "OFFER" ? "عرض" : "نشط"}</Text>
+            {formatOrderSerial(it.orderNumber, it.displayOrderNo)}
+            <Text style={styles.badge}>
+              {" "}
+              {it.kind === "OFFER" ? t("overflow.kindOffer") : t("overflow.kindActive")}
+            </Text>
           </Text>
         </Pressable>
       ))}

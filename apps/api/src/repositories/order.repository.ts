@@ -1,4 +1,5 @@
-import { AssignmentResponseStatus, type Prisma, type OrderStatus } from "@prisma/client";
+import { AssignmentResponseStatus, Prisma, type OrderStatus } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "../lib/prisma.js";
 import { normalizePaginationForPrisma } from "../utils/pagination.js";
 import { orderStoreInclude, orderStoreListSelect } from "./order-store-enrichment.js";
@@ -66,6 +67,42 @@ export const orderRepository = {
         createdBy: { select: { id: true, fullName: true, phone: true } },
       },
     });
+  },
+
+  /**
+   * Assigns next per-company display sequence with optimistic retry.
+   * Uniqueness is enforced by DB unique index on `(company_id, display_order_no)`.
+   */
+  async createWithDisplaySequence(data: Prisma.OrderCreateInput, companyIdForSequence: string) {
+    const normalizedData = await deriveTenantFromConnectedStore(data);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const agg = await prisma.order.aggregate({
+        where: { companyId: companyIdForSequence },
+        _max: { displayOrderNo: true },
+      });
+      const next = (agg._max.displayOrderNo ?? 0) + 1;
+      const withSeq = { ...normalizedData, displayOrderNo: next } as Prisma.OrderCreateInput;
+      try {
+        return await prisma.order.create({
+          data: withSeq,
+          include: {
+            store: orderStoreInclude,
+            assignedCaptain: true,
+            createdBy: { select: { id: true, fullName: true, phone: true } },
+          },
+        });
+      } catch (e) {
+        if (
+          e instanceof PrismaClientKnownRequestError &&
+          e.code === "P2002" &&
+          String((e.meta as { target?: unknown } | undefined)?.target ?? "").includes("display_order_no")
+        ) {
+          continue;
+        }
+        throw e;
+      }
+    }
+    throw new AppError(500, "Could not allocate display order number.", "INTERNAL");
   },
 
   async update(id: string, data: Prisma.OrderUpdateInput) {

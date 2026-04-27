@@ -42,6 +42,7 @@
     "SUPERVISOR_LINKED": "מקושר למפקח"
   },
   "financial": {
+    "orderAmount": "סכום ההזמנה",
     "storeAmount": "סכום לחנות",
     "deliveryFee": "דמי משלוח",
     "deliveryFeeInferred": "דמי משלוח (מסיקים)",

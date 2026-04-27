@@ -11,3 +11,12 @@ export async function listActiveCompaniesForSuperAdmin(): Promise<CompanyListIte
   });
   return rows;
 }
+
+/** إنشاء شركة نشطة — معرّف تلقائي من قاعدة البيانات */
+export async function createCompanyForSuperAdmin(input: { name: string }): Promise<CompanyListItem> {
+  const name = input.name.trim();
+  return prisma.company.create({
+    data: { name, isActive: true },
+    select: { id: true, name: true },
+  });
+}

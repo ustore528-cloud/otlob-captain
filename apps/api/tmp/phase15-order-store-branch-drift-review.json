@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-04-26T01:28:31.516Z",
+  "proposalOnly": true,
+  "databaseWritesPerformed": false,
+  "driftRowCount": 4,
+  "summary": {
+    "byAction": {
+      "update_order_branch_to_store_branch": 0,
+      "manual_review": 4,
+      "no_action": 0
+    },
+    "byConfidence": {
+      "high": 0,
+      "medium": 2,
+      "low": 2,
+      "none": 0
+    },
+    "affectedActiveOrInProgress": 2,
+    "captainTenantConflicts": 0
+  },
+  "reviews": [
+    {
+      "orderId": "cmocdztfb0001um6s9tn5p01r",
+      "orderStatus": "DELIVERED",
+      "orderCreatedAt": "2026-04-24T04:04:46.391Z",
+      "orderCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "orderBranchId": "cpkeiii7o4nfcxx7d0ymncwcs",
+      "storeId": "cmob0w2ck000gumiw9fvx4mvb",
+      "storeCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "storeBranchId": "cmob0vznz0001umiwd5v1bpx0",
+      "assignedCaptainId": "cmo9ng14u0005um84b49d1f4a",
+      "assignedCaptainCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "assignedCaptainBranchId": "cpkeiii7o4nfcxx7d0ymncwcs",
+      "orderStoreCompanyMatch": true,
+      "assignedCaptainMatchesOrderTenant": true,
+      "proposedBranchId": "cmob0vznz0001umiwd5v1bpx0",
+      "proposedAction": "manual_review",
+      "confidence": "medium",
+      "reason": "Assigned captain is in same company but on a different branch than the store target branch.",
+      "riskNote": "Potential operational impact for captain assignment history; confirm branch policy before update."
+    },
+    {
+      "orderId": "cmocbj5a00001umrkfw5fu3wc",
+      "orderStatus": "DELIVERED",
+      "orderCreatedAt": "2026-04-24T02:55:49.369Z",
+      "orderCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "orderBranchId": "cpkeiii7o4nfcxx7d0ymncwcs",
+      "storeId": "cmob0w2ck000gumiw9fvx4mvb",
+      "storeCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "storeBranchId": "cmob0vznz0001umiwd5v1bpx0",
+      "assignedCaptainId": "cmo9ng14u0005um84b49d1f4a",
+      "assignedCaptainCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "assignedCaptainBranchId": "cpkeiii7o4nfcxx7d0ymncwcs",
+      "orderStoreCompanyMatch": true,
+      "assignedCaptainMatchesOrderTenant": true,
+      "proposedBranchId": "cmob0vznz0001umiwd5v1bpx0",
+      "proposedAction": "manual_review",
+      "confidence": "medium",
+      "reason": "Assigned captain is in same company but on a different branch than the store target branch.",
+      "riskNote": "Potential operational impact for captain assignment history; confirm branch policy before update."
+    },
+    {
+      "orderId": "cmocbided0001umq8jqn51amv",
+      "orderStatus": "PENDING",
+      "orderCreatedAt": "2026-04-24T02:55:13.237Z",
+      "orderCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "orderBranchId": "cpkeiii7o4nfcxx7d0ymncwcs",
+      "storeId": "cmob0w2ck000gumiw9fvx4mvb",
+      "storeCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "storeBranchId": "cmob0vznz0001umiwd5v1bpx0",
+      "assignedCaptainId": null,
+      "assignedCaptainCompanyId": null,
+      "assignedCaptainBranchId": null,
+      "orderStoreCompanyMatch": true,
+      "assignedCaptainMatchesOrderTenant": null,
+      "proposedBranchId": "cmob0vznz0001umiwd5v1bpx0",
+      "proposedAction": "manual_review",
+      "confidence": "low",
+      "reason": "Order appears active/in-progress; avoid branch mutation without explicit safety proof.",
+      "riskNote": "Active order branch changes may affect live operations and assignment flows."
+    },
+    {
+      "orderId": "cmocbh7tr0001um7whnyvpuh9",
+      "orderStatus": "PENDING",
+      "orderCreatedAt": "2026-04-24T02:54:19.360Z",
+      "orderCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "orderBranchId": "cpkeiii7o4nfcxx7d0ymncwcs",
+      "storeId": "cmob0w2ck000gumiw9fvx4mvb",
+      "storeCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "storeBranchId": "cmob0vznz0001umiwd5v1bpx0",
+      "assignedCaptainId": null,
+      "assignedCaptainCompanyId": null,
+      "assignedCaptainBranchId": null,
+      "orderStoreCompanyMatch": true,
+      "assignedCaptainMatchesOrderTenant": null,
+      "proposedBranchId": "cmob0vznz0001umiwd5v1bpx0",
+      "proposedAction": "manual_review",
+      "confidence": "low",
+      "reason": "Order appears active/in-progress; avoid branch mutation without explicit safety proof.",
+      "riskNote": "Active order branch changes may affect live operations and assignment flows."
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { $Enums, OrderStatus, type UserRole } from "@prisma/client";
+import { $Enums, OrderStatus, UserRole, CaptainAvailabilityStatus } from "@prisma/client";
 import type { AssignmentType, Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { distributionEngine, type DistributionRequestContext } from "./distribution-engine.js";
@@ -16,6 +16,7 @@ import {
   isSuperAdminRole,
   type AppRole,
 } from "../../lib/rbac-roles.js";
+import { getAutoPoolOfferTelemetry } from "./auto-pool-telemetry.js";
 
 type OrderCaptainEmit = {
   id: string;
@@ -40,6 +41,9 @@ function mergeEngineCtx(
     ...ctx,
     bypassSupervisorLinkScope: actorScope
       ? isSuperAdminRole(actorScope.role) || isCompanyAdminRole(actorScope.role) || isLegacyAdminRole(actorScope.role)
+      : false,
+    bypassOrderOwnerCaptainFleetForCompanyAdmin: actorScope
+      ? isCompanyAdminRole(actorScope.role)
       : false,
   };
 }
@@ -161,8 +165,17 @@ async function runFastOrderPrecheck(
   }
 }
 
-function emitCaptainDistributionSocket(order: OrderCaptainEmit, kind: "OFFER" | "REASSIGNED"): void {
+async function emitCaptainDistributionSocket(order: OrderCaptainEmit, kind: "OFFER" | "REASSIGNED"): Promise<void> {
   if (!order?.assignedCaptain?.userId) return;
+  const pendingAssignment = await prisma.orderAssignmentLog.findFirst({
+    where: {
+      orderId: order.id,
+      responseStatus: $Enums.AssignmentResponseStatus.PENDING,
+      captain: { userId: order.assignedCaptain.userId },
+    },
+    orderBy: { assignedAt: "desc" },
+    select: { id: true },
+  });
   emitToCaptain(order.assignedCaptain.userId, CAPTAIN_SOCKET_EVENTS.ASSIGNMENT, {
     kind,
     orderId: order.id,
@@ -174,14 +187,19 @@ function emitCaptainDistributionSocket(order: OrderCaptainEmit, kind: "OFFER" | 
     { id: order.id, orderNumber: order.orderNumber, status: order.status },
     { companyId: order.companyId, branchId: order.branchId },
   );
+  // eslint-disable-next-line no-console
+  console.info("[new-order-push] distribution emit (socket + preparing push)", {
+    orderId: order.id,
+    assignmentId: pendingAssignment?.id ?? null,
+    captainUserId: order.assignedCaptain.userId,
+    kind,
+  });
   void pushNotificationService.sendCaptainOrderPush({
     userId: order.assignedCaptain.userId,
-    title: kind === "REASSIGNED" ? "إعادة تعيين طلب" : "طلب جديد بانتظار قبولك",
-    body:
-      kind === "REASSIGNED"
-        ? `تمت إعادة تعيين الطلب ${order.orderNumber} لك.`
-        : `تم عرض الطلب ${order.orderNumber} عليك. اضغط للقبول أو الرفض.`,
+    title: "New Delivery Order",
+    body: "You have a new delivery request. Open the app to accept it.",
     orderId: order.id,
+    assignmentId: pendingAssignment?.id ?? null,
     orderNumber: order.orderNumber,
     kind,
     status: order.status,
@@ -218,7 +236,7 @@ async function emitAfterTimeoutProcessing(hint: { orderId: string; expiredCaptai
   }
 
   if (order.status === OrderStatus.ASSIGNED && order.assignedCaptain?.userId) {
-    emitCaptainDistributionSocket(order, "OFFER");
+    void emitCaptainDistributionSocket(order, "OFFER");
   } else {
     emitOrderUpdated(
       { id: order.id, orderNumber: order.orderNumber, status: order.status },
@@ -255,8 +273,12 @@ export const distributionService = {
 
   startAuto: async (orderId: string, actorUserId: string | null, actorScope?: StaffDistributionScope) => {
     await assertDispatcherCanAccessDistributionTargets(orderId, actorScope);
-    const order = await distributionEngine.startAutoDistribution(orderId, actorUserId);
-    emitCaptainDistributionSocket(order, "OFFER");
+    const order = await distributionEngine.startAutoDistribution(
+      orderId,
+      actorUserId,
+      mergeEngineCtx({}, actorScope),
+    );
+    void emitCaptainDistributionSocket(order, "OFFER");
     return order;
   },
 
@@ -267,38 +289,94 @@ export const distributionService = {
     ctx: DistributionRequestContext = {},
   ) => {
     const startedAt = Date.now();
+    const uniqueOrderIds = [...new Set(input.orderIds)];
+    const isCa = Boolean(actorScope && isCompanyAdminRole(actorScope.role));
+    const isSa = Boolean(actorScope && isSuperAdminRole(actorScope.role));
+
+    /** Tenant snapshot: AVAILABLE captains in the actor's company (optional branch filter). */
+    let companySnapshot: {
+      companyId: string;
+      branchIdFilter: string | null;
+      scopedCaptainCount: number;
+    } | null = null;
+    if (isCa && actorScope?.companyId) {
+      const scopedCaptainCount = await prisma.captain.count({
+        where: {
+          companyId: actorScope.companyId,
+          ...(actorScope.branchId ? { branchId: actorScope.branchId } : {}),
+          isActive: true,
+          availabilityStatus: CaptainAvailabilityStatus.AVAILABLE,
+          user: { isActive: true, role: UserRole.CAPTAIN },
+        },
+      });
+      companySnapshot = {
+        companyId: actorScope.companyId,
+        branchIdFilter: actorScope.branchId,
+        scopedCaptainCount,
+      };
+    }
+
+    const globalAvailableCaptainsCount =
+      !isCa || !actorScope?.companyId
+        ? await prisma.captain.count({
+            where: {
+              isActive: true,
+              availabilityStatus: CaptainAvailabilityStatus.AVAILABLE,
+              user: { isActive: true, role: UserRole.CAPTAIN },
+            },
+          })
+        : null;
+
     // eslint-disable-next-line no-console
     console.info("[distribution:auto-assign-visible] request started", {
       requestId: ctx.requestId ?? null,
       actorUserId,
       visibleOrderIdsCount: input.orderIds.length,
       zoneId: input.zoneId ?? null,
+      ...(companySnapshot
+        ? {
+            poolScope: "company" as const,
+            companyId: companySnapshot.companyId,
+            branchIdFilter: companySnapshot.branchIdFilter,
+            scopedCaptainCount: companySnapshot.scopedCaptainCount,
+          }
+        : {
+            poolScope: "global" as const,
+            availableCaptainsCount: globalAvailableCaptainsCount ?? 0,
+            ...(isSa ? { globalAvailableCaptainsCount: globalAvailableCaptainsCount ?? 0 } : {}),
+          }),
     });
-    const uniqueOrderIds = [...new Set(input.orderIds)];
+
     let assignedCount = 0;
     let skippedCount = 0;
     const skipped: Array<{ orderId: string; reason: string }> = [];
-
-    const availableCaptainsCount = await prisma.captain.count({
-      where: {
-        isActive: true,
-        availabilityStatus: "AVAILABLE",
-        user: { isActive: true, role: "CAPTAIN" },
-      },
-    });
-    // eslint-disable-next-line no-console
-    console.info("[distribution:auto-assign-visible] pool snapshot", {
-      requestId: ctx.requestId ?? null,
-      availableCaptainsCount,
-    });
+    let sumEligibleCaptainCount = 0;
+    let sumSkippedForPrepaid = 0;
+    let sumSkippedForCapacity = 0;
+    let telemetryOrders = 0;
 
     for (const orderId of uniqueOrderIds) {
       try {
         await assertDispatcherCanAccessDistributionTargets(orderId, actorScope);
-        const result = await distributionEngine.startAutoDistributionVisible(orderId, actorUserId, ctx.requestId);
+        const engineCtx = mergeEngineCtx(ctx, actorScope);
+        if (isCa && actorScope?.companyId) {
+          const tel = await getAutoPoolOfferTelemetry(orderId, engineCtx, "OVERRIDE_MULTI_ORDER");
+          if (tel) {
+            sumEligibleCaptainCount += tel.eligibleCaptainCount;
+            sumSkippedForPrepaid += tel.skippedForPrepaid;
+            sumSkippedForCapacity += tel.skippedForCapacity;
+            telemetryOrders += 1;
+          }
+        }
+        const result = await distributionEngine.startAutoDistributionVisible(
+          orderId,
+          actorUserId,
+          ctx.requestId,
+          engineCtx,
+        );
         if (result?.assignedCaptain) {
           assignedCount += 1;
-          emitCaptainDistributionSocket(result, "OFFER");
+          void emitCaptainDistributionSocket(result, "OFFER");
         } else {
           skippedCount += 1;
           skipped.push({ orderId, reason: "No available captain" });
@@ -316,10 +394,25 @@ export const distributionService = {
     console.info("[distribution:auto-assign-visible] request completed", {
       requestId: ctx.requestId ?? null,
       visibleOrderIdsCount: uniqueOrderIds.length,
-      availableCaptainsCount,
       assignedCount,
       skippedCount,
       durationMs: Date.now() - startedAt,
+      ...(companySnapshot
+        ? {
+            poolScope: "company" as const,
+            companyId: companySnapshot.companyId,
+            branchIdFilter: companySnapshot.branchIdFilter,
+            scopedCaptainCount: companySnapshot.scopedCaptainCount,
+            eligibleCaptainCount: sumEligibleCaptainCount,
+            skippedForPrepaid: sumSkippedForPrepaid,
+            skippedForCapacity: sumSkippedForCapacity,
+            telemetryOrderCount: telemetryOrders,
+          }
+        : {
+            poolScope: "global" as const,
+            availableCaptainsCount: globalAvailableCaptainsCount ?? 0,
+            ...(isSa ? { globalAvailableCaptainsCount: globalAvailableCaptainsCount ?? 0 } : {}),
+          }),
     });
     return {
       success: true,
@@ -353,7 +446,11 @@ export const distributionService = {
       msFromEnter: Date.now() - t0,
     });
     try {
-      const order = await distributionEngine.resendToDistribution(orderId, actorUserId, ctx);
+      const order = await distributionEngine.resendToDistribution(
+        orderId,
+        actorUserId,
+        mergeEngineCtx(ctx, actorScope),
+      );
       const afterEngine = Date.now();
       logActionTiming("resend_distribution", "engine_done", {
         requestId: ctx.requestId,
@@ -362,7 +459,7 @@ export const distributionService = {
         orderStatus: order?.status ?? null,
         msFromEnter: afterEngine - t0,
       });
-      emitCaptainDistributionSocket(order, "OFFER");
+      void emitCaptainDistributionSocket(order, "OFFER");
       logActionTiming("resend_distribution", "socket_emit_and_push_enqueue_done", {
         requestId: ctx.requestId,
         orderId,
@@ -433,7 +530,7 @@ export const distributionService = {
         orderStatus: order?.status ?? null,
         msFromEnter: afterEngine - t0,
       });
-      emitCaptainDistributionSocket(order, "OFFER");
+      void emitCaptainDistributionSocket(order, "OFFER");
       logActionTiming("manual_assign", "socket_emit_and_push_enqueue_done", {
         requestId: ctx.requestId,
         orderId,
@@ -491,7 +588,7 @@ export const distributionService = {
         orderStatus: order?.status ?? null,
         msFromEnter: Date.now() - t0,
       });
-      emitCaptainDistributionSocket(order, "REASSIGNED");
+      void emitCaptainDistributionSocket(order, "REASSIGNED");
       logActionTiming("reassign", "socket_emit_and_push_enqueue_done", {
         requestId: ctx.requestId,
         orderId,
@@ -533,6 +630,10 @@ export const distributionService = {
 };
 
 export { distributionEngine } from "./distribution-engine.js";
+export {
+  getAutoPoolOfferTelemetry,
+  type AutoPoolOfferTelemetry,
+} from "./auto-pool-telemetry.js";
 export {
   type AutomaticMultiOrderOverrideGateInput,
   type AutoDistributionPolicy,

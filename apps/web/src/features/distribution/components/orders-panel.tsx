@@ -1,3 +1,4 @@
+import { formatOrderDisplayLabel } from "@captain/shared";
 import type { OrderListItem } from "@/types/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,9 @@ export function OrdersPanel({ orders, pendingOrderIds, onManual, onResend, onDra
             className="rounded-xl border border-card-border bg-card p-2"
           >
             <div className="mb-1 flex items-center justify-between">
-              <p className="font-mono text-xs text-primary">{order.orderNumber}</p>
+              <p className="text-xs font-semibold tabular-nums text-primary" dir="ltr" title={order.orderNumber}>
+                {formatOrderDisplayLabel(order.displayOrderNo ?? null, order.orderNumber)}
+              </p>
               <Badge className={cn("text-[10px]", urgencyTone(order))}>{urgencyLabel(order)}</Badge>
             </div>
             <p className="text-xs font-semibold">{order.customerName}</p>

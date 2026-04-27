@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useOrderDetail } from "@/hooks/api/use-order-detail";
@@ -19,6 +20,7 @@ import { deriveFromOrder } from "../utils/captain-order-actions";
  * تفاصيل طلب من deep link / إشعار: `captain://order/<orderId>` أو `/(app)/order/<orderId>`
  */
 export function OrderDetailScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { orderId: rawId } = useLocalSearchParams<{ orderId: string | string[] }>();
   const orderId = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -41,12 +43,12 @@ export function OrderDetailScreen() {
 
   const handleAccept = () => {
     if (derived?.mode !== "offer") return;
-    void run(() => accept.mutateAsync(derived.orderId), "تعذّر القبول");
+    void run(() => accept.mutateAsync(derived.orderId), t("assignmentDetail.mutationAccept"));
   };
 
   const handleReject = () => {
     if (derived?.mode !== "offer") return;
-    void run(() => reject.mutateAsync(derived.orderId), "تعذّر الرفض");
+    void run(() => reject.mutateAsync(derived.orderId), t("assignmentDetail.mutationReject"));
   };
 
   const handleAdvance = () => {
@@ -68,7 +70,7 @@ export function OrderDetailScreen() {
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
       <WorkStatusBanner />
       <View style={styles.page}>
-        <ScreenHeader title="تفاصيل الطلب" onBack={goBack} />
+        <ScreenHeader title={t("assignmentDetail.title")} onBack={goBack} />
 
         <ScrollView
           style={styles.scroll}
@@ -77,29 +79,29 @@ export function OrderDetailScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {!orderId ? (
-            <Text style={styles.err}>معرّف الطلب غير صالح</Text>
+            <Text style={styles.err}>{t("assignmentDetail.invalidId")}</Text>
           ) : orderQuery.isLoading ? (
             <View style={styles.center}>
               <ActivityIndicator size="large" color={homeTheme.accent} />
-              <Text style={styles.muted}>جاري التحميل…</Text>
+              <Text style={styles.muted}>{t("assignmentDetail.loading")}</Text>
             </View>
           ) : orderQuery.isError ? (
             <QueryErrorState
-              title="تعذّر فتح الطلب"
+              title={t("assignmentDetail.errOpen")}
               error={orderQuery.error}
               onRetry={() => void orderQuery.refetch()}
-              fallbackMessage="تحقق من الصلاحيات أو الرابط."
+              fallbackMessage={t("assignmentDetail.errOpenFallback")}
               style={{ marginHorizontal: 0 }}
             />
           ) : orderQuery.data && !captain?.id ? (
             <View style={styles.center}>
               <ActivityIndicator size="large" color={homeTheme.accent} />
-              <Text style={styles.muted}>جاري تجهيز الجلسة…</Text>
+              <Text style={styles.muted}>{t("assignmentDetail.sessionPreparing")}</Text>
             </View>
           ) : orderQuery.data && derived ? (
             <OrderDetailContent order={orderQuery.data} showAssignmentLogs />
           ) : (
-            <Text style={styles.err}>لا يمكن عرض الطلب</Text>
+            <Text style={styles.err}>{t("assignmentDetail.cannotDisplay")}</Text>
           )}
         </ScrollView>
 

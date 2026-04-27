@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import type { OrderDetailDto } from "@/services/api/dto";
-import { formatLastSeenAr } from "@/features/home/utils/format";
+import { formatLogTime } from "@/lib/order-timestamps";
 import { homeTheme } from "@/features/home/theme";
 import { formatOrderSerial } from "@/lib/order-serial";
 
@@ -10,19 +11,19 @@ type Props = {
 };
 
 export function OrderDetailHeader({ order, offerHint }: Props) {
-  const created = formatLastSeenAr(order.createdAt);
-  const updated = formatLastSeenAr(order.updatedAt);
+  const { t } = useTranslation();
+  const dash = t("common.emDash");
+  const created = formatLogTime(order.createdAt) ?? dash;
+  const updated = formatLogTime(order.updatedAt) ?? dash;
 
   return (
     <View style={styles.wrap}>
       <View>
-        <Text style={styles.kicker}>رقم الطلب</Text>
-        <Text style={styles.orderNo}>{formatOrderSerial(order.orderNumber)}</Text>
+        <Text style={styles.kicker}>{t("orderDetailHeader.kicker")}</Text>
+        <Text style={styles.orderNo}>{formatOrderSerial(order.orderNumber, order.displayOrderNo)}</Text>
       </View>
       <View style={styles.metaRow}>
-        <Text style={styles.meta}>
-          أُنشئ {created ?? "—"} · عُدّل {updated ?? "—"}
-        </Text>
+        <Text style={styles.meta}>{t("orderDetailHeader.meta", { created, updated })}</Text>
       </View>
       {offerHint ? (
         <View style={styles.offerBanner}>

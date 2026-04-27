@@ -16,6 +16,13 @@ export type CaptainProfileDto = {
   prepaidBalance?: CaptainPrepaidSummaryDto;
 };
 
+export type CaptainPrepaidReadAlignmentDto = {
+  displayBalance: string;
+  walletBalance: string | null;
+  prepaidBalance: string;
+  parity: "OK" | "NO_WALLET" | "MISMATCH";
+};
+
 export type CaptainPrepaidSummaryDto = {
   captainId: string;
   currentBalance: string;
@@ -35,6 +42,8 @@ export type CaptainPrepaidSummaryDto = {
   lastChargeAt: string | null;
   lastDeductionAt: string | null;
   explanationText: string;
+  /** Present when API runs read-alignment phase; use `currentBalance` when absent. */
+  readAlignment?: CaptainPrepaidReadAlignmentDto;
 };
 
 export type SessionUserDto = {
@@ -103,10 +112,12 @@ export type CurrentAssignmentResponse =
 export type AssignmentOverflowItemDto = {
   orderId: string;
   orderNumber: string;
+  displayOrderNo?: number | null;
   kind: "OFFER" | "ACTIVE";
   status: OrderStatusDto;
   customerPhone: string;
   amount: string;
+  deliveryFee: string | null;
   cashCollection: string;
   pickupAddress: string;
   dropoffAddress: string;

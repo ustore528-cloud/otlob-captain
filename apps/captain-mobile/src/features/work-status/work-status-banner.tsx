@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 import { useCaptainWorkStatus } from "@/hooks/api/use-captain-work-status";
 import { homeTheme } from "@/features/home/theme";
@@ -9,6 +10,7 @@ import { WORK_STATUS_PALETTE } from "./work-status-palette";
  * Same data as admin «تنبيه سريع عن حالة الشغل».
  */
 export function WorkStatusBanner() {
+  const { t } = useTranslation();
   const { data, isError } = useCaptainWorkStatus();
 
   if (isError || !data || !data.active) {
@@ -21,7 +23,7 @@ export function WorkStatusBanner() {
     <View
       style={[styles.wrap, { backgroundColor: palette.bg, borderColor: palette.border }]}
       accessibilityRole="alert"
-      accessibilityLabel={`حالة الشغل: ${data.label}`}
+      accessibilityLabel={t("workStatus.a11yLabel", { label: data.label })}
     >
       <Ionicons name={palette.icon} size={18} color={palette.text} style={styles.icon} />
       <Text style={[styles.text, { color: palette.text }]} numberOfLines={3}>

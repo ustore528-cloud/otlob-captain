@@ -62,8 +62,10 @@ export const ROLE_CAPABILITIES: Record<AppRole, RoleMatrix> = {
     "orders.read": true,
     "captains.read": true,
     "captains.manage": true,
-    "orders.create": false,
-    "orders.dispatch": false,
+    /** Storeless dashboard: create uses server-resolved operational store (no client storeId). */
+    "orders.create": true,
+    /** Distribution map + tracking (tenant-scoped server-side; Phase 3.2.1). */
+    "orders.dispatch": true,
     "stores.read": false,
     "stores.manage": false,
     "finance.read": false,

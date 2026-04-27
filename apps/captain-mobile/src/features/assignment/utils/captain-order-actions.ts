@@ -14,26 +14,30 @@ export type CaptainActionResult =
       orderId: string;
       order: OrderDetailDto;
       nextStatus: "PICKED_UP" | "IN_TRANSIT" | "DELIVERED";
-      labelAr: string;
-      labelEn: string;
+      /** i18n key under `workflowAdvance.*` */
+      labelKey: string;
     };
+
+export function workflowAdvanceLabelKey(nextStatus: "PICKED_UP" | "IN_TRANSIT" | "DELIVERED"): string {
+  if (nextStatus === "PICKED_UP") return "workflowAdvance.pickedUpFromStore";
+  if (nextStatus === "IN_TRANSIT") return "workflowAdvance.onTheWayToCustomer";
+  return "workflowAdvance.markDelivered";
+}
 
 function nextDeliveryStep(
   status: OrderStatusDto,
 ): {
   nextStatus: "PICKED_UP" | "IN_TRANSIT" | "DELIVERED";
-  labelAr: string;
-  /** English primary CTA — aligned with order list */
-  labelEn: string;
+  labelKey: string;
 } | null {
   if (status === "ACCEPTED") {
-    return { nextStatus: "PICKED_UP", labelAr: "تم الاستلام من المتجر", labelEn: "Picked Up" };
+    return { nextStatus: "PICKED_UP", labelKey: workflowAdvanceLabelKey("PICKED_UP") };
   }
   if (status === "PICKED_UP") {
-    return { nextStatus: "IN_TRANSIT", labelAr: "في الطريق للعميل", labelEn: "On the way" };
+    return { nextStatus: "IN_TRANSIT", labelKey: workflowAdvanceLabelKey("IN_TRANSIT") };
   }
   if (status === "IN_TRANSIT") {
-    return { nextStatus: "DELIVERED", labelAr: "تم تسليم الطلب", labelEn: "Delivered" };
+    return { nextStatus: "DELIVERED", labelKey: workflowAdvanceLabelKey("DELIVERED") };
   }
   return null;
 }
@@ -73,8 +77,7 @@ export function deriveFromAssignment(res: CurrentAssignmentResponse): CaptainAct
       orderId: res.order.id,
       order: res.order,
       nextStatus: step.nextStatus,
-      labelAr: step.labelAr,
-      labelEn: step.labelEn,
+      labelKey: step.labelKey,
     };
   }
   return { mode: "none" };
@@ -121,8 +124,7 @@ export function deriveFromOrder(order: OrderDetailDto, captainId: string): Capta
       orderId: order.id,
       order,
       nextStatus: step.nextStatus,
-      labelAr: step.labelAr,
-      labelEn: step.labelEn,
+      labelKey: step.labelKey,
     };
   }
 

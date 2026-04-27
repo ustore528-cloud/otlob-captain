@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
+import i18n from "@/i18n/i18n";
+import { useAuthStore, selectIsAuthenticated } from "@/store/auth-store";
 import type { CaptainLocationRecordDto } from "@/services/api/dto";
 import { TRACKING_CONFIG } from "./config";
 import { classifySendFailure } from "./error-classify";
@@ -19,12 +21,14 @@ type TrackingRefs = {
 
 export type UseCaptainTrackingResult = {
   snapshot: CaptainTrackingSnapshot;
-  /** تفعيل/إيقاف الجلسة من الواجهة */
-  setSessionEnabled: (v: boolean) => void;
   /** إعادة طلب الصلاحية (بعد رفض سابق قد يحتاج إعدادات النظام) */
   refreshPermission: () => Promise<void>;
 };
 
+function isAvailabilityOnlineForTracking(availability: string | undefined | null): boolean {
+  if (availability == null) return false;
+  return String(availability) !== "OFFLINE";
+}
 function buildSnapshot(
   base: Omit<CaptainTrackingSnapshot, "pendingInOutbox"> & { pendingInOutbox?: number },
 ): CaptainTrackingSnapshot {
@@ -42,10 +46,13 @@ function buildSnapshot(
 
 /**
  * تتبع الموقع في المقدّمة: فترة ثابتة، إرسال للخادم، طابور عند انقطاع الشبكة، إعادة محاولة.
+ * الجلسة مفعّلة تلقائيًا عندما يكون التوفر ليس «غير متصل» (OFFLINE) — مثل مفتاح التوفر في الصفحة الرئيسية.
  */
-export function useCaptainTracking(): UseCaptainTrackingResult {
+export function useCaptainTrackingState(): UseCaptainTrackingResult {
   const reachability = useNetworkReachability();
-  const [sessionEnabled, setSessionEnabled] = useState(false);
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
+  const availabilityStatus = useAuthStore((s) => s.captain?.availabilityStatus);
+  const sessionEnabled = isAuthenticated && isAvailabilityOnlineForTracking(availabilityStatus);
   const [permission, setPermission] = useState<ForegroundPermissionState>("unknown");
   const [appForeground, setAppForeground] = useState(true);
   const [lastFix, setLastFix] = useState<CaptainTrackingSnapshot["lastFix"]>(null);
@@ -92,7 +99,7 @@ export function useCaptainTracking(): UseCaptainTrackingResult {
       } else {
         setLastIssue({
           kind: "permission_denied",
-          message: "يلزم السماح بالموقع أثناء استخدام التطبيق لمتابعة التتبع.",
+          message: i18n.t("tracking.issuePermissionForeground"),
         });
       }
     })();
@@ -146,7 +153,7 @@ export function useCaptainTracking(): UseCaptainTrackingResult {
         updatePending();
         setLastIssue({
           kind: "network",
-          message: "لا يوجد اتصال — تم حفظ النقطة لإرسالها عند عودة الشبكة.",
+          message: i18n.t("tracking.issueNetworkOffline"),
         });
         return;
       }
@@ -194,7 +201,7 @@ export function useCaptainTracking(): UseCaptainTrackingResult {
     } else {
       setLastIssue({
         kind: "permission_denied",
-        message: "لم يُمنح إذن الموقع. يمكن تفعيله من إعدادات التطبيق.",
+        message: i18n.t("tracking.issuePermissionDeniedSettings"),
       });
     }
   }, []);
@@ -216,7 +223,6 @@ export function useCaptainTracking(): UseCaptainTrackingResult {
 
   return {
     snapshot,
-    setSessionEnabled,
     refreshPermission,
   };
 }

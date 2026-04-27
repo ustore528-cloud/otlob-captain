@@ -16,6 +16,7 @@ import {
   incubatorHostLoader,
   newOrderLoader,
   ordersLoader,
+  reportsLoader,
   usersLoader,
 } from "@/router/loaders";
 
@@ -104,6 +105,7 @@ export const router = createBrowserRouter([
             <ReportsPageLazy />
           </Suspense>
         ),
+        loader: reportsLoader,
       },
     ],
   },

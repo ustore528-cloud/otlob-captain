@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { AppState, type AppStateStatus } from "react-native";
+import i18n from "@/i18n/i18n";
 import { useAuthStore } from "@/store/auth-store";
 import { queryClient } from "@/lib/query-client";
 import { logCaptainAssignment } from "@/lib/captain-assignment-debug";
@@ -48,28 +49,27 @@ export function CaptainRealtimeSync() {
       detach?.();
       detach = attachCaptainRealtimeListeners(s, queryClient, (event) => {
         if (event.type === "assignment") {
-          const p = event.payload as { orderNumber?: string; timeoutSeconds?: number } | null;
-          const digits = p?.orderNumber?.replace(/\D+/g, "") ?? "";
-          const serial = digits ? digits.slice(-2).padStart(2, "0") : "";
+          const p = event.payload as { orderNumber?: string; displayOrderNo?: number; timeoutSeconds?: number } | null;
+          const displayNo = typeof p?.displayOrderNo === "number" ? p.displayOrderNo : null;
           showBanner({
             kind: "order",
             title: "طلب جديد وصل",
-            message: serial ? `طلب رقم ${serial} بانتظار قبولك` : "لديك طلب جديد بانتظار القبول",
+            message: displayNo != null ? `طلب #${displayNo} بانتظار قبولك` : "لديك طلب جديد بانتظار القبول",
           });
           return;
         }
         if (event.type === "order_updated") {
           showBanner({
             kind: "info",
-            title: "تحديث على الطلب",
-            message: "تم تحديث حالة أحد الطلبات لديك",
+            title: i18n.t("realtime.orderUpdatedTitle"),
+            message: i18n.t("realtime.orderUpdatedMessage"),
           });
           return;
         }
         showBanner({
           kind: "alert",
-          title: "انتهى التعيين الحالي",
-          message: "يمكنك انتظار عرض جديد أو تحديث القائمة",
+          title: i18n.t("realtime.assignmentEndedTitle"),
+          message: i18n.t("realtime.assignmentEndedMessage"),
         });
       });
       return true;

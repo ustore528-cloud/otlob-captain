@@ -45,6 +45,7 @@ export type CurrentAssignmentResponse =
 export type AssignmentOverflowItemDto = {
   orderId: string;
   orderNumber: string;
+  displayOrderNo: number | null;
   kind: "OFFER" | "ACTIVE";
   status: OrderStatus;
   customerPhone: string;
@@ -308,6 +309,7 @@ export const captainMobileService = {
           order: {
             select: {
               orderNumber: true,
+              displayOrderNo: true,
               status: true,
               customerPhone: true,
               amount: true,
@@ -329,6 +331,7 @@ export const captainMobileService = {
         select: {
           id: true,
           orderNumber: true,
+          displayOrderNo: true,
           status: true,
           customerPhone: true,
           amount: true,
@@ -355,6 +358,7 @@ export const captainMobileService = {
       items.push({
         orderId,
         orderNumber: log.order.orderNumber,
+        displayOrderNo: log.order.displayOrderNo ?? null,
         kind: "OFFER",
         status: log.order.status,
         customerPhone: log.order.customerPhone,
@@ -378,6 +382,7 @@ export const captainMobileService = {
       items.push({
         orderId,
         orderNumber: o.orderNumber,
+        displayOrderNo: o.displayOrderNo ?? null,
         kind: "ACTIVE",
         status: o.status,
         customerPhone: o.customerPhone,

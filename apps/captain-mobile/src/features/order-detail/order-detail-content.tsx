@@ -1,9 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import type { OrderDetailDto } from "@/services/api/dto";
-import { orderStatusAr } from "@/lib/order-status-ar";
-import { formatLastSeenAr } from "@/features/home/utils/format";
 import { homeTheme } from "@/features/home/theme";
-import { ORDER_DROPOFF_LOCATION_LABEL, ORDER_PICKUP_LOCATION_LABEL } from "@/lib/order-location-labels";
+import { locationI18nKey } from "@/lib/order-location-i18n";
+import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
+import { formatOrderEventTime } from "@/lib/order-timestamps";
 import { WhatsAppActionButton } from "@/components/ui/whatsapp-action-button";
 import { OrderFinancialSection } from "@/components/order/order-financial-section";
 import { shouldShowOrderFinancialSection } from "@/lib/order-payment-ui-visibility";
@@ -12,7 +13,7 @@ import { AssignmentLogsTimeline } from "./components/assignment-logs-timeline";
 import { DetailRow } from "./components/detail-row";
 import { OrderStatusProgress } from "./components/order-status-progress";
 import { SectionCard } from "./components/section-card";
-import { rtlLayout } from "@/theme/rtl";
+import { isRtlLng } from "@/i18n/i18n";
 import { formatOrderSerial } from "@/lib/order-serial";
 import { orderStatusAccent } from "@/features/orders/utils/order-status-accent";
 
@@ -26,16 +27,16 @@ export type OrderDetailContentProps = {
  * عرض موحّد لبيانات الطلب — بطاقات مدمجة للموبايل.
  */
 export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true }: OrderDetailContentProps) {
-  const statusLabel = orderStatusAr[order.status] ?? order.status;
+  const { t, i18n } = useTranslation();
+  const rtl = isRtlLng(i18n.resolvedLanguage ?? i18n.language);
+  const notRecorded = t("orderDetail.notRecorded");
+  const statusLabel = t(orderStatusTranslationKey(order.status));
   const statusAccent = orderStatusAccent(order.status);
-  const created = formatLastSeenAr(order.createdAt);
-  const updated = formatLastSeenAr(order.updatedAt);
-
   return (
-    <View style={styles.stack}>
+    <View style={[styles.stack, { direction: rtl ? "rtl" : "ltr" }]}>
       {/* بطاقة 1: رقم الطلب + الحالة + الوقت + ملخص سريع */}
-      <SectionCard title="الطلب" icon="receipt-outline" compact>
-        <Text style={styles.orderNo}>{formatOrderSerial(order.orderNumber)}</Text>
+      <SectionCard title={t("orderDetail.sectionOrder")} icon="receipt-outline" compact>
+        <Text style={styles.orderNo}>{formatOrderSerial(order.orderNumber, order.displayOrderNo)}</Text>
         <View style={styles.pillRow}>
           <View
             style={[
@@ -46,8 +47,12 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
             <Text style={[styles.pillText, { color: statusAccent.text }]}>{statusLabel}</Text>
           </View>
         </View>
-        <Text style={styles.timeLine} numberOfLines={2}>
-          أُنشئ {created ?? "—"} · عُدّل {updated ?? "—"}
+        <Text style={styles.timeLine} numberOfLines={5}>
+          {t("orderDetail.created")}: {formatOrderEventTime(order.createdAt, notRecorded)}
+          {"\n"}
+          {t("orderDetail.pickupTime")}: {formatOrderEventTime(order.pickedUpAt, notRecorded)}
+          {"\n"}
+          {t("orderDetail.deliveryTime")}: {formatOrderEventTime(order.deliveredAt, notRecorded)}
         </Text>
         {offerHint ? (
           <View style={styles.offerBanner}>
@@ -58,7 +63,7 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
         ) : null}
         <View style={styles.customerRow}>
           <Text style={styles.customerNameLine} numberOfLines={2}>
-            العميل: {order.customerName}
+            {t("orderDetail.customerLine", { name: order.customerName })}
             {" · "}
           </Text>
           <View style={styles.phoneActionsRow}>
@@ -67,7 +72,7 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
               onPress={() => void openPhoneDialer(order.customerPhone)}
               hitSlop={8}
               accessibilityRole="link"
-              accessibilityLabel={`اتصال ${order.customerPhone}`}
+              accessibilityLabel={t("orderDetail.callA11y", { phone: order.customerPhone })}
               style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
             >
               <Text style={styles.phoneLink}>{order.customerPhone}</Text>
@@ -75,16 +80,16 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
           </View>
         </View>
         <Text style={styles.inlineMeta} numberOfLines={1}>
-          المنطقة: {order.area}
+          {t("orderDetail.areaLine", { area: order.area })}
         </Text>
         <Text style={styles.inlineMeta} numberOfLines={2}>
-          المتجر: {order.store.name} ({order.store.area})
+          {t("orderDetail.storeLine", { name: order.store.name, area: order.store.area })}
         </Text>
         <OrderStatusProgress status={order.status} compact />
       </SectionCard>
 
       <View style={styles.infoGrid}>
-        <SectionCard title="المطعم" icon="storefront-outline" compact>
+        <SectionCard title={t("orderDetail.sectionRestaurant")} icon="storefront-outline" compact>
           <View style={styles.infoPanel}>
             <Text style={styles.infoTitle}>{order.store.name}</Text>
             <Text style={styles.infoSub}>{order.store.area}</Text>
@@ -98,7 +103,7 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
           </View>
         </SectionCard>
 
-        <SectionCard title="العميل" icon="person-outline" compact>
+        <SectionCard title={t("orderDetail.sectionCustomer")} icon="person-outline" compact>
           <View style={styles.infoPanel}>
             <Text style={styles.infoTitle}>{order.customerName}</Text>
             <View style={styles.phoneActionsRow}>
@@ -107,7 +112,7 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
                 onPress={() => void openPhoneDialer(order.customerPhone)}
                 hitSlop={8}
                 accessibilityRole="link"
-                accessibilityLabel={`اتصال ${order.customerPhone}`}
+                accessibilityLabel={t("orderDetail.callA11y", { phone: order.customerPhone })}
                 style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
               >
                 <Text style={styles.phoneLink}>{order.customerPhone}</Text>
@@ -126,10 +131,11 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
 
       {/* بطاقة 2: المالية والتحصيل + حاسبة نقد — تظهر من مرحلة التوصيل للعميل فقط */}
       {shouldShowOrderFinancialSection(order.status) ? (
-        <SectionCard title="المالية والتحصيل" icon="cash-outline" compact>
+        <SectionCard title={t("money.sectionTitle")} icon="cash-outline" compact>
           <OrderFinancialSection
             amount={order.amount}
             cashCollection={order.cashCollection}
+            deliveryFee={order.deliveryFee ?? null}
             orderStatus={order.status}
             financialBreakdown={order.financialBreakdown}
             variant="default"
@@ -139,32 +145,32 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
       ) : null}
 
       {/* بطاقة 3: العناوين */}
-      <SectionCard title="العناوين" icon="map-outline" compact>
+      <SectionCard title={t("orderDetail.sectionAddresses")} icon="map-outline" compact>
         <DetailRow
           compact
           isFirst
-          label={ORDER_PICKUP_LOCATION_LABEL}
+          label={t(locationI18nKey.pickup)}
           value={order.pickupAddress}
           addressEmphasis
-          hint="من المتجر"
+          hint={t("orderDetail.hintFromStore")}
           onPressValue={() => void openMapSearch(order.pickupAddress)}
-          valueAccessibilityHint="فتح الخريطة على عنوان الاستلام"
+          valueAccessibilityHint={t("orderDetail.mapHintPickup")}
         />
         <DetailRow
           compact
-          label={ORDER_DROPOFF_LOCATION_LABEL}
+          label={t(locationI18nKey.dropoff)}
           value={order.dropoffAddress}
           addressEmphasis
-          hint="عنوان العميل"
+          hint={t("orderDetail.hintCustomerAddress")}
           onPressValue={() => void openMapSearch(order.dropoffAddress)}
-          valueAccessibilityHint="فتح الخريطة على عنوان التسليم"
+          valueAccessibilityHint={t("orderDetail.mapHintDropoff")}
         />
       </SectionCard>
 
       {/* بطاقة 4: الملاحظات */}
       {order.notes ? (
-        <SectionCard title="ملاحظات" icon="document-text-outline" compact>
-          <DetailRow compact isFirst label="ملاحظات" value={order.notes} />
+        <SectionCard title={t("orderDetail.sectionNotes")} icon="document-text-outline" compact>
+          <DetailRow compact isFirst label={t("orderDetail.notesField")} value={order.notes} />
         </SectionCard>
       ) : null}
 
@@ -176,7 +182,6 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
 const styles = StyleSheet.create({
   stack: {
     gap: 10,
-    ...rtlLayout,
   },
   orderNo: {
     color: homeTheme.text,

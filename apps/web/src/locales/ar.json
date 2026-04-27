@@ -42,6 +42,7 @@
     "SUPERVISOR_LINKED": "مرتبط بمشرف"
   },
   "financial": {
+    "orderAmount": "مبلغ الطلب",
     "storeAmount": "مبلغ المتجر",
     "deliveryFee": "رسوم التوصيل",
     "deliveryFeeInferred": "رسوم التوصيل (مُستنتجة)",

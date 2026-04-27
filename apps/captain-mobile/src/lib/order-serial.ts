@@ -1,14 +1,11 @@
+import { formatOrderDisplayLabel } from "@captain/shared";
+
 /**
- * UI-only serial presentation for order number.
- * Keeps backend identifiers unchanged for actions/navigation.
+ * UI-only serial presentation. Uses per-company `displayOrderNo` when present; otherwise full `orderNumber` (e.g. ORD-…).
  */
-export function formatOrderSerial(orderNumber: string | null | undefined): string {
-  const raw = String(orderNumber ?? "").trim();
-  if (!raw) return "00";
-  const digits = raw.replace(/\D+/g, "");
-  if (!digits) return "00";
-  const n = Number.parseInt(digits, 10);
-  if (!Number.isFinite(n)) return "00";
-  const two = Math.abs(n % 100);
-  return String(two).padStart(2, "0");
+export function formatOrderSerial(
+  orderNumber: string | null | undefined,
+  displayOrderNo?: number | null,
+): string {
+  return formatOrderDisplayLabel(displayOrderNo ?? null, String(orderNumber ?? "").trim());
 }

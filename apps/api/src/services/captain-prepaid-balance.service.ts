@@ -26,6 +26,18 @@ import { activityService } from "./activity.service.js";
 import { buildCaptainReadAlignment, getBalanceForPrepaidProductChecks } from "./captain-read-alignment.js";
 import { appendLedgerEntryInTx, ensureWalletAccountInTx } from "./ledger/index.js";
 import { resolveDeliveryFeeForCommission } from "../domain/order-delivery-fee-for-commission.js";
+import { getOrCreateCompanyWallet } from "./company-wallet.service.js";
+
+/** Company wallet debit leg for CA → captain prepaid (pairs with captain `CAPTAIN_PREPAID_CHARGE` leg). */
+export const COMPANY_ADMIN_CAPTAIN_CO_DEBIT_PREFIX = "ca31:co-to-captain:co-debit" as const;
+
+export function buildCompanyAdminCaptainCoDebitIdempotencyKey(
+  companyId: string,
+  captainId: string,
+  clientIdempotencyKey: string,
+): string {
+  return `${COMPANY_ADMIN_CAPTAIN_CO_DEBIT_PREFIX}:${companyId}:${captainId}:${clientIdempotencyKey.trim()}`;
+}
 
 type Tx = Prisma.TransactionClient;
 
@@ -500,6 +512,11 @@ export const captainPrepaidBalanceService = {
     const sourceMeta =
       flow === "company_admin" ? "company_admin_captain_prepaid_charge" : "super_admin_captain_prepaid_charge";
 
+    const coDebitsKey =
+      flow === "company_admin" && actor.companyId
+        ? buildCompanyAdminCaptainCoDebitIdempotencyKey(actor.companyId, captainId, clientIdem)
+        : null;
+
     return prisma.$transaction(
       async (tx) => {
         const { captain, policy } = await loadCaptainPolicyTx(tx, captainId);
@@ -514,6 +531,53 @@ export const captainPrepaidBalanceService = {
           ownerId: captainId,
           companyId: captain.companyId,
         });
+
+        if (coDebitsKey) {
+          const exCo = await tx.ledgerEntry.findUnique({ where: { idempotencyKey: coDebitsKey } });
+          const exCap = await tx.ledgerEntry.findUnique({ where: { idempotencyKey: ledgerIdempotencyKey } });
+          if (exCo && exCap) {
+            const existing = await tx.captainBalanceTransaction.findFirst({
+              where: { prepaidLedgerOperationId: exCap.referenceId },
+            });
+            if (!existing) {
+              throw new AppError(500, "Inconsistent ledger without matching balance transaction", "INTERNAL");
+            }
+            const cap = await tx.captain.findUniqueOrThrow({ where: { id: captainId } });
+            return {
+              idempotent: true,
+              transaction: existing,
+              ledgerEntryId: exCap.id,
+              balanceAfter: decString(cap.prepaidBalance),
+              prepaidBalance: decString(cap.prepaidBalance),
+            };
+          }
+          if (Boolean(exCo) !== Boolean(exCap)) {
+            throw new AppError(500, "Inconsistent company/captain ledger legs for prepaid top-up", "WALLET_CO_CAPTAIN_INCOMPLETE");
+          }
+          if (!exCo) {
+            const companyWallet = await getOrCreateCompanyWallet(actor.companyId!, tx);
+            if (money(companyWallet.balanceCached).lt(amount)) {
+              throw new AppError(409, "Insufficient company wallet balance for this top-up", "INSUFFICIENT_COMPANY_BALANCE");
+            }
+            await appendLedgerEntryInTx(tx, {
+              walletAccountId: companyWallet.id,
+              entryType: LedgerEntryType.WALLET_TRANSFER,
+              amount: amount.negated(),
+              idempotencyKey: coDebitsKey,
+              createdByUserId: actor.userId,
+              counterpartyAccountId: wallet.id,
+              referenceType: "CAPTAIN",
+              referenceId: captainId,
+              metadata: {
+                source: "company_admin_captain_topup_company_debit",
+                captainId,
+                reason,
+                operationGroup: operationRefId,
+                actorUserId: actor.userId,
+              },
+            });
+          }
+        }
 
         const r = await appendLedgerEntryInTx(tx, {
           walletAccountId: wallet.id,
@@ -533,6 +597,12 @@ export const captainPrepaidBalanceService = {
         });
 
         if (r.idempotent) {
+          if (coDebitsKey) {
+            const co = await tx.ledgerEntry.findUnique({ where: { idempotencyKey: coDebitsKey } });
+            if (!co) {
+              throw new AppError(500, "Captain leg idempotent without company wallet debit", "WALLET_CO_CAPTAIN_INCOMPLETE");
+            }
+          }
           const existing = await tx.captainBalanceTransaction.findFirst({
             where: { prepaidLedgerOperationId: r.entry.referenceId },
           });

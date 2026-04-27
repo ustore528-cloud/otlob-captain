@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTranslation } from "react-i18next";
 import type { StyleProp, ViewStyle } from "react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { homeTheme } from "@/features/home/theme";
@@ -18,12 +19,15 @@ type Props = {
  * حالة خطأ موحّدة لاستعلامات React Query — بدون تكرار أنماط في كل شاشة.
  */
 export function QueryErrorState({
-  title = "تعذّر التحميل",
+  title: titleProp,
   error,
   onRetry,
-  fallbackMessage = "تحقق من الاتصال ثم أعد المحاولة.",
+  fallbackMessage: fallbackMessageProp,
   style,
 }: Props) {
+  const { t } = useTranslation();
+  const title = titleProp ?? t("queryError.title");
+  const fallbackMessage = fallbackMessageProp ?? t("queryError.fallback");
   const message = formatUnknownError(error, fallbackMessage);
 
   return (
@@ -33,7 +37,7 @@ export function QueryErrorState({
       <Text style={styles.errorBody}>{message}</Text>
       {onRetry ? (
         <Pressable style={styles.retry} onPress={onRetry} accessibilityRole="button">
-          <Text style={styles.retryText}>إعادة المحاولة</Text>
+          <Text style={styles.retryText}>{t("queryError.retry")}</Text>
         </Pressable>
       ) : null}
     </View>

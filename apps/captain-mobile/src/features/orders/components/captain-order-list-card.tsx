@@ -1,15 +1,18 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import type { OrderListItemDto } from "@/services/api/dto";
 import { homeTheme } from "@/features/home/theme";
-import { ORDER_DROPOFF_LOCATION_LABEL, ORDER_PICKUP_LOCATION_LABEL } from "@/lib/order-location-labels";
-import { orderStatusAr } from "@/lib/order-status-ar";
+import { locationI18nKey } from "@/lib/order-location-i18n";
+import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
 import { WhatsAppActionButton } from "@/components/ui/whatsapp-action-button";
 import { openMapSearch, openPhoneDialer } from "@/lib/open-external";
 import { OrderRouteTapRows } from "./order-route-tap-rows";
-import { formatAssignmentOfferCountdownAr } from "@/lib/assignment-offer-seconds-left";
+import { formatAssignmentOfferCountdown } from "@/lib/assignment-offer-seconds-left";
 import { type ListPrimaryAction } from "../utils/order-list-primary-action";
 import { formatOrderSerial } from "@/lib/order-serial";
+import { OrderFinancialSection } from "@/components/order/order-financial-section";
+import { shouldShowOrderFinancialSection } from "@/lib/order-payment-ui-visibility";
 
 type Props = {
   item: OrderListItemDto;
@@ -40,7 +43,9 @@ export function CaptainOrderListCard({
   compactOfferCountdownSeconds,
   isWorkbenchLinked = false,
 }: Props) {
-  const statusLabel = orderStatusAr[item.status] ?? item.status;
+  const { t } = useTranslation();
+  const dash = t("common.emDash");
+  const statusLabel = t(orderStatusTranslationKey(item.status));
   const showMainCta = primary != null && primary.kind !== "view_only";
 
   const dropLine = (item.dropoffAddress || item.area || "").trim();
@@ -49,8 +54,8 @@ export function CaptainOrderListCard({
   const showOfferCountdown = typeof compactOfferCountdownSeconds === "number";
 
   if (flatVisual && compactList) {
-    const pickupDisplay = pickupLine || item.store?.name?.trim() || "—";
-    const dropPrimary = dropForMap || "—";
+    const pickupDisplay = pickupLine || item.store?.name?.trim() || dash;
+    const dropPrimary = dropForMap || dash;
 
     return (
       <View style={[styles.refCard, isWorkbenchLinked && styles.refCardWorkbench]}>
@@ -58,10 +63,10 @@ export function CaptainOrderListCard({
           <View
             style={styles.refWorkbenchRibbon}
             accessible
-            accessibilityLabel="نفس الطلب في شريط التعيين الحالي"
+            accessibilityLabel={t("orderCard.workbenchLinkedRibbon")}
           >
             <Text style={styles.refWorkbenchRibbonText} numberOfLines={1}>
-              نفس الطلب في «التعيين الحالي» أعلاه
+              {t("orderCard.workbenchLinkedRibbon")}
             </Text>
           </View>
         ) : null}
@@ -71,10 +76,10 @@ export function CaptainOrderListCard({
               <Pressable
                 onPress={onOpenDetail}
                 accessibilityRole="button"
-                accessibilityLabel={`تفاصيل الطلب ${formatOrderSerial(item.orderNumber)}`}
+                accessibilityLabel={t("orderCard.orderDetailsA11y", { id: formatOrderSerial(item.orderNumber, item.displayOrderNo) })}
               >
                 <Text style={styles.refOrderId} numberOfLines={1}>
-                  طلب #{formatOrderSerial(item.orderNumber)}
+                  {t("orderCard.orderTitle", { id: formatOrderSerial(item.orderNumber, item.displayOrderNo) })}
                 </Text>
               </Pressable>
             </View>
@@ -82,7 +87,9 @@ export function CaptainOrderListCard({
               {showOfferCountdown ? (
                 <View style={styles.refCancelBadge}>
                   <Text style={styles.refCancelBadgeText} numberOfLines={2}>
-                    سيتم الإلغاء خلال {formatAssignmentOfferCountdownAr(compactOfferCountdownSeconds)}
+                    {t("orderCard.cancelsIn", {
+                      time: formatAssignmentOfferCountdown(t, compactOfferCountdownSeconds),
+                    })}
                   </Text>
                 </View>
               ) : (
@@ -104,7 +111,7 @@ export function CaptainOrderListCard({
         <View style={styles.refMiddle}>
           <View style={[styles.refSegUnified, styles.refSegStartPickup]}>
             <View style={styles.refSegHead}>
-              <Text style={styles.refSegLabel}>{ORDER_PICKUP_LOCATION_LABEL}</Text>
+              <Text style={styles.refSegLabel}>{t(locationI18nKey.pickup)}</Text>
             </View>
             <Pressable
               onPress={() => {
@@ -117,7 +124,7 @@ export function CaptainOrderListCard({
               ]}
               disabled={!pickupLine}
               accessibilityRole="button"
-              accessibilityLabel={`${ORDER_PICKUP_LOCATION_LABEL}: ${pickupDisplay}`}
+              accessibilityLabel={t("assignmentBar.pickupA11y", { v: pickupDisplay })}
             >
               <View style={styles.refSegValueCol}>
                 <Text style={styles.refSegValue} numberOfLines={2} ellipsizeMode="tail">
@@ -129,7 +136,7 @@ export function CaptainOrderListCard({
 
           <View style={[styles.refSegUnified, styles.refSegStartDrop, styles.refSegAfterPickup]}>
             <View style={styles.refSegHead}>
-              <Text style={styles.refSegLabel}>{ORDER_DROPOFF_LOCATION_LABEL}</Text>
+              <Text style={styles.refSegLabel}>{t(locationI18nKey.dropoff)}</Text>
             </View>
             <Pressable
               onPress={() => {
@@ -143,7 +150,7 @@ export function CaptainOrderListCard({
               ]}
               disabled={!dropLine && !pickupLine}
               accessibilityRole="button"
-              accessibilityLabel={`${ORDER_DROPOFF_LOCATION_LABEL}: ${dropPrimary}`}
+              accessibilityLabel={t("assignmentBar.dropoffA11y", { v: dropPrimary })}
             >
               <View style={styles.refSegValueCol}>
                 <Text style={styles.refSegValue} numberOfLines={2} ellipsizeMode="tail">
@@ -154,6 +161,19 @@ export function CaptainOrderListCard({
           </View>
         </View>
 
+        {shouldShowOrderFinancialSection(item.status) ? (
+          <View style={styles.listFinancialWrap}>
+            <OrderFinancialSection
+              amount={item.amount}
+              cashCollection={item.cashCollection}
+              deliveryFee={item.deliveryFee ?? null}
+              orderStatus={item.status}
+              variant="compact"
+              hideTitle
+            />
+          </View>
+        ) : null}
+
         <View style={styles.refDivider} />
 
         <View style={styles.refFooterRow}>
@@ -163,7 +183,7 @@ export function CaptainOrderListCard({
               style={({ pressed }) => [styles.refIconBtn, styles.refCallBtn, pressed && styles.pressed]}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel={`اتصال ${item.customerPhone}`}
+              accessibilityLabel={t("orderCard.callA11y", { phone: item.customerPhone })}
             >
               <Ionicons name="call-outline" size={20} color={homeTheme.accent} />
             </Pressable>
@@ -178,13 +198,13 @@ export function CaptainOrderListCard({
                 onPress={onPrimary}
                 disabled={busy}
                 accessibilityRole="button"
-                accessibilityLabel={primary.labelEn}
+                accessibilityLabel={t(primary.labelKey)}
               >
                 {busy ? (
                   <ActivityIndicator color={homeTheme.accent} size="small" />
                 ) : (
                   <Text style={styles.refOutlineCtaText} numberOfLines={1}>
-                    {primary.labelAr}
+                    {t(primary.labelKey)}
                   </Text>
                 )}
               </Pressable>
@@ -195,7 +215,7 @@ export function CaptainOrderListCard({
                 onPress={onOpenDetail}
               >
                 <Text style={styles.refOutlineCtaText} numberOfLines={1}>
-                  {primary.labelAr}
+                  {t(primary.labelKey)}
                 </Text>
               </Pressable>
             ) : null}
@@ -211,12 +231,12 @@ export function CaptainOrderListCard({
         onPress={onOpenDetail}
         style={({ pressed }) => [styles.headerRow, flatVisual && styles.headerRowDense, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`تفاصيل الطلب ${formatOrderSerial(item.orderNumber)}`}
+        accessibilityLabel={t("orderCard.orderDetailsA11y", { id: formatOrderSerial(item.orderNumber, item.displayOrderNo) })}
       >
         <View style={styles.headerText}>
-          <Text style={styles.serialLabel}>Order #</Text>
+          <Text style={styles.serialLabel}>{t("orderCard.serialLabel")}</Text>
           <Text style={styles.serial} numberOfLines={1}>
-            {formatOrderSerial(item.orderNumber)}
+            {formatOrderSerial(item.orderNumber, item.displayOrderNo)}
           </Text>
         </View>
         <View style={[styles.badge, { backgroundColor: statusAccent.bg, borderColor: statusAccent.border }]}>
@@ -233,6 +253,19 @@ export function CaptainOrderListCard({
         compact={flatVisual}
       />
 
+      {shouldShowOrderFinancialSection(item.status) ? (
+        <View style={styles.listFinancialWrap}>
+          <OrderFinancialSection
+            amount={item.amount}
+            cashCollection={item.cashCollection}
+            deliveryFee={item.deliveryFee ?? null}
+            orderStatus={item.status}
+            variant="compact"
+            hideTitle
+          />
+        </View>
+      ) : null}
+
       <View style={[styles.refDivider, styles.defaultCardDivider]} />
 
       <View style={styles.refFooterRow}>
@@ -242,7 +275,7 @@ export function CaptainOrderListCard({
             style={({ pressed }) => [styles.refIconBtn, styles.refCallBtn, pressed && styles.pressed]}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={`اتصال ${item.customerPhone}`}
+            accessibilityLabel={t("orderCard.callA11y", { phone: item.customerPhone })}
           >
             <Ionicons name="call-outline" size={20} color={homeTheme.accent} />
           </Pressable>
@@ -257,13 +290,13 @@ export function CaptainOrderListCard({
               onPress={onPrimary}
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel={primary.labelEn}
+              accessibilityLabel={t(primary.labelKey)}
             >
               {busy ? (
                 <ActivityIndicator color={homeTheme.accent} size="small" />
               ) : (
                 <Text style={styles.refOutlineCtaText} numberOfLines={1}>
-                  {primary.labelAr}
+                  {t(primary.labelKey)}
                 </Text>
               )}
             </Pressable>
@@ -274,7 +307,7 @@ export function CaptainOrderListCard({
               onPress={onOpenDetail}
             >
               <Text style={styles.refOutlineCtaText} numberOfLines={1}>
-                {primary.labelAr}
+                {t(primary.labelKey)}
               </Text>
             </Pressable>
           ) : null}
@@ -353,9 +386,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: homeTheme.border,
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
+    ...homeTheme.cardShadow,
     overflow: "hidden",
   },
   refCardWorkbench: {
@@ -491,6 +522,10 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: homeTheme.text,
     textAlign: "right",
+  },
+  listFinancialWrap: {
+    marginTop: 4,
+    marginBottom: 2,
   },
   refDivider: {
     height: StyleSheet.hairlineWidth,

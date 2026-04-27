@@ -42,6 +42,7 @@
     "SUPERVISOR_LINKED": "Supervisor-linked"
   },
   "financial": {
+    "orderAmount": "Order amount",
     "storeAmount": "Store Amount",
     "deliveryFee": "Delivery Fee",
     "deliveryFeeInferred": "Delivery Fee (inferred)",

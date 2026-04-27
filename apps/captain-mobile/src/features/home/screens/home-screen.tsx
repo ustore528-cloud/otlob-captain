@@ -1,6 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useCaptainMe } from "@/hooks/api/use-captain-me";
@@ -21,6 +22,7 @@ import { screenStyles } from "@/theme/screen-styles";
 import { homeTheme } from "../theme";
 
 export function HomeScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const goBack = useInnerToolBack();
   const { isAuthenticated } = useAuth();
@@ -55,10 +57,10 @@ export function HomeScreen() {
   const onAvailability = useCallback(
     (next: CaptainAvailabilityStatus) => {
       updateAv.mutate(next, {
-        onError: (e) => alertMutationError("تعذّر التحديث", e, "حاول مرة أخرى."),
+        onError: (e) => alertMutationError(t("profile.updateErrorTitle"), e, t("profile.updateErrorHint")),
       });
     },
-    [updateAv],
+    [updateAv, t],
   );
 
   const refreshing = meQuery.isFetching && !meQuery.isLoading;
@@ -66,7 +68,7 @@ export function HomeScreen() {
   return (
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
       <WorkStatusBanner />
-      <ScreenHeader title="لوحة الكابتن" onBack={goBack} />
+      <ScreenHeader title={t("home.title")} onBack={goBack} />
       <View style={styles.accentBar} />
 
       <ScrollView
@@ -85,18 +87,18 @@ export function HomeScreen() {
         }
       >
         <View style={styles.header}>
-          <Text style={styles.greet}>مرحبًا</Text>
-          <Text style={styles.sub}>نظرة سريعة على حالتك — التنفيذ من «الطلبات المتاحة»</Text>
+          <Text style={styles.greet}>{t("home.greet")}</Text>
+          <Text style={styles.sub}>{t("home.sub")}</Text>
         </View>
 
         {meQuery.isLoading ? (
           <View style={styles.loader}>
             <ActivityIndicator size="large" color={homeTheme.accent} />
-            <Text style={styles.loaderText}>جاري تحميل بياناتك…</Text>
+            <Text style={styles.loaderText}>{t("home.loadingMe")}</Text>
           </View>
         ) : meQuery.isError ? (
           <QueryErrorState
-            title="تعذّر تحميل الملف"
+            title={t("home.loadProfileErrorTitle")}
             error={meQuery.error}
             onRetry={() => void meQuery.refetch()}
             style={{ marginHorizontal: 0 }}
@@ -129,9 +131,7 @@ export function HomeScreen() {
             />
 
             <View style={styles.hintBox}>
-              <Text style={styles.hintText}>
-                لتنفيذ الطلبات والعروض استخدم «الطلبات المتاحة». للإعدادات والأرباح والتتبع: «الإعدادات».
-              </Text>
+              <Text style={styles.hintText}>{t("home.hintFooter")}</Text>
             </View>
           </>
         ) : null}

@@ -4,10 +4,10 @@ import { rtlLayout } from "./rtl";
 
 /** أنماط شاشات مشتركة — ألوان من `homeTheme` فقط */
 export const screenStyles = StyleSheet.create({
-  /** Page shell — soft gray so white cards read clearly (not flat white-only). */
+  /** Page shell — soft royal white; cards provide contrast. */
   safe: {
     flex: 1,
-    backgroundColor: homeTheme.bgSubtle,
+    backgroundColor: homeTheme.pageBackground,
     ...rtlLayout,
   },
   /** محتوى قابل للتمرير — يحدّ العرض على الشاشات العريضة */

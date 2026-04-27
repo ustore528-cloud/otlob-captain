@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DistributionOrderOfferCountdown } from "@/features/distribution/components/distribution-order-offer-countdown";
+import { formatOrderDisplayLabel } from "@captain/shared";
 import type { OrderListItem } from "@/types/api";
 import { orderStatusBadgeVariant, orderStatusLabel } from "@/lib/order-status";
 import { cn } from "@/lib/utils";
@@ -81,8 +82,15 @@ export function DraggableOrderCard({ order, queueSerial, onDragState, onManual, 
                     <DistributionOrderOfferCountdown expiresAtIso={order.pendingOfferExpiresAt} />
                   ) : null}
                 </div>
-                <p className="mt-1 font-mono text-[11px] font-medium leading-tight text-foreground/85" dir="ltr">
-                  مرجع: {order.orderNumber}
+                <p
+                  className="mt-1 text-[11px] font-medium leading-tight text-foreground/85 tabular-nums"
+                  dir="ltr"
+                  title={order.orderNumber}
+                >
+                  مرجع: {formatOrderDisplayLabel(order.displayOrderNo ?? null, order.orderNumber)}
+                </p>
+                <p className="font-mono text-[9px] leading-tight text-muted-foreground/90" dir="ltr" title={order.orderNumber}>
+                  {order.orderNumber}
                 </p>
                 <p className="mt-0.5 text-sm font-medium leading-tight text-foreground">{order.customerName}</p>
                 <p className="text-xs leading-tight text-muted-foreground" dir="ltr">

@@ -1,73 +1,78 @@
+export const BRAND_COLORS = {
+  primary: "#C62828",
+  primaryDark: "#8E1B1B",
+  accent: "#D4AF37",
+  accentDark: "#A67C00",
+  white: "#FFFFFF",
+  lightPrimary: "#FFF3F3",
+  lightAccent: "#FFF8E1",
+  textDark: "#1E293B",
+  border: "#F5CACA",
+} as const;
+
+export const BRAND_GRADIENTS = {
+  gold: "linear-gradient(135deg, #FFF3B0 0%, #E7C85A 35%, #CFA22B 65%, #A67C00 100%)",
+} as const;
+
 /**
- * Captain app — white-first UI with supporting neutrals, premium accent, and semantic status hues.
- * RTL-friendly; use tokens instead of raw hex in components.
+ * 2in mobile theme mapped to existing token names so components stay unchanged.
  */
+/** App shell — clean royal / soft white (avoid heavy gray page fills). */
 export const homeTheme = {
-  /** Primary screen background — white base */
-  bg: "#111318",
-  /** Slightly off-white for layered scroll areas / alternation */
-  bgSubtle: "#171A21",
-  /** Pure cards / sheets on top of gray */
-  cardWhite: "#1D222B",
-  /** Light gray surfaces (chips, secondary blocks) */
-  surface: "#232A35",
-  /** Slightly stronger gray for elevated rows / inputs */
-  surfaceElevated: "#2B3442",
-  border: "rgba(255, 255, 255, 0.10)",
-  borderStrong: "rgba(255, 102, 119, 0.38)",
-  /** Primary readable body */
-  text: "#F7F8FA",
-  textMuted: "#D6DAE1",
-  textSubtle: "#A7AFBC",
-  /** Premium accent — primary buttons, links, key highlights */
-  accent: "#F05261",
-  accentSoft: "rgba(240, 82, 97, 0.16)",
-  accentMuted: "rgba(240, 82, 97, 0.28)",
-  /**
-   * Warm amber — active / in-progress / attention (not error).
-   * Kept as `gold*` names for existing imports; values are amber-toned.
-   */
-  gold: "#F59E0B",
-  goldSoft: "rgba(245, 158, 11, 0.18)",
-  goldMuted: "rgba(245, 158, 11, 0.42)",
-  /** Text/icons on primary buttons */
-  onAccent: "#FFFFFF",
-  inputBg: "#171C24",
-  inputBorder: "rgba(255, 255, 255, 0.12)",
-  /** Bottom tab bar — light, not heavy cream */
-  tabBarBg: "#171A21",
-  tabBarBorder: "rgba(255, 255, 255, 0.08)",
-  tabBarActive: "#F05261",
-  tabBarInactive: "#9AA3B2",
-  /** Success / delivered — green, distinct from amber in-progress */
-  success: "#34D399",
-  successSoft: "rgba(52, 211, 153, 0.16)",
-  successBorder: "rgba(52, 211, 153, 0.36)",
-  successText: "#A7F3D0",
-  /** Warning label (non-destructive) */
-  warning: "#F59E0B",
-  /** Urgent / destructive / cancelled — use sparingly */
-  danger: "#F87171",
-  dangerSoft: "rgba(248, 113, 113, 0.14)",
-  dangerBorder: "rgba(248, 113, 113, 0.36)",
-  dangerText: "#FCA5A5",
-  dangerTextLight: "#D4A0A0",
-  cardHeaderTint: "rgba(240, 82, 97, 0.10)",
-  neutralSoft: "rgba(255, 255, 255, 0.07)",
-  /**
-   * Order status pills (captain list + detail) — one distinct treatment per delivery step.
-   * Offer / accepted / picked up / transit use separate hues so states are scannable at a glance.
-   */
-  statusOfferSoft: "rgba(124, 58, 237, 0.12)",
-  statusOfferBorder: "rgba(124, 58, 237, 0.32)",
-  statusOfferText: "#C4B5FD",
-  statusAcceptedSoft: "rgba(13, 148, 136, 0.12)",
-  statusAcceptedBorder: "rgba(13, 148, 136, 0.30)",
-  statusAcceptedText: "#99F6E4",
-  /** `IN_TRANSIT` — high-salience sky (on the way to customer); stronger than other steps for quick recognition */
-  statusTransitSoft: "rgba(14, 165, 233, 0.26)",
-  statusTransitBorder: "rgba(2, 132, 199, 0.58)",
-  statusTransitText: "#BAE6FD",
+  /** Full-screen page behind cards */
+  pageBackground: "#FAFBFF",
+  bg: BRAND_COLORS.white,
+  bgSubtle: "#F4F6FB",
+  cardWhite: BRAND_COLORS.white,
+  surface: "#FEFEFE",
+  surfaceElevated: BRAND_COLORS.white,
+  border: BRAND_COLORS.border,
+  borderStrong: "#EAA5A5",
+  text: BRAND_COLORS.textDark,
+  textMuted: "#475569",
+  textSubtle: "#64748B",
+  accent: BRAND_COLORS.primary,
+  accentSoft: BRAND_COLORS.lightPrimary,
+  accentMuted: "#E7A2A2",
+  gold: BRAND_COLORS.accent,
+  goldSoft: BRAND_COLORS.lightAccent,
+  goldMuted: "#E7D28C",
+  onAccent: BRAND_COLORS.white,
+  inputBg: BRAND_COLORS.white,
+  inputBorder: BRAND_COLORS.border,
+  tabBarBg: BRAND_COLORS.white,
+  tabBarBorder: BRAND_COLORS.border,
+  tabBarActive: BRAND_COLORS.primary,
+  tabBarInactive: "#94A3B8",
+  success: "#15803D",
+  successSoft: "#ECFDF3",
+  successBorder: "#86EFAC",
+  successText: "#166534",
+  warning: BRAND_COLORS.accentDark,
+  danger: "#B91C1C",
+  dangerSoft: "#FEF2F2",
+  dangerBorder: "#FECACA",
+  dangerText: "#991B1B",
+  dangerTextLight: "#7F1D1D",
+  cardHeaderTint: "#FCE8E8",
+  neutralSoft: "#F3F5FA",
+  /** Subtle card elevation — iOS shadow + Android elevation */
+  cardShadow: {
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
+  } as const,
+  statusOfferSoft: "#FDF4FF",
+  statusOfferBorder: "#E9D5FF",
+  statusOfferText: "#7E22CE",
+  statusAcceptedSoft: "#ECFEFF",
+  statusAcceptedBorder: "#A5F3FC",
+  statusAcceptedText: "#0F766E",
+  statusTransitSoft: "#EFF6FF",
+  statusTransitBorder: "#BFDBFE",
+  statusTransitText: "#1D4ED8",
   radiusLg: 20,
   radiusMd: 14,
 } as const;

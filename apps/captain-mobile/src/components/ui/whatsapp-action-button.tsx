@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTranslation } from "react-i18next";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { openWhatsAppChat } from "@/lib/open-external";
 
@@ -23,6 +24,7 @@ export function WhatsAppActionButton({
   size = "default",
   accessibilityHint,
 }: Props) {
+  const { t } = useTranslation();
   const isPill = variant === "pill";
   const large = size === "large";
 
@@ -35,7 +37,7 @@ export function WhatsAppActionButton({
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={`واتساب ${phone}`}
+      accessibilityLabel={t("whatsapp.a11y", { phone })}
       accessibilityHint={accessibilityHint}
       hitSlop={isPill ? 6 : large ? 12 : 10}
     >
@@ -43,7 +45,7 @@ export function WhatsAppActionButton({
         <Ionicons name="logo-whatsapp" size={isPill ? 18 : large ? 22 : 20} color={WA_ON} />
         {isPill ? (
           <Text style={styles.pillLabel} numberOfLines={1}>
-            واتساب
+            {t("whatsapp.label")}
           </Text>
         ) : null}
       </View>

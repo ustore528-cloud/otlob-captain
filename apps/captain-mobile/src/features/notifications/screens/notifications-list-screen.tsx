@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   ActivityIndicator,
   Pressable,
@@ -11,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { formatNotificationTime } from "@/features/home/utils/format";
+import { formatNotificationSectionDateLabel, formatNotificationTime } from "@/features/home/utils/format";
 import { QueryErrorState } from "@/components/ui/query-error-state";
 import { homeTheme } from "@/features/home/theme";
 import { screenStyles } from "@/theme/screen-styles";
@@ -26,23 +28,23 @@ function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
-function bucketLabel(iso: string, now: Date): string {
+function bucketLabel(iso: string, now: Date, tr: TFunction): string {
   const d = new Date(iso);
   const t0 = startOfDay(now).getTime();
-  const t = startOfDay(d).getTime();
+  const tDay = startOfDay(d).getTime();
   const dayMs = 86400000;
-  if (t === t0) return "اليوم";
-  if (t === t0 - dayMs) return "أمس";
-  return d.toLocaleDateString("ar-SA", { weekday: "long", day: "numeric", month: "long" });
+  if (tDay === t0) return tr("notifications.today");
+  if (tDay === t0 - dayMs) return tr("notifications.yesterday");
+  return formatNotificationSectionDateLabel(iso);
 }
 
-function buildSections(items: NotificationItemDto[], now: Date): Section[] {
+function buildSections(items: NotificationItemDto[], now: Date, tr: TFunction): Section[] {
   const sorted = [...items].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
   const map = new Map<string, NotificationItemDto[]>();
   for (const it of sorted) {
-    const label = bucketLabel(it.createdAt, now);
+    const label = bucketLabel(it.createdAt, now, tr);
     const prev = map.get(label) ?? [];
     prev.push(it);
     map.set(label, prev);
@@ -51,6 +53,7 @@ function buildSections(items: NotificationItemDto[], now: Date): Section[] {
 }
 
 export function NotificationsListScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const query = useNotificationsList({ page: 1, pageSize: 50 });
   const [refreshing, setRefreshing] = useState(false);
@@ -72,8 +75,8 @@ export function NotificationsListScreen() {
 
   const sections = useMemo(() => {
     const items = query.data?.items ?? [];
-    return buildSections(items, new Date());
-  }, [query.data?.items]);
+    return buildSections(items, new Date(), t);
+  }, [query.data?.items, t]);
 
   const renderItem = ({ item }: { item: NotificationItemDto }) => {
     const tappable = Boolean(item.orderId);
@@ -88,21 +91,21 @@ export function NotificationsListScreen() {
           <View style={styles.metaRow}>
             {!item.isRead ? (
               <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>جديد</Text>
+                <Text style={styles.unreadBadgeText}>{t("notifications.new")}</Text>
               </View>
             ) : (
               <View style={styles.readBadge}>
-                <Text style={styles.readBadgeText}>مقروء</Text>
+                <Text style={styles.readBadgeText}>{t("notifications.read")}</Text>
               </View>
             )}
             {item.orderId ? (
               <View style={styles.orderBadge}>
                 <Ionicons name="receipt-outline" size={14} color={homeTheme.accent} />
-                <Text style={styles.orderBadgeText}>مرتبط بطلب</Text>
+                <Text style={styles.orderBadgeText}>{t("notifications.orderLinked")}</Text>
               </View>
             ) : (
               <View style={styles.infoBadge}>
-                <Text style={styles.infoBadgeText}>بدون ربط</Text>
+                <Text style={styles.infoBadgeText}>{t("notifications.notLinked")}</Text>
               </View>
             )}
           </View>
@@ -111,9 +114,9 @@ export function NotificationsListScreen() {
         <Text style={styles.cardTitle}>{item.title}</Text>
         <Text style={styles.cardBody}>{item.body}</Text>
         {tappable ? (
-          <Text style={styles.hint}>اضغط لفتح تفاصيل الطلب</Text>
+          <Text style={styles.hint}>{t("notifications.hintTappable")}</Text>
         ) : (
-          <Text style={styles.mutedHint}>تنبيه عام — لا يوجد رابط مباشر لطلب</Text>
+          <Text style={styles.mutedHint}>{t("notifications.hintGeneral")}</Text>
         )}
       </Pressable>
     );
@@ -130,12 +133,12 @@ export function NotificationsListScreen() {
       <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
         <WorkStatusBanner />
         <View style={styles.screenHead}>
-          <Text style={styles.title}>الإشعارات</Text>
-          <Text style={styles.sub}>تحديثات وطلبات — مرتبة حسب التاريخ</Text>
+          <Text style={styles.title}>{t("notifications.title")}</Text>
+          <Text style={styles.sub}>{t("notifications.subLoading")}</Text>
         </View>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={homeTheme.accent} />
-          <Text style={styles.muted}>جاري التحميل…</Text>
+          <Text style={styles.muted}>{t("common.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -146,7 +149,7 @@ export function NotificationsListScreen() {
       <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
         <WorkStatusBanner />
         <View style={styles.screenHead}>
-          <Text style={styles.title}>الإشعارات</Text>
+          <Text style={styles.title}>{t("notifications.title")}</Text>
         </View>
         <QueryErrorState error={query.error} onRetry={() => void query.refetch()} />
       </SafeAreaView>
@@ -157,8 +160,8 @@ export function NotificationsListScreen() {
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
       <WorkStatusBanner />
       <View style={styles.screenHead}>
-        <Text style={styles.title}>الإشعارات</Text>
-        <Text style={styles.sub}>تنبيهات الطلبات والتحديثات — اضغط على البطاقة المرتبطة بطلب للتفاصيل</Text>
+        <Text style={styles.title}>{t("notifications.title")}</Text>
+        <Text style={styles.sub}>{t("notifications.sub")}</Text>
       </View>
       <SectionList
         sections={sections}
@@ -170,7 +173,7 @@ export function NotificationsListScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={homeTheme.accent} />
         }
-        ListEmptyComponent={<Text style={styles.empty}>لا توجد إشعارات بعد.</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>{t("notifications.empty")}</Text>}
       />
     </SafeAreaView>
   );

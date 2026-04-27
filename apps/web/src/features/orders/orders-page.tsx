@@ -21,8 +21,9 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { OrdersListSection } from "@/features/orders/components/orders-list-section";
 import { ORDERS_PAGE_INITIAL_LIST_PARAMS } from "@/router/loaders";
-import { canListOrdersRole, isDispatchRole } from "@/lib/rbac-roles";
+import { canListOrdersRole, isCompanyAdminRole, isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
+import { formatOrderDisplayLabel } from "@captain/shared";
 import type { OrderListItem } from "@/types/api";
 
 export function OrdersPageView() {
@@ -38,6 +39,7 @@ export function OrdersPageView() {
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
 
   const canDispatch = isDispatchRole(role);
+  const hideStoreInOrdersUi = isCompanyAdminRole(role);
   const canReadOrders = canListOrdersRole(role);
   if (!canReadOrders) return <Navigate to="/" replace />;
 
@@ -159,12 +161,17 @@ export function OrdersPageView() {
         loading={orderDetail.isLoading}
         error={orderDetail.isError ? (orderDetail.error as Error) : null}
         order={orderDetail.data}
+        hideStoreSection={hideStoreInOrdersUi}
       />
 
       <ManualAssignModal
         open={Boolean(manualOrder)}
         onClose={() => setManualOrder(null)}
-        orderLabel={manualOrder?.orderNumber ?? ""}
+        orderLabel={
+          manualOrder
+            ? formatOrderDisplayLabel(manualOrder.displayOrderNo ?? null, manualOrder.orderNumber)
+            : ""
+        }
         captains={captains.data?.items ?? []}
         isPending={assign.isPending}
         onSubmit={(captainId) => {
@@ -187,9 +194,17 @@ export function OrdersPageView() {
         onClose={() => setReassignOrder(null)}
         title={t("manualAssign.reassignTitle")}
         description={
-          reassignOrder ? t("manualAssign.reassignDescription", { order: reassignOrder.orderNumber }) : undefined
+          reassignOrder
+            ? t("manualAssign.reassignDescription", {
+                order: formatOrderDisplayLabel(reassignOrder.displayOrderNo ?? null, reassignOrder.orderNumber),
+              })
+            : undefined
         }
-        orderLabel={reassignOrder?.orderNumber ?? ""}
+        orderLabel={
+          reassignOrder
+            ? formatOrderDisplayLabel(reassignOrder.displayOrderNo ?? null, reassignOrder.orderNumber)
+            : ""
+        }
         captains={captains.data?.items ?? []}
         isPending={reassign.isPending}
         onSubmit={(captainId) => {

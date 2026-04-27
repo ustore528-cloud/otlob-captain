@@ -6,8 +6,10 @@ import {
   canAccessCaptainsPage,
   canAccessFinancePage,
   canAccessIncubatorHost,
+  canAccessReportsPage,
   canAccessUsersPage,
   canListOrdersRole,
+  isCompanyAdminRole,
   isDispatchRole,
 } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
@@ -20,9 +22,11 @@ export function DashboardLayout() {
 
   const role = user?.role;
   const isDispatch = isDispatchRole(role);
+  /** Company Admin gets distribution (Phase 3.2.1) but not the legacy “stores” hub entry tied to the same flag. */
+  const canStoresNav = isDispatch && !isCompanyAdminRole(role);
   const canOrders = canListOrdersRole(role);
   const canFinance = canAccessFinancePage(role);
-  const canReports = canFinance;
+  const canReports = canAccessReportsPage(role);
   const canUsers = canAccessUsersPage(role);
   const canIncubator = canAccessIncubatorHost(role);
   const canCaptains = canAccessCaptainsPage(role);
@@ -33,7 +37,7 @@ export function DashboardLayout() {
     canIncubatorHost: canIncubator,
     canOrders,
     canCaptains,
-    canStores: isDispatch,
+    canStores: canStoresNav,
     canUsers,
     canFinance,
     canReports,

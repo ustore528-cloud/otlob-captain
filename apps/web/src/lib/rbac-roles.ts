@@ -46,6 +46,8 @@ const ROLE_CAPABILITIES: Record<AppRole, Set<Capability>> = {
     "captains.read",
     "captains.charge",
     "orders.list",
+    /** لوحة التوزيع / الخريطة — يُقيد الخادم بالشركة (Phase 3.2.1). */
+    "dispatch.access",
     /** محفظة الشركة (قراءة فقط) — `GET /finance/company-wallet/me` */
     "finance.read",
     /** تبويبات المالية: أرصدة متجر/كابتن + شحن عبر `POST /finance/.../company-top-up` و`prepaid-charge` */
@@ -59,7 +61,7 @@ const ROLE_CAPABILITIES: Record<AppRole, Set<Capability>> = {
   STORE_USER: new Set([]),
   CAPTAIN: new Set([]),
   CUSTOMER: new Set([]),
-  ADMIN: new Set(["users.access", "orders.list", "dashboard.read", "captains.read"]),
+  ADMIN: new Set(["users.access", "orders.list", "dashboard.read", "captains.read", "reports.read"]),
   STORE: new Set([]),
 };
 
@@ -144,4 +146,9 @@ export function canViewCompanyWalletSection(role?: string | null): boolean {
 
 export function canAccessIncubatorHost(role?: string | null): boolean {
   return can(role, "incubator.access");
+}
+
+/** تبويب التقارير — مطابق `reports.read` في الـ API (لا يتضمّن Company Admin حتى تُتحقق من الـ scoping) */
+export function canAccessReportsPage(role?: string | null): boolean {
+  return can(role, "reports.read");
 }

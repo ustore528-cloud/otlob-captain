@@ -1,5 +1,7 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTranslation } from "react-i18next";
 import { logCaptainAssignment } from "@/lib/captain-assignment-debug";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -11,16 +13,16 @@ import { useCaptainAssignmentOverflow } from "@/hooks/api/use-captain-assignment
 import { routes } from "@/navigation/routes";
 import { useCaptainOrderMutations } from "./use-captain-order-mutations";
 import { useAssignmentOfferSecondsTick } from "@/hooks/use-assignment-offer-seconds-tick";
-import { formatAssignmentOfferCountdownAr } from "@/lib/assignment-offer-seconds-left";
-import type { AssignmentOverflowItemDto, OrderStatusDto } from "@/services/api/dto";
-import { formatOrderSerial } from "@/lib/order-serial";
-import { orderStatusAr } from "@/lib/order-status-ar";
+import type { OrderStatusDto } from "@/services/api/dto";
+import type { OrderFinancialBreakdownDto } from "@/lib/order-financial-breakdown";
+import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
 import { orderStatusAccent } from "@/features/orders/utils/order-status-accent";
-import { ORDER_DROPOFF_LOCATION_LABEL, ORDER_PICKUP_LOCATION_LABEL } from "@/lib/order-location-labels";
+import { locationI18nKey } from "@/lib/order-location-i18n";
 import { openMapSearch, openPhoneDialer } from "@/lib/open-external";
-import { WhatsAppActionButton } from "@/components/ui/whatsapp-action-button";
+import { openWhatsAppChat } from "@/lib/open-external";
 import { OrderFinancialSection } from "@/components/order/order-financial-section";
 import { shouldShowOrderFinancialSection } from "@/lib/order-payment-ui-visibility";
+import { workflowAdvanceLabelKey } from "../utils/captain-order-actions";
 
 /** ASSIGNED+pending offer → API `OFFER` (shown here as kind OFFER); post-accept work → `ACTIVE` (ACCEPTED+). Blocking for auto distribution still counts ASSIGNED on server. */
 
@@ -29,12 +31,16 @@ type NormalizedCurrentOrder = {
   kind: "OFFER" | "ACTIVE";
   status: OrderStatusDto;
   orderNumber: string;
+  displayOrderNo?: number | null;
   merchantName: string;
   pickup: string;
   dropoff: string;
   customerPhone: string;
   amount: string;
+  deliveryFee: string | null;
   cashCollection: string;
+  /** Present on primary assignment (`OrderDetailDto`); overflow infers from raw fields. */
+  financialBreakdown?: OrderFinancialBreakdownDto | null;
   offerExpiresAt: string | null;
 };
 
@@ -44,6 +50,7 @@ function normalizeOrderId(id: unknown): string {
 
 /** Current-order workbench modeled as a list (primary + overflow), not a single-order screen. */
 export function useCaptainAssignmentWorkbench() {
+  const { t } = useTranslation();
   const router = useRouter();
   const assignmentQuery = useCaptainAssignment({ staleTime: 15_000 });
   const overflowQuery = useCaptainAssignmentOverflow({ staleTime: 15_000 });
@@ -90,7 +97,10 @@ export function useCaptainAssignmentWorkbench() {
   const computedOrders = useMemo<NormalizedCurrentOrder[]>(() => {
     const out: NormalizedCurrentOrder[] = [];
     const seen = new Set<string>();
-    const push = (row: Omit<NormalizedCurrentOrder, "id"> & { id?: string | null }) => {
+    const push = (
+      row: Omit<NormalizedCurrentOrder, "id" | "displayOrderNo"> &
+        Pick<NormalizedCurrentOrder, "displayOrderNo"> & { id?: string | null },
+    ) => {
       const id = normalizeOrderId(row.id);
       if (!id) return;
       if (seen.has(id)) return;
@@ -100,12 +110,15 @@ export function useCaptainAssignmentWorkbench() {
         kind: row.kind,
         status: row.status,
         orderNumber: row.orderNumber,
+        displayOrderNo: row.displayOrderNo ?? null,
         merchantName: row.merchantName,
         pickup: row.pickup,
         dropoff: row.dropoff,
         customerPhone: row.customerPhone,
         amount: row.amount,
+        deliveryFee: row.deliveryFee,
         cashCollection: row.cashCollection,
+        financialBreakdown: row.financialBreakdown,
         offerExpiresAt: row.offerExpiresAt,
       });
     };
@@ -118,12 +131,15 @@ export function useCaptainAssignmentWorkbench() {
         kind: "OFFER",
         status: primary.order.status,
         orderNumber: primary.order.orderNumber,
+        displayOrderNo: primary.order.displayOrderNo ?? null,
         merchantName: primary.order.store?.name?.trim() || "—",
         pickup: primary.order.pickupAddress,
         dropoff: primary.order.dropoffAddress,
         customerPhone: primary.order.customerPhone,
         amount: primary.order.amount,
+        deliveryFee: primary.order.deliveryFee ?? null,
         cashCollection: primary.order.cashCollection,
+        financialBreakdown: primary.order.financialBreakdown ?? null,
         offerExpiresAt: primary.log.expiresAt,
       });
     } else if (primary?.state === "ACTIVE") {
@@ -133,12 +149,15 @@ export function useCaptainAssignmentWorkbench() {
         kind: "ACTIVE",
         status: activeOrder.status,
         orderNumber: activeOrder.orderNumber,
+        displayOrderNo: activeOrder.displayOrderNo ?? null,
         merchantName: activeOrder.store?.name?.trim() || "—",
         pickup: activeOrder.pickupAddress,
         dropoff: activeOrder.dropoffAddress,
         customerPhone: activeOrder.customerPhone,
         amount: activeOrder.amount,
+        deliveryFee: activeOrder.deliveryFee ?? null,
         cashCollection: activeOrder.cashCollection,
+        financialBreakdown: activeOrder.financialBreakdown ?? null,
         offerExpiresAt: null,
       });
     }
@@ -150,12 +169,15 @@ export function useCaptainAssignmentWorkbench() {
         kind: item.kind,
         status: item.status,
         orderNumber: item.orderNumber,
+        displayOrderNo: item.displayOrderNo ?? null,
         merchantName: item.storeName || "—",
         pickup: item.pickupAddress,
         dropoff: item.dropoffAddress,
         customerPhone: item.customerPhone,
         amount: item.amount,
+        deliveryFee: item.deliveryFee,
         cashCollection: item.cashCollection,
+        financialBreakdown: null,
         offerExpiresAt: item.kind === "OFFER" ? item.offerExpiresAt : null,
       });
     }
@@ -167,7 +189,7 @@ export function useCaptainAssignmentWorkbench() {
 
   const isLoading = assignmentQuery.isLoading;
   const isError = assignmentQuery.isError;
-  const errorMessage = isError ? formatUnknownError(assignmentQuery.error, "Could not load assignment.") : null;
+  const errorMessage = isError ? formatUnknownError(assignmentQuery.error, t("workbench.loadError")) : null;
   const retryLoadAssignment = useCallback(() => {
     void assignmentQuery.refetch();
   }, [assignmentQuery]);
@@ -185,7 +207,9 @@ export function useCaptainAssignmentWorkbench() {
         dropoff={card.dropoff}
         customerPhone={card.customerPhone}
         amount={card.amount}
+        deliveryFee={card.deliveryFee}
         cashCollection={card.cashCollection}
+        financialBreakdown={card.financialBreakdown}
         offerExpiresAt={card.offerExpiresAt}
         busyAccept={acceptPendingOrderId === card.id}
         busyReject={rejectPendingOrderId === card.id}
@@ -194,7 +218,7 @@ export function useCaptainAssignmentWorkbench() {
             ? () =>
                 void run(async () => {
                   await accept.mutateAsync(card.id);
-                }, "تعذّر القبول")
+                }, t("workbench.errorAccept"))
             : undefined
         }
         onReject={
@@ -202,7 +226,7 @@ export function useCaptainAssignmentWorkbench() {
             ? () =>
                 void run(async () => {
                   await reject.mutateAsync(card.id);
-                }, "تعذّر الرفض")
+                }, t("workbench.errorReject"))
             : undefined
         }
         onOpenDetail={() => router.push(routes.app.order(card.id))}
@@ -213,7 +237,7 @@ export function useCaptainAssignmentWorkbench() {
                 if (!nextStatus) return;
                 void run(
                   () => updateStatus.mutateAsync({ orderId: card.id, body: { status: nextStatus } }),
-                  "تعذّر تحديث الحالة",
+                  t("workbench.errorUpdate"),
                 );
               }
             : undefined
@@ -235,6 +259,7 @@ export function useCaptainAssignmentWorkbench() {
       router,
       assignmentQuery,
       overflowQuery,
+      t,
     ],
   );
 
@@ -251,16 +276,19 @@ export function useCaptainAssignmentWorkbench() {
 }
 
 function BundleOfferCard({
-  orderId,
+  orderId: _orderId,
   kind,
   status,
   orderNumber,
+  displayOrderNo,
   merchantName,
   pickup,
   dropoff,
   customerPhone,
   amount,
+  deliveryFee,
   cashCollection,
+  financialBreakdown,
   offerExpiresAt,
   busyAccept,
   busyReject,
@@ -275,12 +303,15 @@ function BundleOfferCard({
   kind: "OFFER" | "ACTIVE";
   status: OrderStatusDto;
   orderNumber: string;
+  displayOrderNo?: number | null;
   merchantName: string;
   pickup: string;
   dropoff: string;
   customerPhone: string;
   amount: string;
+  deliveryFee: string | null;
   cashCollection: string;
+  financialBreakdown?: OrderFinancialBreakdownDto | null;
   offerExpiresAt: string | null;
   busyAccept: boolean;
   busyReject: boolean;
@@ -291,9 +322,11 @@ function BundleOfferCard({
   busyAdvance?: boolean;
   onOfferExpired?: () => void;
 }) {
+  const { t } = useTranslation();
+  const dash = t("common.emDash");
   const isOffer = kind === "OFFER";
   const statusAccent = orderStatusAccent(status);
-  const statusLabelAr = orderStatusAr[status] ?? status;
+  const statusLabel = t(orderStatusTranslationKey(status));
   const nextStatus = nextStatusFromCurrent(status);
   const offerSeconds = useAssignmentOfferSecondsTick(offerExpiresAt, isOffer);
   const isBusy = busyAccept || busyReject || Boolean(busyAdvance);
@@ -311,7 +344,9 @@ function BundleOfferCard({
   return (
     <View style={styles.bundleCard}>
       <View style={styles.bundleHeader}>
-        <Text style={styles.bundleOrderNo}>طلب #{formatOrderSerial(orderNumber)}</Text>
+        <Text style={styles.bundleOrderNo}>
+          {displayOrderNo != null ? t("workbench.orderLine", { n: displayOrderNo }) : t("workbench.orderLineFallback")}
+        </Text>
         <View style={styles.bundleHeaderChips}>
           <View
             style={[
@@ -320,43 +355,43 @@ function BundleOfferCard({
             ]}
           >
             <Text style={[styles.statusChipText, { color: statusAccent.text }]} numberOfLines={1}>
-              {statusLabelAr}
+              {statusLabel}
             </Text>
           </View>
           <View style={[styles.kindBadge, isOffer ? styles.kindBadgeOffer : styles.kindBadgeActive]}>
             <Text style={[styles.kindBadgeText, isOffer ? styles.kindBadgeOfferText : styles.kindBadgeActiveText]}>
-              {isOffer ? "عرض" : "نشط"}
+              {isOffer ? t("assignmentKind.offer") : t("assignmentKind.active")}
             </Text>
           </View>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>المتجر</Text>
+      <Text style={styles.sectionTitle}>{t("workbench.store")}</Text>
       <Text style={styles.merchantValue} numberOfLines={2}>
-        {merchantName || "—"}
+        {merchantName || dash}
       </Text>
 
-      <Text style={styles.sectionTitle}>موقع الطلب</Text>
+      <Text style={styles.sectionTitle}>{t("workbench.orderLocation")}</Text>
       <View style={styles.bundleRow}>
-        <Text style={styles.bundleLabel}>{ORDER_PICKUP_LOCATION_LABEL}</Text>
+        <Text style={styles.bundleLabel}>{t(locationI18nKey.pickup)}</Text>
         <Text style={styles.bundleValue} numberOfLines={2}>
-          {pickup || "—"}
+          {pickup || dash}
         </Text>
       </View>
 
       <View style={styles.bundleRow}>
-        <Text style={styles.bundleLabel}>{ORDER_DROPOFF_LOCATION_LABEL}</Text>
+        <Text style={styles.bundleLabel}>{t(locationI18nKey.dropoff)}</Text>
         <Text style={styles.bundleValue} numberOfLines={2}>
-          {dropoff || "—"}
+          {dropoff || dash}
         </Text>
       </View>
 
       <View style={styles.sectionDivider} />
-      <Text style={styles.sectionTitle}>بيانات العميل</Text>
+      <Text style={styles.sectionTitle}>{t("workbench.customer")}</Text>
       <View style={styles.bundlePhonePill}>
-        <Text style={styles.bundleMetaLabel}>الهاتف</Text>
+        <Text style={styles.bundleMetaLabel}>{t("workbench.phone")}</Text>
         <Text style={styles.bundleMetaValue} numberOfLines={1}>
-          {customerPhone || "—"}
+          {customerPhone || dash}
         </Text>
       </View>
       {shouldShowOrderFinancialSection(status) ? (
@@ -364,7 +399,9 @@ function BundleOfferCard({
           <OrderFinancialSection
             amount={amount}
             cashCollection={cashCollection}
+            deliveryFee={deliveryFee}
             orderStatus={status}
+            financialBreakdown={financialBreakdown}
             variant="compact"
             hideTitle
           />
@@ -372,31 +409,55 @@ function BundleOfferCard({
       ) : null}
 
       <View style={styles.sectionDivider} />
-      <Text style={styles.sectionTitle}>إجراءات سريعة</Text>
+      <Text style={styles.sectionTitle}>{t("workbench.quickActions")}</Text>
       <View style={styles.bundleQuickActions}>
-        <Pressable style={({ pressed }) => [styles.quickMapBtn, pressed && styles.pressed]} onPress={() => void openMapSearch(pickup)}>
-          <Text style={styles.quickMapBtnText}>خريطة الاستلام</Text>
+        <Pressable
+          style={({ pressed }) => [styles.quickMapBtn, pressed && styles.pressed]}
+          onPress={() => void openMapSearch(pickup)}
+        >
+          <View style={styles.quickBtnInner}>
+            <Ionicons name="navigate-outline" size={14} color={homeTheme.text} />
+            <Text style={styles.quickMapBtnText}>{t("workbench.mapPickup")}</Text>
+          </View>
         </Pressable>
-        <Pressable style={({ pressed }) => [styles.quickMapBtn, pressed && styles.pressed]} onPress={() => void openMapSearch(dropoff)}>
-          <Text style={styles.quickMapBtnText}>خريطة التسليم</Text>
+        <Pressable
+          style={({ pressed }) => [styles.quickMapBtn, pressed && styles.pressed]}
+          onPress={() => void openMapSearch(dropoff)}
+        >
+          <View style={styles.quickBtnInner}>
+            <Ionicons name="location-outline" size={14} color={homeTheme.text} />
+            <Text style={styles.quickMapBtnText}>{t("workbench.mapDropoff")}</Text>
+          </View>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.quickMapBtn, pressed && styles.pressed]}
+          onPress={() => void openWhatsAppChat(customerPhone)}
+        >
+          <View style={styles.quickBtnInner}>
+            <Ionicons name="logo-whatsapp" size={14} color="#128C7E" />
+            <Text style={styles.quickMapBtnText}>{t("whatsapp.label")}</Text>
+          </View>
         </Pressable>
       </View>
 
       <View style={styles.bundlePhoneRow}>
-        <WhatsAppActionButton phone={customerPhone} variant="icon" size="large" />
         <Pressable onPress={() => void openPhoneDialer(customerPhone)} style={({ pressed }) => [pressed && styles.pressed]}>
-          <Text style={styles.phoneLink}>{customerPhone || "—"}</Text>
+          <Text style={styles.phoneLink}>{customerPhone || dash}</Text>
         </Pressable>
       </View>
 
       {isOffer && offerSeconds != null ? (
-        <Text style={styles.bundleTimer}>المتبقي: {formatAssignmentOfferCountdownAr(offerSeconds)}</Text>
+        <View style={styles.bundleTimerBadge}>
+          <Text style={styles.bundleTimerText}>
+            {t("workbench.timeRemainingSeconds", { seconds: Math.max(offerSeconds, 0) })}
+          </Text>
+        </View>
       ) : null}
 
       <View style={styles.sectionDivider} />
       <View style={styles.bundleActions}>
         <Pressable onPress={onOpenDetail} style={({ pressed }) => [styles.bundleBtnGhost, pressed && styles.pressed]}>
-          <Text style={styles.bundleBtnGhostText}>التفاصيل</Text>
+          <Text style={styles.bundleBtnGhostText}>{t("workbench.details")}</Text>
         </Pressable>
         {isOffer ? (
           <>
@@ -405,14 +466,22 @@ function BundleOfferCard({
               disabled={isBusy}
               style={({ pressed }) => [styles.bundleBtnReject, pressed && styles.pressed, isBusy && styles.btnDisabled]}
             >
-              {busyReject ? <ActivityIndicator size="small" color={homeTheme.textMuted} /> : <Text style={styles.bundleBtnRejectText}>رفض</Text>}
+              {busyReject ? (
+                <ActivityIndicator size="small" color={homeTheme.textMuted} />
+              ) : (
+                <Text style={styles.bundleBtnRejectText}>{t("workbench.reject")}</Text>
+              )}
             </Pressable>
             <Pressable
               onPress={onAccept}
               disabled={isBusy}
               style={({ pressed }) => [styles.bundleBtnAccept, pressed && styles.pressed, isBusy && styles.btnDisabled]}
             >
-              {busyAccept ? <ActivityIndicator size="small" color={homeTheme.onAccent} /> : <Text style={styles.bundleBtnAcceptText}>قبول</Text>}
+              {busyAccept ? (
+                <ActivityIndicator size="small" color={homeTheme.onAccent} />
+              ) : (
+                <Text style={styles.bundleBtnAcceptText}>{t("assignmentBar.acceptOrder")}</Text>
+              )}
             </Pressable>
           </>
         ) : nextStatus && onAdvance ? (
@@ -424,7 +493,7 @@ function BundleOfferCard({
             {busyAdvance ? (
               <ActivityIndicator size="small" color={homeTheme.onAccent} />
             ) : (
-              <Text style={styles.bundleBtnAdvanceText}>{advanceLabelAr(nextStatus)}</Text>
+              <Text style={styles.bundleBtnAdvanceText}>{t(workflowAdvanceLabelKey(nextStatus))}</Text>
             )}
           </Pressable>
         ) : null}
@@ -438,12 +507,6 @@ function nextStatusFromCurrent(status: OrderStatusDto): "PICKED_UP" | "IN_TRANSI
   if (status === "PICKED_UP") return "IN_TRANSIT";
   if (status === "IN_TRANSIT") return "DELIVERED";
   return null;
-}
-
-function advanceLabelAr(status: "PICKED_UP" | "IN_TRANSIT" | "DELIVERED"): string {
-  if (status === "PICKED_UP") return "تم الاستلام من المتجر";
-  if (status === "IN_TRANSIT") return "في الطريق للعميل";
-  return "تم تسليم الطلب";
 }
 
 const styles = StyleSheet.create({
@@ -523,7 +586,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: homeTheme.textSubtle,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "900",
     textAlign: "right",
   },
@@ -544,7 +607,7 @@ const styles = StyleSheet.create({
   },
   bundleLabel: {
     color: homeTheme.textSubtle,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
     textAlign: "right",
   },
@@ -555,12 +618,21 @@ const styles = StyleSheet.create({
     textAlign: "right",
     lineHeight: 20,
   },
-  bundleTimer: {
-    color: homeTheme.accent,
+  bundleTimerBadge: {
+    alignSelf: "flex-end",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: "#FDEBEC",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#F8C9CD",
+    marginTop: 2,
+  },
+  bundleTimerText: {
+    color: "#A32732",
     fontSize: 12,
     fontWeight: "800",
     textAlign: "right",
-    marginTop: 2,
   },
   bundleQuickActions: {
     flexDirection: "row-reverse",
@@ -571,10 +643,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: homeTheme.border,
-    backgroundColor: homeTheme.bg,
+    backgroundColor: homeTheme.cardWhite,
     paddingVertical: 8,
     alignItems: "center",
     justifyContent: "center",
+  },
+  quickBtnInner: {
+    flexDirection: "row-reverse",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
   },
   quickMapBtnText: {
     color: homeTheme.text,
@@ -644,7 +722,7 @@ const styles = StyleSheet.create({
     borderColor: homeTheme.border,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: homeTheme.bg,
+    backgroundColor: homeTheme.cardWhite,
     minHeight: 44,
     minWidth: 76,
     alignItems: "center",

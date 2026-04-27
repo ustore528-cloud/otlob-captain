@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import type { AssignmentLogEntryDto } from "@/services/api/dto";
-import { formatLastSeenAr } from "@/features/home/utils/format";
-import { assignmentResponseStatusAr } from "@/lib/order-status-ar";
+import { formatLogTime } from "@/lib/order-timestamps";
+import { assignmentResponseLabel } from "@/lib/assignment-log-i18n";
 import { homeTheme } from "@/features/home/theme";
 
 type Props = {
@@ -9,11 +10,8 @@ type Props = {
   compact?: boolean;
 };
 
-function labelForResponse(s: string): string {
-  return assignmentResponseStatusAr[s] ?? s;
-}
-
 export function AssignmentLogsTimeline({ logs, compact }: Props) {
+  const { t } = useTranslation();
   if (!logs?.length) return null;
 
   const sorted = [...logs].sort(
@@ -23,17 +21,18 @@ export function AssignmentLogsTimeline({ logs, compact }: Props) {
 
   return (
     <View style={[styles.wrap, compact && styles.wrapCompact]}>
-      <Text style={[styles.title, compact && styles.titleCompact]}>سجل التعيينات</Text>
+      <Text style={[styles.title, compact && styles.titleCompact]}>{t("assignmentLog.title")}</Text>
       {slice.map((log, index) => {
-        const when = formatLastSeenAr(log.assignedAt);
+        const when = formatLogTime(log.assignedAt);
+        const exp = log.expiredAt ? formatLogTime(log.expiredAt) : null;
         return (
           <View key={log.id} style={[styles.row, compact && styles.rowCompact, index === 0 && styles.rowFirst]}>
             <View style={[styles.dot, compact && styles.dotCompact]} />
             <View style={styles.textCol}>
-              <Text style={[styles.status, compact && styles.statusCompact]}>{labelForResponse(log.responseStatus)}</Text>
+              <Text style={[styles.status, compact && styles.statusCompact]}>{assignmentResponseLabel(log.responseStatus, t)}</Text>
               <Text style={[styles.meta, compact && styles.metaCompact]}>
                 {when ?? log.assignedAt}
-                {log.expiredAt ? ` · ينتهي ${formatLastSeenAr(log.expiredAt) ?? ""}` : ""}
+                {exp ? t("assignmentLog.expiresAt", { time: exp }) : ""}
               </Text>
               {log.notes ? <Text style={[styles.notes, compact && styles.notesCompact]}>{log.notes}</Text> : null}
             </View>
@@ -88,43 +87,34 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     marginTop: 6,
-    backgroundColor: homeTheme.accent,
+    backgroundColor: homeTheme.accentMuted,
   },
   dotCompact: {
     width: 6,
     height: 6,
     marginTop: 4,
   },
-  textCol: { flex: 1 },
+  textCol: { flex: 1, minWidth: 0 },
   status: {
     color: homeTheme.text,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
     textAlign: "right",
   },
-  statusCompact: {
-    fontSize: 12,
-  },
+  statusCompact: { fontSize: 12 },
   meta: {
     color: homeTheme.textMuted,
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 2,
     textAlign: "right",
   },
-  metaCompact: {
-    fontSize: 10,
-    marginTop: 2,
-  },
+  metaCompact: { fontSize: 10 },
   notes: {
     color: homeTheme.textSubtle,
     fontSize: 12,
-    marginTop: 6,
+    marginTop: 4,
     textAlign: "right",
     lineHeight: 18,
   },
-  notesCompact: {
-    fontSize: 10,
-    marginTop: 4,
-    lineHeight: 15,
-  },
+  notesCompact: { fontSize: 10 },
 });

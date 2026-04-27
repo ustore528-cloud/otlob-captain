@@ -1,0 +1,456 @@
+{
+  "common": {
+    "emDash": "—",
+    "retry": "Retry",
+    "loading": "Loading…",
+    "placeholderInitial": "?"
+  },
+  "location": {
+    "pickup": "Pickup address",
+    "dropoff": "Dropoff address"
+  },
+  "orderStatus": {
+    "PENDING": "Pending",
+    "CONFIRMED": "Confirmed",
+    "ASSIGNED": "Offered to captain",
+    "ACCEPTED": "Accepted",
+    "PICKED_UP": "Picked up",
+    "IN_TRANSIT": "In transit",
+    "DELIVERED": "Delivered",
+    "CANCELLED": "Cancelled"
+  },
+  "assignmentLog": {
+    "title": "Assignment history",
+    "responsePENDING": "Awaiting response",
+    "responseACCEPTED": "Accepted",
+    "responseREJECTED": "Rejected",
+    "responseEXPIRED": "Expired",
+    "responseCANCELLED": "Cancelled",
+    "expiresAt": "· Expires {{time}}",
+    "unknownResponse": "Unknown: {{code}}"
+  },
+  "primaryAction": {
+    "confirmOrder": "Confirm order",
+    "pickedUp": "Picked up",
+    "onTheWay": "On the way",
+    "delivered": "Delivered",
+    "view": "View"
+  },
+  "workflowAdvance": {
+    "pickedUpFromStore": "Picked up from store",
+    "onTheWayToCustomer": "On the way to customer",
+    "markDelivered": "Mark delivered"
+  },
+  "assignmentKind": {
+    "offer": "Offer",
+    "active": "Active"
+  },
+  "tabs": {
+    "currentOrder": "Current order",
+    "archive": "Archive",
+    "notifications": "Notifications",
+    "settings": "Settings"
+  },
+  "ordersTabLabel": {
+    "line1": "Current",
+    "line2": "order",
+    "a11y": "Current order"
+  },
+  "orderCard": {
+    "orderTitle": "Order #{{id}}",
+    "serialLabel": "Order #",
+    "workbenchLinkedRibbon": "Same order as in the workbench above",
+    "cancelsIn": "Cancels in {{time}}",
+    "orderDetailsA11y": "Order details {{id}}",
+    "callA11y": "Call {{phone}}"
+  },
+  "workbench": {
+    "loadError": "Could not load assignment.",
+    "errorAccept": "Accept failed",
+    "errorReject": "Reject failed",
+    "errorUpdate": "Status update failed",
+    "orderLine": "Order #{{n}}",
+    "orderLineFallback": "New order",
+    "store": "Store",
+    "orderLocation": "Route",
+    "customer": "Customer",
+    "phone": "Phone",
+    "quickActions": "Quick actions",
+    "mapPickup": "Map: pickup",
+    "mapDropoff": "Map: dropoff",
+    "timeRemaining": "Time left: {{time}}",
+    "timeRemainingSeconds": "{{seconds}}s left to accept",
+    "details": "Details",
+    "reject": "Decline",
+    "accept": "Accept"
+  },
+  "currentAssignment": {
+    "title": "Current orders",
+    "sub": "Shows current orders as returned by the server, each in its own card."
+  },
+  "assignmentEmpty": {
+    "line1": "Take a short break—your next delivery is on the way.",
+    "line2": "We will show a new order as soon as it arrives."
+  },
+  "assignmentBar": {
+    "readOnly": "No actions are available for this order in your current state.",
+    "offerCountdown": "Time left to accept or decline this offer",
+    "declineA11y": "Decline offer",
+    "acceptA11y": "Accept order",
+    "decline": "Decline",
+    "acceptOrder": "Accept order",
+    "acceptConfirmHint": "Confirm",
+    "orderDetailsFullA11y": "Full order details",
+    "orderDetailsTitle": "Order details",
+    "fullDetailsHint": "Tap for full details and route",
+    "pickupA11y": "Pickup: {{v}}",
+    "dropoffA11y": "Dropoff: {{v}}"
+  },
+  "map": {
+    "openHint": "Open map"
+  },
+  "orderStatusProgress": {
+    "title": "Delivery progress",
+    "currentStep": "Current step",
+    "stepAccepted": "Order accepted",
+    "stepPickedUp": "Picked up from store",
+    "stepInTransit": "On the way to customer",
+    "stepDelivered": "Delivered",
+    "beforeDeliveryTitle": "Before delivery starts",
+    "currentStatus": "Current status: {{status}}",
+    "beforeDeliveryHint": "After you accept the offer and the order becomes Accepted, the pickup and delivery path appears here step by step.",
+    "cancelledBanner": "This order is cancelled. Delivery cannot continue."
+  },
+  "workbenchOrderCard": {
+    "openDetailsA11y": "Order {{n}}, open details",
+    "details": "Details",
+    "orderDetailsA11y": "Order details",
+    "callA11y": "Call {{phone}}"
+  },
+  "ordersHistory": {
+    "loadError": "Could not load orders.",
+    "loading": "Loading orders…",
+    "loadingInitial": "Loading…",
+    "retry": "Retry",
+    "titleArchive": "Order archive",
+    "titleAvailable": "Available orders",
+    "filterStatus": "Status",
+    "filterRange": "Period",
+    "statusAll": "All",
+    "rangeAll": "All periods",
+    "range7d": "Last 7 days",
+    "range30d": "Last 30 days",
+    "countNone": "No results",
+    "countDelivered": "{{count}} delivered",
+    "countOrders": "{{count}} orders",
+    "registryLabel": "Order history",
+    "registryHint": "Tap a card for details",
+    "assignmentSectionLabel": "Current assignment",
+    "minimalTitle": "Orders",
+    "minimalSub": "Below: order history (server order). When there is an active offer or delivery, the action bar appears at the bottom — accept and decline from the bar, not only the card.",
+    "listSectionTitle": "Order history",
+    "listSectionHint": "Independent cards — tap for details. The highlighted row links to the same order in “current assignment” if applicable.",
+    "heroSubArchive": "Delivered orders only — tap for details",
+    "heroSubAvailable": "Assigned orders and history — tap for details and route",
+    "errorListSub": "Could not load the list",
+    "loadMore": "Loading more…",
+    "emptyMinimal": "No orders right now.",
+    "emptyArchiveTitle": "No delivered orders",
+    "emptyArchiveBody": "Try widening the period above, or come back after new deliveries.",
+    "emptyListTitle": "No orders",
+    "emptyListBody": "Try changing the filters above, or come back after new activity."
+  },
+  "earnings": {
+    "title": "Earnings summary",
+    "guest": "Sign in to see your stats.",
+    "loading": "Loading summary…",
+    "subServer": "Delivered orders only — from the server",
+    "kicker": "Your performance",
+    "filterPeriod": "Period",
+    "rangeAll": "All periods",
+    "range7d": "Last 7 days",
+    "range30d": "Last 30 days",
+    "rangeMonth": "This month",
+    "rangeDescAll": "All your delivered orders on record",
+    "rangeDesc7d": "Orders delivered in the last seven days",
+    "rangeDesc30d": "Orders delivered in the last thirty days",
+    "rangeDescMonth": "Orders delivered since the start of this month",
+    "emptyTitle": "No data in this period",
+    "emptyBody": "After you complete deliveries, collection totals will appear here. Try “all periods” or change the range.",
+    "totalCollection": "Total to collect",
+    "totalCollectionHint": "Sum of amounts to collect from delivered orders",
+    "statDelivered": "Delivered orders",
+    "statOrderValue": "Order value",
+    "note": "Figures are from the server for orders in “delivered” status in the selected period. They may differ from your actual balance depending on settlements."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "sub": "Order updates and alerts — tap a card linked to an order for details",
+    "subLoading": "Updates and orders — by date",
+    "new": "New",
+    "read": "Read",
+    "orderLinked": "Order link",
+    "notLinked": "No link",
+    "hintTappable": "Tap to open order details",
+    "hintGeneral": "General alert — no direct order link",
+    "empty": "No notifications yet.",
+    "today": "Today",
+    "yesterday": "Yesterday"
+  },
+  "openExternal": {
+    "phoneNoNumberTitle": "No number",
+    "phoneNoNumberBody": "The phone number is not valid to call.",
+    "phoneCannotOpenTitle": "Cannot call",
+    "phoneCannotOpenBody": "The phone app cannot be opened on this device.",
+    "phoneFailedTitle": "Cannot call",
+    "phoneFailedBody": "Try again.",
+    "whatsappInvalidTitle": "Cannot open WhatsApp",
+    "whatsappInvalidBody": "A full international number is required (e.g. +970 or +972). Local numbers starting with 05 are not enough without a country code.",
+    "whatsappFailedTitle": "Cannot open WhatsApp",
+    "whatsappFailedBody": "Make sure WhatsApp is installed and the number includes a country code.",
+    "mapFailedTitle": "Cannot open map",
+    "mapFailedBody": "Try again."
+  },
+  "apiClient": {
+    "badEnvelope": "Unexpected response from the server",
+    "requestFailed": "Request failed",
+    "noTokenBridge": "Session connection is not ready",
+    "noAccessToken": "No access token"
+  },
+  "push": {
+    "androidChannelName": "2in orders",
+    "androidChannelDescription": "2in order offers and important updates",
+    "foregroundTitleDefault": "New order waiting for you",
+    "foregroundBodyDefault": "You have a new order offer. Tap to open details.",
+    "permissionDeniedTitle": "Notifications are off",
+    "permissionDeniedBody": "Turn on notifications to receive new order alerts. You can enable them in system settings.",
+    "permissionDeniedDismiss": "Not now",
+    "permissionOpenSettings": "Open settings"
+  },
+  "queryError": {
+    "title": "Could not load",
+    "fallback": "Check your connection and try again.",
+    "retry": "Retry"
+  },
+  "auth": {
+    "invalidCredentials": "Phone/email or password is incorrect.",
+    "forbiddenRole": "This app is for captain accounts only.",
+    "forbidden": "No captain profile for this account.",
+    "loginFailed": "Sign-in failed.",
+    "unexpected": "Something went wrong."
+  },
+  "availability": {
+    "controlTitle": "Availability",
+    "controlSubtitle": "Controls whether you appear for distribution and new offers",
+    "labelActive": "On",
+    "labelOffline": "Off",
+    "hintActive": "Accepts new orders",
+    "hintOffline": "Does not accept new orders"
+  },
+  "profile": {
+    "title": "My account",
+    "sub": "Your details and availability",
+    "name": "Name",
+    "phone": "Phone",
+    "email": "Email",
+    "area": "Area",
+    "currentAvailability": "Current availability",
+    "signOut": "Sign out",
+    "updateErrorTitle": "Update failed",
+    "updateErrorHint": "Try again.",
+    "availabilityChangeTitle": "Change availability",
+    "availabilityChangeSubtitle": "Same as the captain panel — updates immediately"
+  },
+  "home": {
+    "title": "Captain dashboard",
+    "greet": "Hello",
+    "sub": "A quick look at your status — run orders from “Available orders”",
+    "loadingMe": "Loading your profile…",
+    "loadProfileErrorTitle": "Could not load profile",
+    "hintFooter": "To run orders and offers, use “Available orders”. For settings, earnings, and tracking: “Settings”."
+  },
+  "errors": {
+    "mutationGeneric": "Could not complete the action.",
+    "offerExpired": "The time to accept this offer has ended.",
+    "noPendingAssignment": "No offer you can accept for this order. The offer may have expired or been reassigned. Pull to refresh.",
+    "sessionPrepareFailed": "Could not prepare your session. Refresh or sign in again.",
+    "noActiveOffer": "No active offer for this order. The offer may have expired or been reassigned. Pull to refresh.",
+    "unexpected": "Something went wrong."
+  },
+  "money": {
+    "sectionTitle": "Money & collection",
+    "storeAmount": "Store Amount",
+    "deliveryFee": "Delivery Fee",
+    "deliveryFeeInferred": "Delivery Fee (inferred)",
+    "customerCollection": "Customer Collection Amount",
+    "hintInferred": "Delivery fee was inferred from customer collection minus store amount when no separate fee was stored.",
+    "hintCod": "Cash on delivery — use the calculator below for change.",
+    "hintNoCod": "No separate customer collection — totals match the store amount."
+  },
+  "homeProfile": {
+    "area": "Area",
+    "vehicle": "Vehicle type",
+    "lastSeen": "Last seen"
+  },
+  "orderDetailHeader": {
+    "kicker": "Order number",
+    "meta": "Created {{created}} · Updated {{updated}}"
+  },
+  "orderDetail": {
+    "created": "Created",
+    "pickupTime": "Pickup time",
+    "deliveryTime": "Delivery time",
+    "notRecorded": "Not recorded",
+    "sectionOrder": "Order",
+    "sectionRestaurant": "Restaurant",
+    "sectionCustomer": "Customer",
+    "sectionAddresses": "Addresses",
+    "sectionNotes": "Notes",
+    "customerLine": "Customer: {{name}}",
+    "areaLine": "Area: {{area}}",
+    "storeLine": "Store: {{name}} ({{area}})",
+    "hintFromStore": "From store",
+    "hintCustomerAddress": "Customer address",
+    "mapHintPickup": "Open map for pickup address",
+    "mapHintDropoff": "Open map for dropoff address",
+    "notesField": "Notes",
+    "callA11y": "Call {{phone}}"
+  },
+  "assignment": {
+    "moneyLine1": "Store Amount: {{a}} ₪",
+    "moneyLine2": "Delivery Fee: {{f}} ₪",
+    "moneyLine3": "Customer Collection Amount: {{c}} ₪"
+  },
+  "prepaid": {
+    "labelRemaining": "Remaining balance",
+    "metricCommission": "Commission rate",
+    "metricEstimatedOrders": "Estimated orders",
+    "estimatedByFees": "Based on delivery fees",
+    "bodyExplain": "Deductions are taken from delivery fees only after an order is delivered. Example: if the delivery fee is 10 ILS and commission is 15%, 1.5 ILS is deducted after delivery.",
+    "rule1": "• Deduction only after the order is delivered",
+    "rule2": "• No deduction for cancelled orders",
+    "rule3": "• Low balance may pause receiving new orders until top-up",
+    "blocked": "Balance is too low to receive new orders for now.",
+    "low": "Your balance is low. Please contact operations to add funds."
+  },
+  "login": {
+    "title": "2in",
+    "subtitle": "Captain sign-in",
+    "lead": "Enter the phone or email and password on file.",
+    "fieldIdentifier": "Phone or email",
+    "fieldPassword": "Password",
+    "submit": "Sign in"
+  },
+  "screenHeader": {
+    "back": "Back"
+  },
+  "assignmentDetail": {
+    "title": "Order details",
+    "invalidId": "Order ID is not valid",
+    "loading": "Loading…",
+    "sessionPreparing": "Preparing your session…",
+    "cannotDisplay": "This order cannot be shown",
+    "errOpen": "Could not open order",
+    "errOpenFallback": "Check permissions or the link.",
+    "mutationAccept": "Accept failed",
+    "mutationReject": "Decline failed",
+    "mutationStatus": "Status update failed"
+  },
+  "ordersLive": {
+    "title": "Current orders",
+    "sub": "Orders shown here are returned by the server; each order has its own card."
+  },
+  "tracking": {
+    "title": "Tracking",
+    "guest": "Sign in to send your location to the server.",
+    "intro": "While you are available (not offline), your location is sent automatically when the app is in the foreground. You do not use a separate tracking switch — set availability on the home screen. Background tracking may be added later.",
+    "subAvailabilityDriven": "Go offline from home to stop sharing your location. Allow location access so the team can see you when you are available.",
+    "sectionTrackingControl": "Location sending",
+    "trackingOnCaption": "On — you are available",
+    "trackingOffCaption": "Off — you are offline or not signed in",
+    "permissionCallout": "To share your position when you are available, allow location access for this app.",
+    "cardLocationTitle": "Location tracking",
+    "cardLocationHint": "POST /mobile/captain/me/location about every 30s",
+    "sectionPermissions": "Permissions",
+    "sectionStatus": "Status",
+    "permissionLabel": "Location permission",
+    "permissionGranted": "Allowed",
+    "permissionDenied": "Denied",
+    "permissionUnknown": "Not set",
+    "btnRequestAgain": "Request permission again",
+    "btnAppSettings": "App settings",
+    "labelNetwork": "Network",
+    "labelApp": "App",
+    "reachabilityOnline": "Connected",
+    "reachabilityOffline": "Disconnected",
+    "reachabilityUnknown": "Checking…",
+    "appForeground": "In foreground",
+    "appBackground": "In background — sending paused for now",
+    "labelOutbox": "Pending send",
+    "sectionLastGps": "Last GPS reading",
+    "sectionLastServer": "Last server confirmation",
+    "issueTitle": "Notice",
+    "issuePermissionForeground": "Allow location while using the app to continue tracking.",
+    "issueNetworkOffline": "No connection — the point is saved to send when the network is back.",
+    "issuePermissionDeniedSettings": "Location permission was not granted. You can enable it in app settings."
+  },
+  "realtime": {
+    "newOrderTitle": "New order arrived",
+    "newOrderMessage": "Order #{{serial}} is waiting for you to accept",
+    "newOrderMessageFallback": "You have a new order waiting to be accepted",
+    "orderUpdatedTitle": "Order update",
+    "orderUpdatedMessage": "One of your orders was updated",
+    "assignmentEndedTitle": "Current assignment ended",
+    "assignmentEndedMessage": "You can wait for a new offer or refresh the list",
+    "dismissBannerA11y": "Dismiss alert"
+  },
+  "overflow": {
+    "titleOne": "One additional order is not on the main card",
+    "titleMany": "{{count}} additional orders are not on the main card",
+    "warningTitle": "Could not verify additional orders",
+    "warningHint": "There may be secondary orders not shown right now.",
+    "retry": "Try again",
+    "retryA11y": "Retry loading additional orders",
+    "detailsHint": "Open details from the list below or from the archive.",
+    "kindOffer": "Offer",
+    "kindActive": "Active",
+    "orderA11y": "Order {{serial}} — {{kind}}"
+  },
+  "whatsapp": {
+    "label": "WhatsApp",
+    "a11y": "WhatsApp {{phone}}"
+  },
+  "assignmentOffer": {
+    "countdown": "⏱ {{seconds}}s"
+  },
+  "workStatus": {
+    "a11yLabel": "Work status: {{label}}"
+  },
+  "settings": {
+    "title": "Settings",
+    "hubSub": "Account, tools, and preferences outside live order execution.",
+    "language": "Language",
+    "languageHint": "English, Arabic, or Hebrew — saved on this device.",
+    "langEn": "English",
+    "langAr": "العربية",
+    "langHe": "עברית",
+    "hubSectionAccount": "Account",
+    "hubSectionTools": "Tools",
+    "hubSectionApp": "App",
+    "hubSectionExtra": "More",
+    "hubProfileLabel": "Profile",
+    "hubProfileHint": "Name, organization, area",
+    "hubAvailabilityLabel": "Availability",
+    "hubAvailabilityHint": "On, off — from the same account screen",
+    "hubSignOutLabel": "Sign out",
+    "hubSignOutHint": "At the bottom of the profile screen",
+    "hubEarningsLabel": "Earnings",
+    "hubEarningsHint": "Collection summary",
+    "hubTrackingLabel": "Location tracking",
+    "hubTrackingHint": "Location permission and sending coordinates",
+    "hubAppNotifLabel": "App notifications",
+    "hubAppNotifHint": "Coming soon — sound and visibility preferences",
+    "hubQuickHomeLabel": "Quick dashboard",
+    "hubQuickHomeHint": "Status summary and latest alert — optional"
+  }
+}

@@ -10,7 +10,7 @@ export type CreateOrderPayload = {
   pickupAddress: string;
   dropoffAddress: string;
   area: string;
-  /** مبلغ المتجر (بدون رسوم التوصيل) */
+  /** مبلغ متجر/طلب (بدون رسوم التوصيل) — واجهة Company Admin ترسل مبلغ الطلب بلا `storeId` */
   amount: number;
   /** رسوم التوصيل (يسمح بصفر). يُحسب على الخادم: cash_collection = amount + delivery_fee */
   deliveryFee?: number;

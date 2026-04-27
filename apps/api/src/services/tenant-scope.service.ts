@@ -1,13 +1,7 @@
 import type { UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/errors.js";
-import {
-  isCompanyAdminRole,
-  isLegacyAdminRole,
-  isOrderOperatorRole,
-  isSuperAdminRole,
-  type AppRole,
-} from "../lib/rbac-roles.js";
+import { isLegacyAdminRole, isOrderOperatorRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
 
 export type StaffTenantOrderListFilter = { companyId?: string; branchId?: string };
 
@@ -198,14 +192,7 @@ export async function assertStaffCanAccessOrder(
   if (scope.branchId && order.branchId !== scope.branchId) {
     throw new AppError(403, "Forbidden", "FORBIDDEN");
   }
-  if (isCompanyAdminRole(actor.role)) {
-    const steward = order.ownerUserId ?? order.createdByUserId ?? null;
-    const viaSteward = steward === actor.userId;
-    const viaCaptain = order.assignedCaptain?.createdByUserId === actor.userId;
-    if (!viaSteward && !viaCaptain) {
-      throw new AppError(403, "Forbidden", "FORBIDDEN");
-    }
-  }
+  /** COMPANY_ADMIN: company (and optional branch) match is sufficient — Phase 3.2.2. */
 }
 
 export async function assertStaffCanAccessCaptain(
@@ -221,9 +208,5 @@ export async function assertStaffCanAccessCaptain(
   if (scope.branchId && captain.branchId !== scope.branchId) {
     throw new AppError(403, "Forbidden", "FORBIDDEN");
   }
-  if (actor.role === "COMPANY_ADMIN") {
-    if (!captain.createdByUserId || captain.createdByUserId !== actor.userId) {
-      throw new AppError(403, "Forbidden", "FORBIDDEN");
-    }
-  }
+  /** COMPANY_ADMIN: company (and optional branch) match is sufficient — Phase 3.2.2. */
 }

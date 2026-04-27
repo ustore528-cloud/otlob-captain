@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   FlatList,
@@ -29,23 +30,28 @@ const PAGE_SIZE = 20;
 
 type StatusFilterValue = "all" | OrderStatusDto;
 
-const STATUS_CHIPS: { value: StatusFilterValue; label: string }[] = [
-  { value: "all", label: "الكل" },
-  { value: "DELIVERED", label: "تم التسليم" },
-  { value: "IN_TRANSIT", label: "قيد التوصيل" },
-  { value: "PICKED_UP", label: "تم الاستلام" },
-  { value: "ACCEPTED", label: "مقبول" },
-  { value: "ASSIGNED", label: "معروض" },
-  { value: "CANCELLED", label: "ملغى" },
+const STATUS_FILTER_VALUES: StatusFilterValue[] = [
+  "all",
+  "DELIVERED",
+  "IN_TRANSIT",
+  "PICKED_UP",
+  "ACCEPTED",
+  "ASSIGNED",
+  "CANCELLED",
 ];
 
 type RangePreset = "all" | "7d" | "30d";
 
-const RANGE_CHIPS: { value: RangePreset; label: string }[] = [
-  { value: "all", label: "كل الفترات" },
-  { value: "7d", label: "آخر 7 أيام" },
-  { value: "30d", label: "آخر 30 يومًا" },
+const RANGE_CHIPS: { value: RangePreset; i18nKey: string }[] = [
+  { value: "all", i18nKey: "ordersHistory.rangeAll" },
+  { value: "7d", i18nKey: "ordersHistory.range7d" },
+  { value: "30d", i18nKey: "ordersHistory.range30d" },
 ];
+
+function statusFilterLabel(t: (key: string) => string, value: StatusFilterValue): string {
+  if (value === "all") return t("ordersHistory.statusAll");
+  return t(`orderStatus.${value}`);
+}
 
 function buildApiFilters(status: StatusFilterValue, range: RangePreset): OrderHistoryFilters {
   const f: OrderHistoryFilters = {};
@@ -93,6 +99,7 @@ export function OrderHistoryScreen({
   activeOfferSecondsRemaining,
   workbenchOrderId = null,
 }: OrderHistoryScreenProps = {}) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { updateStatus } = useCaptainOrderMutations();
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
@@ -197,7 +204,7 @@ export function OrderHistoryScreen({
     if (archiveMode) {
       return (
         <View style={styles.filtersBlock}>
-          <Text style={styles.filterLabel}>الفترة</Text>
+          <Text style={styles.filterLabel}>{t("ordersHistory.filterRange")}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -207,18 +214,20 @@ export function OrderHistoryScreen({
               const active = rangePreset === c.value;
               return (
                 <Pressable
-                  key={c.label}
+                  key={c.value}
                   style={[styles.chip, active && styles.chipActive]}
                   onPress={() => setRangePreset(c.value)}
                 >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.label}</Text>
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(c.i18nKey)}</Text>
                 </Pressable>
               );
             })}
           </ScrollView>
           {query.isSuccess ? (
             <Text style={styles.countLine}>
-              {totalCount === 0 ? "لا نتائج" : `${totalCount} طلب مُسلَّم`}
+              {totalCount === 0
+                ? t("ordersHistory.countNone")
+                : t("ordersHistory.countDelivered", { count: totalCount })}
             </Text>
           ) : null}
         </View>
@@ -228,30 +237,32 @@ export function OrderHistoryScreen({
       <View style={styles.filtersBlock}>
         {listHeaderTop ? (
           <View style={styles.registryHeader}>
-            <Text style={styles.registryLabel}>سجل الطلبات</Text>
-            <Text style={styles.registryHint}>اضغط البطاقة للتفاصيل</Text>
+            <Text style={styles.registryLabel}>{t("ordersHistory.registryLabel")}</Text>
+            <Text style={styles.registryHint}>{t("ordersHistory.registryHint")}</Text>
           </View>
         ) : null}
-        <Text style={styles.filterLabel}>الحالة</Text>
+        <Text style={styles.filterLabel}>{t("ordersHistory.filterStatus")}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipsRow}
         >
-          {STATUS_CHIPS.map((c) => {
-            const active = statusFilter === c.value;
+          {STATUS_FILTER_VALUES.map((value) => {
+            const active = statusFilter === value;
             return (
               <Pressable
-                key={c.label}
+                key={value}
                 style={[styles.chip, active && styles.chipActive]}
-                onPress={() => setStatusFilter(c.value)}
+                onPress={() => setStatusFilter(value)}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.label}</Text>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {statusFilterLabel(t, value)}
+                </Text>
               </Pressable>
             );
           })}
         </ScrollView>
-        <Text style={[styles.filterLabel, styles.filterLabelSecond]}>الفترة</Text>
+        <Text style={[styles.filterLabel, styles.filterLabelSecond]}>{t("ordersHistory.filterRange")}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -261,39 +272,40 @@ export function OrderHistoryScreen({
             const active = rangePreset === c.value;
             return (
               <Pressable
-                key={c.label}
+                key={c.value}
                 style={[styles.chip, active && styles.chipActive]}
                 onPress={() => setRangePreset(c.value)}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.label}</Text>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(c.i18nKey)}</Text>
               </Pressable>
             );
           })}
         </ScrollView>
         {query.isSuccess ? (
           <Text style={styles.countLine}>
-            {totalCount === 0 ? "لا نتائج" : `${totalCount} طلب`}
+            {totalCount === 0
+              ? t("ordersHistory.countNone")
+              : t("ordersHistory.countOrders", { count: totalCount })}
           </Text>
         ) : null}
       </View>
     );
-  }, [archiveMode, minimalChrome, statusFilter, rangePreset, query.isSuccess, totalCount, listHeaderTop]);
+  }, [archiveMode, minimalChrome, statusFilter, rangePreset, query.isSuccess, totalCount, listHeaderTop, t]);
 
   const listHeaderMain = useMemo(
     () => (
       <View>
         {!archiveMode && minimalChrome ? (
           <View style={[styles.minimalScreenTitle, styles.minimalScreenTitleDense]}>
-            <Text style={styles.minimalScreenTitleTextDense}>الطلبات</Text>
+            <Text style={styles.minimalScreenTitleTextDense}>{t("ordersHistory.minimalTitle")}</Text>
             <Text style={styles.minimalScreenSubtitle} numberOfLines={3}>
-              الأسفل: سجل الطلبات (الترتيب من الخادم). عند وجود عرض أو توصيل نشط، يظهر شريط الإجراءات
-              أدناه — القبول والرفض من الشريط وليس من البطاقة فقط.
+              {t("ordersHistory.minimalSub")}
             </Text>
           </View>
         ) : null}
         {!archiveMode && minimalChrome && inlineAssignmentBar ? (
           <View style={styles.assignmentSection}>
-            <Text style={styles.assignmentSectionLabel}>التعيين الحالي</Text>
+            <Text style={styles.assignmentSectionLabel}>{t("ordersHistory.assignmentSectionLabel")}</Text>
             <View style={styles.assignmentSectionCard}>
               {inlineAssignmentBar}
             </View>
@@ -306,9 +318,9 @@ export function OrderHistoryScreen({
               inlineAssignmentBar ? styles.minimalListSectionHeaderAfterAssignment : null,
             ]}
           >
-            <Text style={styles.minimalListSectionTitle}>سجل الطلبات</Text>
+            <Text style={styles.minimalListSectionTitle}>{t("ordersHistory.listSectionTitle")}</Text>
             <Text style={styles.minimalListSectionHint} numberOfLines={2}>
-              بطاقات مستقلة — اضغط للتفاصيل. الصف المميز يربط بنفس الطلب في «التعيين الحالي» إن وُجد.
+              {t("ordersHistory.listSectionHint")}
             </Text>
           </View>
         ) : null}
@@ -316,18 +328,18 @@ export function OrderHistoryScreen({
           listHeaderTop
         ) : !minimalChrome ? (
           <View style={styles.hero}>
-            <Text style={styles.title}>{archiveMode ? "أرشيف الطلبات" : "الطلبات المتاحة"}</Text>
+            <Text style={styles.title}>
+              {archiveMode ? t("ordersHistory.titleArchive") : t("ordersHistory.titleAvailable")}
+            </Text>
             <Text style={styles.sub}>
-              {archiveMode
-                ? "طلبات اكتمل تسليمها فقط — اضغط للتفاصيل"
-                : "الطلبات المسندة والسجل — اضغط للتفاصيل والمسار"}
+              {archiveMode ? t("ordersHistory.heroSubArchive") : t("ordersHistory.heroSubAvailable")}
             </Text>
           </View>
         ) : null}
         {listHeader}
       </View>
     ),
-    [archiveMode, listHeaderTop, listHeader, minimalChrome, inlineAssignmentBar],
+    [archiveMode, listHeaderTop, listHeader, minimalChrome, inlineAssignmentBar, t],
   );
 
   const safeStyle = screenStyles.safe;
@@ -347,20 +359,22 @@ export function OrderHistoryScreen({
               {listHeaderMain}
               <View style={[styles.listScrollShell, styles.center, styles.centerMinimal]}>
                 <ActivityIndicator size="small" color={homeTheme.accent} />
-                <Text style={styles.muted}>Loading orders…</Text>
+                <Text style={styles.muted}>{t("ordersHistory.loading")}</Text>
               </View>
             </>
           ) : (
             <>
               {listHeaderTop ?? (
                 <View style={styles.hero}>
-                  <Text style={styles.title}>{archiveMode ? "أرشيف الطلبات" : "الطلبات المتاحة"}</Text>
-                  <Text style={styles.sub}>جاري التحميل…</Text>
+                  <Text style={styles.title}>
+                    {archiveMode ? t("ordersHistory.titleArchive") : t("ordersHistory.titleAvailable")}
+                  </Text>
+                  <Text style={styles.sub}>{t("ordersHistory.loadingInitial")}</Text>
                 </View>
               )}
               <View style={styles.center}>
                 <ActivityIndicator size="large" color={homeTheme.accent} />
-                <Text style={styles.muted}>جاري جلب الطلبات…</Text>
+                <Text style={styles.muted}>{t("ordersHistory.loading")}</Text>
               </View>
             </>
           )}
@@ -370,7 +384,7 @@ export function OrderHistoryScreen({
   }
 
   if (query.isError) {
-    const errMsg = formatUnknownError(query.error, "Could not load orders.");
+    const errMsg = formatUnknownError(query.error, t("ordersHistory.loadError"));
     return (
       <SafeAreaView style={safeStyle} edges={["top", "left", "right"]}>
         <View
@@ -387,7 +401,7 @@ export function OrderHistoryScreen({
                 <View style={styles.historyInlineError}>
                   <Text style={styles.historyInlineErrorText}>{errMsg}</Text>
                   <Pressable onPress={() => void query.refetch()} style={styles.historyInlineRetry}>
-                    <Text style={styles.historyInlineRetryText}>Retry</Text>
+                    <Text style={styles.historyInlineRetryText}>{t("ordersHistory.retry")}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -396,8 +410,10 @@ export function OrderHistoryScreen({
             <>
               {listHeaderTop ?? (
                 <View style={styles.hero}>
-                  <Text style={styles.title}>{archiveMode ? "أرشيف الطلبات" : "الطلبات المتاحة"}</Text>
-                  <Text style={styles.sub}>تعذّر تحميل القائمة</Text>
+                  <Text style={styles.title}>
+                    {archiveMode ? t("ordersHistory.titleArchive") : t("ordersHistory.titleAvailable")}
+                  </Text>
+                  <Text style={styles.sub}>{t("ordersHistory.errorListSub")}</Text>
                 </View>
               )}
               <QueryErrorState error={query.error} onRetry={() => void query.refetch()} />
@@ -442,7 +458,7 @@ export function OrderHistoryScreen({
             query.isFetchingNextPage ? (
               <View style={styles.footerLoad}>
                 <ActivityIndicator color={homeTheme.accent} />
-                <Text style={styles.muted}>تحميل المزيد…</Text>
+                <Text style={styles.muted}>{t("ordersHistory.loadMore")}</Text>
               </View>
             ) : (
               <View style={{ height: 16 }} />
@@ -450,26 +466,22 @@ export function OrderHistoryScreen({
           }
           ListEmptyComponent={
             minimalChrome ? (
-              <Text style={styles.emptyMinimal}>لا توجد طلبات حاليًا.</Text>
+              <Text style={styles.emptyMinimal}>{t("ordersHistory.emptyMinimal")}</Text>
             ) : archiveMode ? (
               <View style={styles.emptyWrap}>
                 <View style={styles.emptyIcon}>
                   <Ionicons name="archive-outline" size={48} color={homeTheme.textSubtle} />
                 </View>
-                <Text style={styles.emptyTitle}>لا توجد طلبات مُسلَّمة</Text>
-                <Text style={styles.emptyBody}>
-                  جرّب توسيع الفترة أعلاه، أو عد لاحقًا بعد تسليم طلبات جديدة.
-                </Text>
+                <Text style={styles.emptyTitle}>{t("ordersHistory.emptyArchiveTitle")}</Text>
+                <Text style={styles.emptyBody}>{t("ordersHistory.emptyArchiveBody")}</Text>
               </View>
             ) : (
               <View style={styles.emptyWrap}>
                 <View style={styles.emptyIcon}>
                   <Ionicons name="receipt-outline" size={48} color={homeTheme.textSubtle} />
                 </View>
-                <Text style={styles.emptyTitle}>لا توجد طلبات</Text>
-                <Text style={styles.emptyBody}>
-                  جرّب تغيير الفلاتر أعلاه، أو عد لاحقًا بعد تنفيذ طلبات جديدة.
-                </Text>
+                <Text style={styles.emptyTitle}>{t("ordersHistory.emptyListTitle")}</Text>
+                <Text style={styles.emptyBody}>{t("ordersHistory.emptyListBody")}</Text>
               </View>
             )
           }

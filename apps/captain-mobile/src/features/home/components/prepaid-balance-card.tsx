@@ -1,4 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import type { CaptainPrepaidSummaryDto } from "@/services/api/dto";
 import { homeTheme } from "../theme";
 
@@ -7,6 +9,7 @@ type Props = {
 };
 
 export function PrepaidBalanceCard({ balance }: Props) {
+  const { t } = useTranslation();
   if (!balance) return null;
 
   const blocked = balance.blockedFromReceivingOrders;
@@ -16,33 +19,46 @@ export function PrepaidBalanceCard({ balance }: Props) {
   return (
     <View style={[styles.card, tone]}>
       <View style={styles.header}>
-        <Text style={styles.label}>الرصيد المتبقي</Text>
-        <Text style={styles.amount}>{balance.currentBalance} ILS</Text>
+        <View style={styles.headerText}>
+          <Ionicons name="wallet-outline" size={22} color={homeTheme.accent} style={styles.headerIcon} />
+          <View style={styles.headerLabels}>
+            <Text style={styles.label}>{t("prepaid.labelRemaining")}</Text>
+            <Text style={styles.amount} accessibilityRole="text">
+              {balance.readAlignment?.displayBalance ?? balance.currentBalance} ILS
+            </Text>
+          </View>
+        </View>
       </View>
       <View style={styles.metrics}>
         <View style={styles.metric}>
-          <Text style={styles.metricLabel}>نسبة العمولة</Text>
+          <View style={styles.metricHead}>
+            <Ionicons name="pie-chart-outline" size={16} color={homeTheme.gold} />
+            <Text style={styles.metricLabel}>{t("prepaid.metricCommission")}</Text>
+          </View>
           <Text style={styles.metricValue}>{balance.commissionPercent}%</Text>
         </View>
         <View style={styles.metric}>
-          <Text style={styles.metricLabel}>طلبات تقديرية</Text>
+          <View style={styles.metricHead}>
+            <Ionicons name="layers-outline" size={16} color={homeTheme.gold} />
+            <Text style={styles.metricLabel}>{t("prepaid.metricEstimatedOrders")}</Text>
+          </View>
           <Text style={styles.metricValue}>
-            {balance.estimatedRemainingOrders == null ? "حسب رسوم التوصيل" : String(balance.estimatedRemainingOrders)}
+            {balance.estimatedRemainingOrders == null
+              ? t("prepaid.estimatedByFees")
+              : String(balance.estimatedRemainingOrders)}
           </Text>
         </View>
       </View>
-      <Text style={styles.body}>
-        يتم الخصم من رسوم التوصيل فقط بعد تسليم الطلب. مثال: إذا كانت رسوم التوصيل 10 ILS والعمولة 15%، يتم خصم 1.5 ILS بعد التسليم.
-      </Text>
+      <Text style={styles.body}>{t("prepaid.bodyExplain")}</Text>
       <View style={styles.rules}>
-        <Text style={styles.rule}>• لا يتم الخصم إلا بعد تسليم الطلب</Text>
-        <Text style={styles.rule}>• لا يتم الخصم من الطلبات الملغاة</Text>
-        <Text style={styles.rule}>• عند انخفاض الرصيد قد يتوقف استقبال طلبات جديدة حتى الشحن</Text>
+        <Text style={styles.rule}>{t("prepaid.rule1")}</Text>
+        <Text style={styles.rule}>{t("prepaid.rule2")}</Text>
+        <Text style={styles.rule}>{t("prepaid.rule3")}</Text>
       </View>
       {blocked ? (
-        <Text style={styles.blocked}>الرصيد غير كافٍ لاستقبال طلبات جديدة مؤقتًا.</Text>
+        <Text style={styles.blocked}>{t("prepaid.blocked")}</Text>
       ) : low ? (
-        <Text style={styles.low}>رصيدك منخفض. يرجى التواصل مع الإدارة لإعادة الشحن.</Text>
+        <Text style={styles.low}>{t("prepaid.low")}</Text>
       ) : null}
     </View>
   );
@@ -54,28 +70,32 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     backgroundColor: homeTheme.surfaceElevated,
+    ...homeTheme.cardShadow,
   },
   ok: { borderColor: homeTheme.successBorder },
   warning: { borderColor: homeTheme.goldMuted },
   danger: { borderColor: homeTheme.dangerBorder },
-  header: {
+  header: { marginBottom: 2 },
+  headerText: {
     flexDirection: "row-reverse",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    gap: 12,
+    alignItems: "center",
+    gap: 10,
   },
+  headerIcon: { marginTop: 2 },
+  headerLabels: { flex: 1, minWidth: 0, alignItems: "flex-end" },
   label: { color: homeTheme.textMuted, fontSize: 14, fontWeight: "700", textAlign: "right" },
-  amount: { color: homeTheme.text, fontSize: 28, fontWeight: "900", textAlign: "left" },
+  amount: { color: homeTheme.text, fontSize: 28, fontWeight: "900", textAlign: "right", marginTop: 4 },
   metrics: { flexDirection: "row-reverse", gap: 10, marginTop: 14 },
   metric: {
     flex: 1,
     borderRadius: homeTheme.radiusMd,
     padding: 12,
-    backgroundColor: homeTheme.neutralSoft,
+    backgroundColor: homeTheme.inputBg,
     borderWidth: 1,
     borderColor: homeTheme.border,
   },
-  metricLabel: { color: homeTheme.textSubtle, fontSize: 12, textAlign: "right" },
+  metricHead: { flexDirection: "row-reverse", alignItems: "center", gap: 6, marginBottom: 4 },
+  metricLabel: { color: homeTheme.textSubtle, fontSize: 12, textAlign: "right", flex: 1 },
   metricValue: { color: homeTheme.text, fontSize: 16, fontWeight: "800", textAlign: "right", marginTop: 4 },
   body: { color: homeTheme.textMuted, fontSize: 13, lineHeight: 21, textAlign: "right", marginTop: 14 },
   rules: { gap: 5, marginTop: 12 },

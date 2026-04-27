@@ -1,4 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { homeTheme } from "@/features/home/theme";
 
@@ -15,7 +16,9 @@ type Props = {
  * Page header inside Safe Area: optional back + title in one bar (not a floating overlay).
  * Parent should wrap the screen in `SafeAreaView` with top edge.
  */
-export function ScreenHeader({ title, onBack, backLabel = "رجوع" }: Props) {
+export function ScreenHeader({ title, onBack, backLabel }: Props) {
+  const { t } = useTranslation();
+  const resolvedBack = backLabel ?? t("screenHeader.back");
   return (
     <View style={styles.shell}>
       <View style={styles.row} accessibilityRole="header">
@@ -26,10 +29,10 @@ export function ScreenHeader({ title, onBack, backLabel = "رجوع" }: Props) {
               hitSlop={10}
               style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
               accessibilityRole="button"
-              accessibilityLabel={backLabel}
+              accessibilityLabel={resolvedBack}
             >
               <Ionicons name="chevron-forward" size={22} color={homeTheme.text} />
-              <Text style={styles.backText}>{backLabel}</Text>
+              <Text style={styles.backText}>{resolvedBack}</Text>
             </Pressable>
           ) : null}
         </View>

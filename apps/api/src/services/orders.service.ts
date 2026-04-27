@@ -30,6 +30,7 @@ import {
   assertStaffCanAccessOrder,
   resolveStaffTenantOrderListFilter,
 } from "./tenant-scope.service.js";
+import { resolveOrCreateOperationalStoreId } from "./operational-store.service.js";
 import { assertSupervisorReadAccessForOrder, resolveSupervisorReadScopeForList } from "../lib/supervisor-order-read-scope.js";
 import { isCaptainRole, isOrderOperatorRole, isStoreAdminRole, type AppRole } from "../lib/rbac-roles.js";
 import { resolveCanonicalOrderMoneyOnCreate } from "../domain/order-canonical-money.js";
@@ -114,37 +115,23 @@ export const ordersService = {
     }
 
     if (!resolvedStoreId && isOrderOperatorRole(actor.role)) {
-      const existing = await prisma.store.findFirst({
-        where: {
-          isActive: true,
-          ...(staffTenant?.companyId ? { companyId: staffTenant.companyId } : {}),
-          ...(staffTenant!.branchId ? { branchId: staffTenant!.branchId } : {}),
-        },
-        orderBy: { createdAt: "asc" },
-      });
-      if (existing) {
-        resolvedStoreId = existing.id;
+      if (staffTenant?.companyId) {
+        resolvedStoreId = await resolveOrCreateOperationalStoreId({
+          companyId: staffTenant.companyId,
+          branchIdFilter: staffTenant.branchId ?? null,
+          ownerUserId: actor.userId,
+        });
       } else {
-        const defaultBranch = await prisma.branch.findFirst({
-          where: { companyId: staffTenant!.companyId, isActive: true },
+        // Super Admin (or unscoped legacy): keep historical behavior — any active store, oldest first
+        const existing = await prisma.store.findFirst({
+          where: { isActive: true },
           orderBy: { createdAt: "asc" },
         });
-        if (!defaultBranch) {
-          throw new AppError(500, "No active branch configured for this company", "INTERNAL");
+        if (existing) {
+          resolvedStoreId = existing.id;
+        } else {
+          throw new AppError(400, "storeId is required", "BAD_REQUEST");
         }
-        const operationalStore = await prisma.store.create({
-          data: {
-            name: "متجر التشغيل",
-            phone: "0000000000",
-            area: "عام",
-            address: "تشغيل النظام (بدون متجر فعلي)",
-            isActive: true,
-            company: { connect: { id: staffTenant?.companyId ?? defaultBranch.companyId } },
-            branch: { connect: { id: defaultBranch.id } },
-            owner: { connect: { id: actor.userId } },
-          },
-        });
-        resolvedStoreId = operationalStore.id;
       }
     }
 
@@ -161,7 +148,7 @@ export const ordersService = {
       throw new AppError(500, "Store tenant linkage is inconsistent", "INTERNAL");
     }
     if (
-      staffTenant &&
+      staffTenant?.companyId &&
       (store.companyId !== staffTenant.companyId || (staffTenant.branchId && store.branchId !== staffTenant.branchId))
     ) {
       throw new AppError(403, "Cannot create order for another company or branch", "FORBIDDEN");
@@ -199,32 +186,35 @@ export const ordersService = {
       cashCollection: input.cashCollection,
     });
 
-    const order = await orderRepository.create({
-      orderNumber: generateOrderNumber(),
-      customerName: input.customerName,
-      customerPhone: input.customerPhone,
-      company: { connect: { id: store.companyId } },
-      branch: { connect: { id: store.branchId } },
-      store: { connect: { id: resolvedStoreId } },
-      pickupAddress: input.pickupAddress,
-      dropoffAddress: input.dropoffAddress,
-      pickupLat: input.pickupLatitude ?? store.latitude ?? null,
-      pickupLng: input.pickupLongitude ?? store.longitude ?? null,
-      dropoffLat: input.dropoffLatitude ?? null,
-      dropoffLng: input.dropoffLongitude ?? null,
-      area: input.area,
-      amount: resolvedMoney.amount,
-      cashCollection: resolvedMoney.cashCollection,
-      deliveryFee: resolvedMoney.deliveryFee,
-      notes: input.notes ?? null,
-      status: OrderStatus.PENDING,
-      distributionMode: input.distributionMode ?? DistributionMode.AUTO,
-      createdBy: { connect: { id: actor.userId } },
-      ...(linkedCustomerUserId ? { customerUser: { connect: { id: linkedCustomerUserId } } } : {}),
-      ...(ownerConnect ? { ownerUser: ownerConnect } : {}),
-      ...(orderPublicOwnerCode ? { orderPublicOwnerCode } : {}),
-      ...(zoneConnect ? { zone: zoneConnect } : {}),
-    });
+    const order = await orderRepository.createWithDisplaySequence(
+      {
+        orderNumber: generateOrderNumber(),
+        customerName: input.customerName,
+        customerPhone: input.customerPhone,
+        company: { connect: { id: store.companyId } },
+        branch: { connect: { id: store.branchId } },
+        store: { connect: { id: resolvedStoreId } },
+        pickupAddress: input.pickupAddress,
+        dropoffAddress: input.dropoffAddress,
+        pickupLat: input.pickupLatitude ?? store.latitude ?? null,
+        pickupLng: input.pickupLongitude ?? store.longitude ?? null,
+        dropoffLat: input.dropoffLatitude ?? null,
+        dropoffLng: input.dropoffLongitude ?? null,
+        area: input.area,
+        amount: resolvedMoney.amount,
+        cashCollection: resolvedMoney.cashCollection,
+        deliveryFee: resolvedMoney.deliveryFee,
+        notes: input.notes ?? null,
+        status: OrderStatus.PENDING,
+        distributionMode: input.distributionMode ?? DistributionMode.AUTO,
+        createdBy: { connect: { id: actor.userId } },
+        ...(linkedCustomerUserId ? { customerUser: { connect: { id: linkedCustomerUserId } } } : {}),
+        ...(ownerConnect ? { ownerUser: ownerConnect } : {}),
+        ...(orderPublicOwnerCode ? { orderPublicOwnerCode } : {}),
+        ...(zoneConnect ? { zone: zoneConnect } : {}),
+      },
+      store.companyId,
+    );
 
     await activityService.log(actor.userId, "ORDER_CREATED", "order", order.id, {});
     return order;
@@ -262,9 +252,6 @@ export const ordersService = {
       });
       if (tenant.companyId) filters.companyId = tenant.companyId;
       if (tenant.branchId) filters.branchId = tenant.branchId;
-      if (actor.role === "COMPANY_ADMIN") {
-        filters.companyAdminOwnerUserId = actor.userId;
-      }
       const supRead = await resolveSupervisorReadScopeForList({
         userId: actor.userId,
         role: actor.role,

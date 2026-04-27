@@ -7,7 +7,9 @@ export {
 } from "./append-ledger-entry.js";
 export {
   transfer,
+  transferInTx,
   type TransferInput,
+  type TransferInTxOptions,
   type TransferResult,
   TRANSFER_FROM_KEY_SUFFIX,
   TRANSFER_TO_KEY_SUFFIX,

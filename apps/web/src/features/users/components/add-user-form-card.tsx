@@ -1,5 +1,5 @@
-import { type FormEvent, useState } from "react";
-import { useCreateUser } from "@/hooks";
+import { type FormEvent, useEffect, useState } from "react";
+import { useCreateUser, useCompaniesForSuperAdmin } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InlineAlert } from "@/components/ui/inline-alert";
@@ -7,12 +7,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { userRoleLabel } from "@/lib/user-role";
 import { USER_ROLE_CREATE_OPTIONS } from "@/features/users/constants";
+import { CreateCompanyModal } from "./create-company-modal";
 
 export function AddUserFormCard() {
   const create = useCreateUser();
+  const companiesQ = useCompaniesForSuperAdmin();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [role, setRole] = useState("");
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [createCompanyOpen, setCreateCompanyOpen] = useState(false);
   const [lastCreated, setLastCreated] = useState<{ code: string; fullName: string } | null>(null);
+
+  useEffect(() => {
+    if (role !== "COMPANY_ADMIN") {
+      setSelectedCompanyId("");
+    }
+  }, [role]);
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -22,14 +32,22 @@ export function AddUserFormCard() {
     const password = String(form.get("password") ?? "");
     const roleVal = String(form.get("role") ?? "");
     const emailRaw = String(form.get("email") ?? "").trim();
-    const companyIdRaw = String(form.get("companyId") ?? "").trim();
 
     const next: Record<string, string> = {};
     if (!fullName) next.fullName = "الاسم مطلوب.";
     if (!phone) next.phone = "الهاتف مطلوب.";
     if (password.length < 8) next.password = "كلمة المرور 8 أحرف على الأقل.";
     if (!roleVal) next.role = "اختر الدور.";
-    if (roleVal === "COMPANY_ADMIN" && !companyIdRaw) next.companyId = "معرف الشركة مطلوب لمدير الشركة.";
+    if (roleVal === "COMPANY_ADMIN") {
+      if (!selectedCompanyId) {
+        next.companyId = "يرجى اختيار الشركة";
+      } else {
+        const exists = (companiesQ.data ?? []).some((c) => c.id === selectedCompanyId);
+        if (!exists) {
+          next.companyId = "الشركة المختارة غير موجودة. حدّث القائمة أو اختر شركة أخرى.";
+        }
+      }
+    }
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -40,12 +58,13 @@ export function AddUserFormCard() {
         password,
         role: roleVal,
         ...(emailRaw ? { email: emailRaw } : {}),
-        ...(roleVal === "COMPANY_ADMIN" && companyIdRaw ? { companyId: companyIdRaw } : {}),
+        ...(roleVal === "COMPANY_ADMIN" && selectedCompanyId ? { companyId: selectedCompanyId } : {}),
       },
       {
         onSuccess: (data) => {
           e.currentTarget.reset();
           setRole("");
+          setSelectedCompanyId("");
           setErrors({});
           if (data.role === "COMPANY_ADMIN" && data.publicOwnerCode) {
             setLastCreated({ code: data.publicOwnerCode, fullName: data.fullName });
@@ -58,6 +77,7 @@ export function AddUserFormCard() {
   }
 
   const err = (k: string) => (errors[k] ? "border-red-500" : "");
+  const companies = companiesQ.data ?? [];
 
   return (
     <Card className="border-card-border border-dashed shadow-sm">
@@ -101,15 +121,47 @@ export function AddUserFormCard() {
           </div>
           {role === "COMPANY_ADMIN" ? (
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="add-companyId">معرف الشركة (cuid)</Label>
-              <Input
-                id="add-companyId"
-                name="companyId"
-                dir="ltr"
-                className={`font-mono text-left ${err("companyId")}`}
-                placeholder="مثال: clxxxxxxxx..."
-              />
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <Label htmlFor="add-company" className="!mb-0">
+                  الشركة
+                </Label>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => setCreateCompanyOpen(true)}
+                >
+                  إنشاء شركة جديدة
+                </Button>
+              </div>
+              <select
+                id="add-company"
+                className={`h-10 w-full min-w-0 rounded-lg border border-card-border bg-card px-3 text-sm ${err("companyId")}`}
+                value={selectedCompanyId}
+                onChange={(ev) => setSelectedCompanyId(ev.target.value)}
+                disabled={companiesQ.isLoading}
+                aria-label="الشركة"
+                aria-invalid={Boolean(errors.companyId)}
+              >
+                <option value="" disabled>
+                  اختر الشركة
+                </option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {companiesQ.isError ? (
+                <p className="text-xs text-red-600">{(companiesQ.error as Error).message}</p>
+              ) : null}
               {errors.companyId ? <p className="text-xs text-red-600">{errors.companyId}</p> : null}
+              {!companiesQ.isLoading && companies.length === 0 && !companiesQ.isError ? (
+                <InlineAlert variant="info">
+                  لا توجد شركات بعد. اضغط &quot;إنشاء شركة جديدة&quot; لإضافة شركة ثم اخترها هنا.
+                </InlineAlert>
+              ) : null}
             </div>
           ) : null}
           <div className="grid gap-2 sm:col-span-2">
@@ -140,6 +192,11 @@ export function AddUserFormCard() {
             </Button>
           </div>
         </form>
+        <CreateCompanyModal
+          open={createCompanyOpen}
+          onClose={() => setCreateCompanyOpen(false)}
+          onCreated={(c) => setSelectedCompanyId(c.id)}
+        />
       </CardContent>
     </Card>
   );

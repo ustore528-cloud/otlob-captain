@@ -83,6 +83,8 @@ export type OrderAssignmentLogDto = {
 export type OrderDetailDto = {
   id: string;
   orderNumber: string;
+  /** Per-company display sequence; null on legacy rows until backfill. */
+  displayOrderNo: number | null;
   /** الكابتن المعيّن حاليًا على الطلب — يُستخدم للتمييز بين عرض قديم وبيانات الطلب الحالية */
   assignedCaptainId: string | null;
   status: OrderStatus;
@@ -126,6 +128,7 @@ export type OrderDetailDto = {
 export type OrderListItemDto = {
   id: string;
   orderNumber: string;
+  displayOrderNo: number | null;
   status: OrderStatus;
   distributionMode: DistributionMode;
   customerName: string;
@@ -154,6 +157,7 @@ export type OrderListItemDto = {
 type OrderWithStore = {
   id: string;
   orderNumber: string;
+  displayOrderNo?: number | null;
   assignedCaptainId: string | null;
   status: OrderStatus;
   distributionMode: DistributionMode;
@@ -238,6 +242,7 @@ export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
   return {
     id: order.id,
     orderNumber: order.orderNumber,
+    displayOrderNo: order.displayOrderNo ?? null,
     assignedCaptainId: order.assignedCaptainId,
     status: order.status,
     distributionMode: order.distributionMode,
@@ -304,6 +309,7 @@ export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
 export function toOrderListItemDto(order: {
   id: string;
   orderNumber: string;
+  displayOrderNo?: number | null;
   status: OrderStatus;
   distributionMode: DistributionMode;
   assignedCaptainId: string | null;
@@ -355,6 +361,7 @@ export function toOrderListItemDto(order: {
   return {
     id: order.id,
     orderNumber: order.orderNumber,
+    displayOrderNo: order.displayOrderNo ?? null,
     status: order.status,
     distributionMode: order.distributionMode,
     customerName: order.customerName,

@@ -1,16 +1,29 @@
-import { LedgerEntryType, Prisma, WalletOwnerType } from "@prisma/client";
+import { Prisma, WalletOwnerType } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/errors.js";
 import { isCompanyAdminRole, type AppRole } from "../lib/rbac-roles.js";
-import { appendLedgerEntryInTx, ensureWalletAccountInTx, money } from "./ledger/index.js";
+import { getOrCreateCompanyWallet } from "./company-wallet.service.js";
+import { money } from "./ledger/money.js";
+import { ensureWalletAccountInTx } from "./ledger/index.js";
+import { transferInTx, type TransferInTxOptions } from "./ledger/transfer.js";
 
-const CA_PREFIX_STORE = "ca-topup:store";
-
+/** ReadCommitted: two `WALLET_TRANSFER` legs in one tx can dead-lock under `Serializable` on some DBs. */
 const LEDGER_TX = {
   maxWait: 10_000,
   timeout: 30_000,
-  isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+  isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
 } as const;
+
+/** Namespace for company → store CA top-up; paired legs use `::WALLET_TRANSFER:from` / `::WALLET_TRANSFER:to`. */
+export const COMPANY_ADMIN_STORE_TOPUP_BASE_PREFIX = "ca31:co-to-store" as const;
+
+export function buildCompanyAdminStoreTopUpTransferBase(
+  companyId: string,
+  storeId: string,
+  clientIdempotencyKey: string,
+): string {
+  return `${COMPANY_ADMIN_STORE_TOPUP_BASE_PREFIX}:${companyId}:${storeId}:${clientIdempotencyKey.trim()}`;
+}
 
 export type CompanyAdminStoreTopUpActor = {
   userId: string;
@@ -22,7 +35,9 @@ export type CompanyAdminStoreTopUpActor = {
 export type CompanyAdminStoreTopUpResult = {
   storeId: string;
   walletAccountId: string;
+  /** Ledger line on the **store** (credit) leg. */
   ledgerEntryId: string;
+  companyLedgerEntryId: string;
   balanceBefore: string;
   balanceAfter: string;
   idempotent: boolean;
@@ -30,8 +45,9 @@ export type CompanyAdminStoreTopUpResult = {
 };
 
 /**
- * Company Admin: add funds to a **store** wallet in their own company only.
+ * Company Admin: move funds from the **company** wallet to a **store** wallet (same company only).
  * `companyId` is taken from the actor only; never from the client.
+ * Insufficient company balance → 409 `INSUFFICIENT_COMPANY_BALANCE`.
  */
 export async function companyAdminTopUpStoreWallet(
   actor: CompanyAdminStoreTopUpActor,
@@ -70,32 +86,58 @@ export async function companyAdminTopUpStoreWallet(
     if (store.companyId !== actor.companyId) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
-    const wallet = await ensureWalletAccountInTx(tx, {
+
+    const companyWallet = await getOrCreateCompanyWallet(actor.companyId, tx);
+    const storeCurrency = input.currency?.trim() || companyWallet.currency;
+    const storeWallet = await ensureWalletAccountInTx(tx, {
       ownerType: WalletOwnerType.STORE,
       ownerId: store.id,
       companyId: store.companyId,
-      currency: input.currency,
+      currency: storeCurrency,
     });
-    const balanceBefore = money(wallet.balanceCached).toFixed(2);
-    const idem = `${CA_PREFIX_STORE}:${input.storeId}:${clientIdem}`;
-    const r = await appendLedgerEntryInTx(tx, {
-      walletAccountId: wallet.id,
-      entryType: LedgerEntryType.SUPER_ADMIN_TOP_UP,
-      amount: amt,
-      idempotencyKey: idem,
-      currency: input.currency,
-      createdByUserId: actor.userId,
-      referenceType: "STORE",
-      referenceId: store.id,
-      metadata: { source: "company_admin_store_wallet_topup", reason },
-    });
+    if (storeWallet.currency !== companyWallet.currency) {
+      throw new AppError(
+        400,
+        "Store wallet currency must match the company wallet for this transfer",
+        "WALLET_CURRENCY_MISMATCH",
+      );
+    }
+
+    const balanceBefore = money(storeWallet.balanceCached).toFixed(2);
+    const base = buildCompanyAdminStoreTopUpTransferBase(actor.companyId, store.id, clientIdem);
+
+    const commonMeta = {
+      companyId: actor.companyId,
+      storeId: store.id,
+      reason,
+      operation: "company_admin_store_topup",
+    } as const;
+
+    const transferOpts: TransferInTxOptions = { requireFromBalanceGteAmount: true };
+
+    const tr = await transferInTx(
+      tx,
+      {
+        fromAccountId: companyWallet.id,
+        toAccountId: storeWallet.id,
+        amount: amt,
+        idempotencyKey: base,
+        createdByUserId: actor.userId,
+        metadataFrom: { ...commonMeta, source: "company_admin_store_topup_company_debit" },
+        metadataTo: { ...commonMeta, source: "company_admin_store_topup_store_credit" },
+      },
+      transferOpts,
+    );
+
+    const storeAcc = await tx.walletAccount.findUniqueOrThrow({ where: { id: storeWallet.id } });
     return {
       storeId: store.id,
-      walletAccountId: r.account.id,
-      ledgerEntryId: r.entry.id,
+      walletAccountId: storeAcc.id,
+      ledgerEntryId: tr.to.id,
+      companyLedgerEntryId: tr.from.id,
       balanceBefore,
-      balanceAfter: money(r.account.balanceCached).toFixed(2),
-      idempotent: r.idempotent,
+      balanceAfter: money(storeAcc.balanceCached).toFixed(2),
+      idempotent: tr.idempotent,
       idempotencyKey: clientIdem,
     };
   }, LEDGER_TX);

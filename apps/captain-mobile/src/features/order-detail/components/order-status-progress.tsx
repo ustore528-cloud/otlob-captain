@@ -1,14 +1,15 @@
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { OrderStatusDto } from "@/services/api/dto";
-import { orderStatusAr } from "@/lib/order-status-ar";
+import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
 import { homeTheme } from "@/features/home/theme";
 
-const DELIVERY_CHAIN: { status: OrderStatusDto; label: string }[] = [
-  { status: "ACCEPTED", label: "قبول الطلب" },
-  { status: "PICKED_UP", label: "الاستلام من المتجر" },
-  { status: "IN_TRANSIT", label: "في الطريق للعميل" },
-  { status: "DELIVERED", label: "تسليم الطلب" },
+const DELIVERY_CHAIN: { status: OrderStatusDto; labelKey: string }[] = [
+  { status: "ACCEPTED", labelKey: "orderStatusProgress.stepAccepted" },
+  { status: "PICKED_UP", labelKey: "orderStatusProgress.stepPickedUp" },
+  { status: "IN_TRANSIT", labelKey: "orderStatusProgress.stepInTransit" },
+  { status: "DELIVERED", labelKey: "orderStatusProgress.stepDelivered" },
 ];
 
 function deliveryStepIndex(s: OrderStatusDto): number {
@@ -18,20 +19,21 @@ function deliveryStepIndex(s: OrderStatusDto): number {
 
 type Props = {
   status: OrderStatusDto;
-  /** تقليل الحجم لشاشة تفاصيل الطلب */
   compact?: boolean;
 };
 
 /**
- * شريط تقدّم لمسار التسليم بعد القبول؛ وعرض مختصر للحالات الأخرى.
+ * Delivery progress after acceptance; short summary for other statuses.
  */
 export function OrderStatusProgress({ status, compact }: Props) {
+  const { t } = useTranslation();
+
   if (status === "CANCELLED") {
     return (
       <View style={[styles.bannerDanger, compact && styles.bannerDangerCompact]}>
         <Ionicons name="close-circle" size={compact ? 18 : 22} color={homeTheme.danger} />
         <Text style={[styles.bannerDangerText, compact && styles.bannerDangerTextCompact]}>
-          هذا الطلب ملغى ولا يمكن متابعة التسليم.
+          {t("orderStatusProgress.cancelledBanner")}
         </Text>
       </View>
     );
@@ -41,7 +43,7 @@ export function OrderStatusProgress({ status, compact }: Props) {
   if (di >= 0) {
     return (
       <View style={[styles.card, compact && styles.cardCompact]}>
-        <Text style={[styles.sectionTitle, compact && styles.sectionTitleCompact]}>تقدّم التسليم</Text>
+        <Text style={[styles.sectionTitle, compact && styles.sectionTitleCompact]}>{t("orderStatusProgress.title")}</Text>
         <View style={styles.steps}>
           {DELIVERY_CHAIN.map((step, idx) => {
             const done = status === "DELIVERED" || idx < di;
@@ -74,10 +76,10 @@ export function OrderStatusProgress({ status, compact }: Props) {
                       (done || current) && styles.stepLabelActive,
                     ]}
                   >
-                    {step.label}
+                    {t(step.labelKey)}
                   </Text>
                   {current ? (
-                    <Text style={[styles.stepSub, compact && styles.stepSubCompact]}>الخطوة الحالية</Text>
+                    <Text style={[styles.stepSub, compact && styles.stepSubCompact]}>{t("orderStatusProgress.currentStep")}</Text>
                   ) : null}
                 </View>
               </View>
@@ -92,15 +94,11 @@ export function OrderStatusProgress({ status, compact }: Props) {
     <View style={[styles.bannerInfo, compact && styles.bannerInfoCompact]}>
       <Ionicons name="information-circle-outline" size={compact ? 18 : 22} color={homeTheme.warning} />
       <View style={{ flex: 1 }}>
-        <Text style={[styles.bannerInfoTitle, compact && styles.bannerInfoTitleCompact]}>قبل بدء التسليم</Text>
+        <Text style={[styles.bannerInfoTitle, compact && styles.bannerInfoTitleCompact]}>{t("orderStatusProgress.beforeDeliveryTitle")}</Text>
         <Text style={[styles.bannerInfoBody, compact && styles.bannerInfoBodyCompact]}>
-          الحالة الحالية: <Text style={styles.em}>{orderStatusAr[status] ?? status}</Text>
+          {t("orderStatusProgress.currentStatus", { status: t(orderStatusTranslationKey(status)) })}
         </Text>
-        {!compact ? (
-          <Text style={styles.bannerInfoHint}>
-            بعد قبول العرض وتحويل الطلب إلى «مقبول»، يظهر هنا مسار الاستلام والتسليم خطوة بخطوة.
-          </Text>
-        ) : null}
+        {!compact ? <Text style={styles.bannerInfoHint}>{t("orderStatusProgress.beforeDeliveryHint")}</Text> : null}
       </View>
     </View>
   );
@@ -254,7 +252,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
     lineHeight: 22,
   },
-  em: { color: homeTheme.accent, fontWeight: "800" },
   bannerInfoHint: {
     color: homeTheme.textSubtle,
     fontSize: 12,

@@ -30,6 +30,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: homeTheme.border,
     overflow: "hidden",
+    ...homeTheme.cardShadow,
   },
   cardCompact: {
     borderRadius: homeTheme.radiusMd,

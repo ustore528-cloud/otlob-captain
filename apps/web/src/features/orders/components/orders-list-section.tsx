@@ -15,6 +15,7 @@ import { ORDER_STATUS_FILTER_VALUES } from "@/features/orders/constants";
 import { storeSubscriptionLabel } from "@/lib/store-subscription-label";
 import { tableDateLocale } from "@/i18n/date-locale";
 import { ADMIN_OVERRIDE_TARGET_STATUSES, type AdminOverrideTargetStatus } from "@/hooks";
+import { formatOrderDisplayLabel } from "@captain/shared";
 import type { OrderListItem, OrderStatus } from "@/types/api";
 import { OrderFinancialStrip } from "@/features/orders/components/order-financial-strip";
 
@@ -58,6 +59,8 @@ type Props = {
   /** تعطيل زر «تعديل الحالة» في الجدول فقط للصف الذي يُنفَّذ عليه الطلب */
   adminOverrideRowPendingOrderId: string | null;
   onOpenDetail?: (order: OrderListItem) => void;
+  /** Company Admin: hide store column and neutral financial wording */
+  hideStoreContext?: boolean;
 };
 
 export function OrdersListSection({
@@ -93,6 +96,7 @@ export function OrdersListSection({
   adminOverridePending,
   adminOverrideRowPendingOrderId,
   onOpenDetail,
+  hideStoreContext = false,
 }: Props) {
   const { t, i18n } = useTranslation();
   const dateLocale = tableDateLocale(i18n.resolvedLanguage ?? i18n.language);
@@ -192,7 +196,13 @@ export function OrdersListSection({
             </div>
           </Modal>
           <TableShell>
-          <table className="w-full min-w-[1100px] border-separate border-spacing-0 text-sm md:min-w-[1180px]">
+          <table
+            className={`w-full border-separate border-spacing-0 text-sm ${
+              hideStoreContext
+                ? "min-w-[900px] md:min-w-[980px]"
+                : "min-w-[1100px] md:min-w-[1180px]"
+            }`}
+          >
             <thead>
               <tr className="bg-muted/30 text-muted">
                 <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colOrder")}</th>
@@ -201,7 +211,9 @@ export function OrdersListSection({
                 </th>
                 <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colStatus")}</th>
                 <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colCustomer")}</th>
-                <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colStore")}</th>
+                {hideStoreContext ? null : (
+                  <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colStore")}</th>
+                )}
                 <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colArea")}</th>
                 <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colDate")}</th>
                 <th className="border-b border-card-border px-3 py-2 text-right font-medium">{t("orders.list.colActions")}</th>
@@ -210,8 +222,12 @@ export function OrdersListSection({
             <tbody>
               {rows.map((o) => (
                 <tr key={o.id} className="hover:bg-accent/40">
-                  <td className="border-b border-card-border px-3 py-3 align-top font-mono text-xs" dir="ltr">
-                    {o.orderNumber}
+                  <td
+                    className="border-b border-card-border px-3 py-3 align-top text-sm tabular-nums"
+                    dir="ltr"
+                    title={o.orderNumber}
+                  >
+                    {formatOrderDisplayLabel(o.displayOrderNo ?? null, o.orderNumber)}
                   </td>
                   <td className="border-b border-card-border px-3 py-3 align-top min-w-[200px] max-w-[260px]">
                     <OrderFinancialStrip
@@ -219,6 +235,7 @@ export function OrdersListSection({
                       cashCollection={o.cashCollection}
                       deliveryFee={o.deliveryFee ?? null}
                       variant="list"
+                      amountLineKey={hideStoreContext ? "orderAmount" : "storeAmount"}
                     />
                   </td>
                   <td className="border-b border-card-border px-3 py-3 align-top">
@@ -230,42 +247,44 @@ export function OrdersListSection({
                       {o.customerPhone}
                     </div>
                   </td>
-                  <td className="border-b border-card-border px-3 py-3 align-top text-xs">
-                    <div className="font-medium text-foreground">{o.store.name}</div>
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <Badge variant="muted" className="font-normal">
-                        {storeSubscriptionLabel(o.store.subscriptionType)}
-                      </Badge>
-                      <span className="font-mono text-[10px] text-muted" dir="ltr">
-                        {o.store.subscriptionType}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-[11px] text-muted">
-                      {t("orders.list.supervisor")}:{" "}
-                      {o.store.supervisorUser ? (
-                        <>
-                          {o.store.supervisorUser.fullName}
-                          <span className="mx-0.5">·</span>
-                          <span dir="ltr">{o.store.supervisorUser.phone}</span>
-                        </>
-                      ) : (
-                        t("orders.list.noSupervisor")
-                      )}
-                    </div>
-                    <div className="mt-0.5 text-[11px] text-muted">
-                      {t("orders.list.region")}:{" "}
-                      {o.store.primaryRegion ? (
-                        <>
-                          {o.store.primaryRegion.name}
-                          <span className="mx-0.5 font-mono text-[10px]" dir="ltr">
-                            ({o.store.primaryRegion.code})
-                          </span>
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </div>
-                  </td>
+                  {hideStoreContext ? null : (
+                    <td className="border-b border-card-border px-3 py-3 align-top text-xs">
+                      <div className="font-medium text-foreground">{o.store.name}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <Badge variant="muted" className="font-normal">
+                          {storeSubscriptionLabel(o.store.subscriptionType)}
+                        </Badge>
+                        <span className="font-mono text-[10px] text-muted" dir="ltr">
+                          {o.store.subscriptionType}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[11px] text-muted">
+                        {t("orders.list.supervisor")}:{" "}
+                        {o.store.supervisorUser ? (
+                          <>
+                            {o.store.supervisorUser.fullName}
+                            <span className="mx-0.5">·</span>
+                            <span dir="ltr">{o.store.supervisorUser.phone}</span>
+                          </>
+                        ) : (
+                          t("orders.list.noSupervisor")
+                        )}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-muted">
+                        {t("orders.list.region")}:{" "}
+                        {o.store.primaryRegion ? (
+                          <>
+                            {o.store.primaryRegion.name}
+                            <span className="mx-0.5 font-mono text-[10px]" dir="ltr">
+                              ({o.store.primaryRegion.code})
+                            </span>
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </div>
+                    </td>
+                  )}
                   <td className="border-b border-card-border px-3 py-3 align-top text-xs">{o.area}</td>
                   <td className="border-b border-card-border px-3 py-3 align-top text-xs text-muted" dir="ltr">
                     {new Date(o.createdAt).toLocaleString(dateLocale, { hour12: false })}

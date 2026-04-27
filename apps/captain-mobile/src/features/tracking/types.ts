@@ -6,7 +6,10 @@ export type NetworkReachability = "online" | "offline" | "unknown";
 
 /** لقطة لعرضها في الواجهة — لا تُخزَّن في الـ store العام */
 export type CaptainTrackingSnapshot = {
-  /** المستخدم فعّل التتبع من الواجهة */
+  /**
+   * Location sending is active when the captain is not OFFLINE (same signal as home availability).
+   * No separate manual tracking toggle.
+   */
   sessionEnabled: boolean;
   permission: ForegroundPermissionState;
   /** الشبكة (NetInfo) */

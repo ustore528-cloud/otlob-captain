@@ -37,6 +37,8 @@ export type DistributionMode = "AUTO" | "MANUAL";
 export type OrderListItem = {
   id: string;
   orderNumber: string;
+  /** Per-company UI sequence from API; null until backfill for legacy rows. */
+  displayOrderNo?: number | null;
   status: OrderStatus;
   distributionMode: DistributionMode;
   customerName: string;
@@ -81,6 +83,7 @@ export type OrderAssignmentLogItem = {
 export type OrderDetail = {
   id: string;
   orderNumber: string;
+  displayOrderNo?: number | null;
   assignedCaptainId: string | null;
   status: OrderStatus;
   distributionMode: DistributionMode;

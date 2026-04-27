@@ -14,6 +14,7 @@ import { resolveDashboardMapView } from "@/features/distribution/map-default-vie
 import { ManualAssignModal } from "@/features/shared/manual-assign-modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { ASSIGNED_LIST_PARAMS, CONFIRMED_LIST_PARAMS, PENDING_LIST_PARAMS } from "@/features/distribution/constants";
+import { formatOrderDisplayLabel } from "@captain/shared";
 import { formatDistributionQueueSerial } from "@/features/distribution/distribution-queue-serial";
 import { AutoDistributeButton } from "@/features/distribution/components/auto-distribute-button";
 import { CaptainMiniCard } from "@/features/distribution/components/captain-mini-card";
@@ -21,7 +22,7 @@ import { DistributionMap } from "@/features/distribution/distribution-map";
 import { GoogleTrackingMap, hasGoogleMapsApiKey } from "@/features/distribution/components/google-tracking-map";
 import { OrdersPanel } from "@/features/distribution/components/orders-panel";
 import { filterCaptainsForManualAssign, isCaptainRosterDropAllowed } from "@/features/distribution/supervisor-assign-ui";
-import { isDispatchRole } from "@/lib/rbac-roles";
+import { isCompanyAdminRole, isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ActiveMapCaptain, OrderListItem } from "@/types/api";
 
@@ -61,6 +62,8 @@ function useDispatchRole() {
 
 export function DistributionPageView() {
   const token = useAuthStore((s) => s.token);
+  const role = useAuthStore((s) => s.user?.role);
+  const isCompanyAdmin = isCompanyAdminRole(role);
   const canDispatch = useDispatchRole();
   const [dragOrderId, setDragOrderId] = useState<string | null>(null);
   const [manualOrder, setManualOrder] = useState<OrderListItem | null>(null);
@@ -117,13 +120,20 @@ export function DistributionPageView() {
     },
     [ordersById, captainRoster],
   );
-  const onDropScopeRejected = useCallback(() => toast.error("هذا الكابتن خارج نطاق مشرف المتجر لهذا الطلب."), []);
+  const onDropScopeRejected = useCallback(() => {
+    toast.error(
+      isCompanyAdmin
+        ? "هذا الكابتن خارج نطاق التوزيع المسموح لهذا الطلب."
+        : "هذا الكابتن خارج نطاق مشرف المتجر لهذا الطلب.",
+    );
+  }, [isCompanyAdmin]);
 
   const manualOrderLabel = useMemo(() => {
     if (!manualOrder) return "";
     const i = mergedOrders.findIndex((o) => o.id === manualOrder.id);
-    if (i < 0) return manualOrder.orderNumber;
-    return `${formatDistributionQueueSerial(i, mergedOrders.length)} · ${manualOrder.orderNumber}`;
+    const ref = formatOrderDisplayLabel(manualOrder.displayOrderNo ?? null, manualOrder.orderNumber);
+    if (i < 0) return ref;
+    return `${formatDistributionQueueSerial(i, mergedOrders.length)} · ${ref}`;
   }, [manualOrder, mergedOrders]);
 
   const resend = useResendOrderToDistribution();

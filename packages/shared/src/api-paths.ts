@@ -23,6 +23,8 @@ export const paths = {
   /** قائمة شركات نشطة — SUPER_ADMIN فقط */
   companies: {
     root: `${API_V1}/companies`,
+    deletePreview: (companyId: string) => `${API_V1}/companies/${companyId}/delete-preview`,
+    archive: (companyId: string) => `${API_V1}/companies/${companyId}/archive`,
   },
   branches: {
     root: `${API_V1}/branches`,

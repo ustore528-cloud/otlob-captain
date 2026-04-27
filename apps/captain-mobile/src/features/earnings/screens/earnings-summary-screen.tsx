@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Pressable,
@@ -23,12 +24,31 @@ import type { EarningsSummaryQuery } from "@/services/api/dto";
 
 type RangePreset = "all" | "7d" | "30d" | "month";
 
-const RANGE_CHIPS: { value: RangePreset; label: string }[] = [
-  { value: "all", label: "كل الفترات" },
-  { value: "7d", label: "آخر 7 أيام" },
-  { value: "30d", label: "آخر 30 يومًا" },
-  { value: "month", label: "هذا الشهر" },
+const RANGE_CHIPS: { value: RangePreset; i18nKey: string }[] = [
+  { value: "all", i18nKey: "earnings.rangeAll" },
+  { value: "7d", i18nKey: "earnings.range7d" },
+  { value: "30d", i18nKey: "earnings.range30d" },
+  { value: "month", i18nKey: "earnings.rangeMonth" },
 ];
+
+function rangeDescriptionI18nKey(preset: RangePreset):
+  | "earnings.rangeDescAll"
+  | "earnings.rangeDesc7d"
+  | "earnings.rangeDesc30d"
+  | "earnings.rangeDescMonth" {
+  switch (preset) {
+    case "all":
+      return "earnings.rangeDescAll";
+    case "7d":
+      return "earnings.rangeDesc7d";
+    case "30d":
+      return "earnings.rangeDesc30d";
+    case "month":
+      return "earnings.rangeDescMonth";
+    default:
+      return "earnings.rangeDescAll";
+  }
+}
 
 function buildQuery(preset: RangePreset): EarningsSummaryQuery | undefined {
   if (preset === "all") return undefined;
@@ -45,22 +65,8 @@ function buildQuery(preset: RangePreset): EarningsSummaryQuery | undefined {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-function rangeDescription(preset: RangePreset): string {
-  switch (preset) {
-    case "all":
-      return "كل طلباتك المسلّمة المسجّلة";
-    case "7d":
-      return "الطلبات المسلّمة خلال آخر سبعة أيام";
-    case "30d":
-      return "الطلبات المسلّمة خلال آخر ثلاثين يومًا";
-    case "month":
-      return "الطلبات المسلّمة منذ بداية الشهر الحالي";
-    default:
-      return "";
-  }
-}
-
 export function EarningsSummaryScreen() {
+  const { t } = useTranslation();
   const goBack = useInnerToolBack();
   const { isAuthenticated } = useAuth();
   const [preset, setPreset] = useState<RangePreset>("30d");
@@ -90,8 +96,8 @@ export function EarningsSummaryScreen() {
     return (
       <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
         <WorkStatusBanner />
-        <ScreenHeader title="ملخص الأرباح" onBack={goBack} />
-        <Text style={[styles.muted, styles.guestPad]}>سجّل الدخول لعرض إحصائياتك.</Text>
+        <ScreenHeader title={t("earnings.title")} onBack={goBack} />
+        <Text style={[styles.muted, styles.guestPad]}>{t("earnings.guest")}</Text>
       </SafeAreaView>
     );
   }
@@ -99,10 +105,10 @@ export function EarningsSummaryScreen() {
   if (query.isLoading) {
     return (
       <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
-        <ScreenHeader title="ملخص الأرباح" onBack={goBack} />
+        <ScreenHeader title={t("earnings.title")} onBack={goBack} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={homeTheme.accent} />
-          <Text style={styles.muted}>جاري تحميل الملخص…</Text>
+          <Text style={styles.muted}>{t("earnings.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -112,9 +118,9 @@ export function EarningsSummaryScreen() {
     return (
       <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
         <WorkStatusBanner />
-        <ScreenHeader title="ملخص الأرباح" onBack={goBack} />
+        <ScreenHeader title={t("earnings.title")} onBack={goBack} />
         <View style={styles.heroPad}>
-          <Text style={styles.sub}>طلبات مسلّمة فقط — من الخادم</Text>
+          <Text style={styles.sub}>{t("earnings.subServer")}</Text>
         </View>
         <QueryErrorState error={query.error} onRetry={() => void query.refetch()} />
       </SafeAreaView>
@@ -124,7 +130,7 @@ export function EarningsSummaryScreen() {
   return (
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
       <WorkStatusBanner />
-      <ScreenHeader title="ملخص الأرباح" onBack={goBack} />
+      <ScreenHeader title={t("earnings.title")} onBack={goBack} />
       <ScrollView
         style={styles.scrollFlex}
         contentContainerStyle={styles.scroll}
@@ -134,11 +140,11 @@ export function EarningsSummaryScreen() {
         }
       >
         <View style={styles.heroPad}>
-          <Text style={styles.kicker}>أداؤك</Text>
-          <Text style={styles.sub}>{rangeDescription(preset)}</Text>
+          <Text style={styles.kicker}>{t("earnings.kicker")}</Text>
+          <Text style={styles.sub}>{t(rangeDescriptionI18nKey(preset))}</Text>
         </View>
 
-        <Text style={styles.filterLabel}>الفترة</Text>
+        <Text style={styles.filterLabel}>{t("earnings.filterPeriod")}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -152,7 +158,7 @@ export function EarningsSummaryScreen() {
                 style={[styles.chip, active && styles.chipActive]}
                 onPress={() => setPreset(c.value)}
               >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.label}</Text>
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(c.i18nKey)}</Text>
               </Pressable>
             );
           })}
@@ -163,38 +169,33 @@ export function EarningsSummaryScreen() {
             <View style={styles.emptyIcon}>
               <Ionicons name="wallet-outline" size={44} color={homeTheme.textSubtle} />
             </View>
-            <Text style={styles.emptyTitle}>لا بيانات في هذه الفترة</Text>
-            <Text style={styles.emptyBody}>
-              عند تسليم الطلبات ستظهر هنا أرقام التحصيل والإجمالي. جرّب «كل الفترات» أو غيّر نطاق التاريخ.
-            </Text>
+            <Text style={styles.emptyTitle}>{t("earnings.emptyTitle")}</Text>
+            <Text style={styles.emptyBody}>{t("earnings.emptyBody")}</Text>
           </View>
         ) : (
           <>
             <View style={styles.heroCard}>
-              <Text style={styles.heroLabel}>إجمالي التحصيل</Text>
+              <Text style={styles.heroLabel}>{t("earnings.totalCollection")}</Text>
               <Text style={styles.heroValue}>{formatOrderAmountAr(data?.totalCashCollection ?? "0")}</Text>
-              <Text style={styles.heroHint}>مجموع المبالغ المطلوب تحصيلها من الطلبات المسلّمة</Text>
+              <Text style={styles.heroHint}>{t("earnings.totalCollectionHint")}</Text>
             </View>
 
             <View style={styles.grid}>
               <View style={styles.statCard}>
                 <Ionicons name="layers-outline" size={22} color={homeTheme.accent} />
-                <Text style={styles.statLabel}>طلبات مسلّمة</Text>
+                <Text style={styles.statLabel}>{t("earnings.statDelivered")}</Text>
                 <Text style={styles.statValue}>{data?.deliveredCount ?? 0}</Text>
               </View>
               <View style={styles.statCard}>
                 <Ionicons name="pricetag-outline" size={22} color={homeTheme.accent} />
-                <Text style={styles.statLabel}>قيمة الطلبات</Text>
+                <Text style={styles.statLabel}>{t("earnings.statOrderValue")}</Text>
                 <Text style={styles.statValueSmall}>{formatOrderAmountAr(data?.totalAmount ?? "0")}</Text>
               </View>
             </View>
 
             <View style={styles.noteCard}>
               <Ionicons name="information-circle-outline" size={20} color={homeTheme.textMuted} />
-              <Text style={styles.noteText}>
-                الأرقام من الخادم لطلبات بحالة «تم التسليم» ضمن الفترة المختارة. قد تختلف عن الرصيد الفعلي حسب
-                التسويات.
-              </Text>
+              <Text style={styles.noteText}>{t("earnings.note")}</Text>
             </View>
           </>
         )}

@@ -14,6 +14,7 @@ import {
 const router = Router();
 router.use(authMiddleware);
 
+/** `COMPANY_ADMIN` has `reports.read: false` in `ROLE_CAPABILITIES` — not in this list; requests get 403. */
 const reportsReadRoles = rolesWithCapability("reports.read");
 
 router.get(

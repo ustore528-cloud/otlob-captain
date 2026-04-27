@@ -12,6 +12,7 @@ import { apiFetch, paths } from "@/lib/api";
 import { userRoleLabel } from "@/lib/user-role";
 import { canAccessUsersPage, isManagementAdminRole, isSuperAdminRole } from "@/lib/rbac-roles";
 import { AddUserFormCard } from "@/features/users/components/add-user-form-card";
+import { SuperAdminCompaniesArchiveSection } from "@/features/users/components/super-admin-companies-archive-section";
 import { UserCard } from "@/features/users/components/user-card";
 import { USER_ROLE_FILTER_OPTIONS } from "@/features/users/constants";
 import { useAuthStore } from "@/stores/auth-store";
@@ -64,6 +65,7 @@ export function UsersPageView() {
       />
 
       {canCreateUser ? <AddUserFormCard /> : null}
+      {canCreateUser ? <SuperAdminCompaniesArchiveSection isSuperAdmin={canCreateUser} /> : null}
       {!canCreateUser ? (
         <InlineAlert variant="info">
           إنشاء المستخدمين العام متاح فقط لدور SUPER_ADMIN. الدور الحالي: {effectiveRole ?? "غير معروف"}.

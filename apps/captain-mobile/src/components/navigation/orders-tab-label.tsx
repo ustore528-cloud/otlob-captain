@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Platform, Text } from "react-native";
 
 type Props = {
@@ -6,12 +7,13 @@ type Props = {
 };
 
 /**
- * Long Arabic label — two lines + font scaling so it stays readable on narrow Android tab bars.
+ * Two-line label for the orders tab — font scaling for narrow Android tab bars.
  */
 export function OrdersTabBarLabel({ color, focused: _focused }: Props) {
+  const { t } = useTranslation();
   return (
     <Text
-      accessibilityLabel="الطلب الحالي"
+      accessibilityLabel={t("ordersTabLabel.a11y")}
       accessibilityRole="text"
       allowFontScaling
       maxFontSizeMultiplier={1.15}
@@ -19,7 +21,6 @@ export function OrdersTabBarLabel({ color, focused: _focused }: Props) {
       adjustsFontSizeToFit
       minimumFontScale={Platform.OS === "android" ? 0.76 : 0.84}
       style={{
-        /** Base size; `adjustsFontSizeToFit` + `minimumFontScale` shrink on very narrow tabs. */
         fontSize: 10.5,
         fontWeight: "800",
         color,
@@ -30,7 +31,9 @@ export function OrdersTabBarLabel({ color, focused: _focused }: Props) {
         ...(Platform.OS === "android" ? { includeFontPadding: false } : {}),
       }}
     >
-      {"الطلب\nالحالي"}
+      {t("ordersTabLabel.line1")}
+      {"\n"}
+      {t("ordersTabLabel.line2")}
     </Text>
   );
 }

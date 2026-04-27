@@ -1,8 +1,10 @@
 import { Text, View, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import type { CaptainProfileDto, SessionUserDto } from "@/services/api/dto";
 import { homeTheme } from "../theme";
-import { availabilityLabel, parseAvailabilityStatus } from "../labels";
-import { formatLastSeenAr } from "../utils/format";
+import { parseAvailabilityStatus } from "../labels";
+import { availabilityLabelT } from "@/lib/availability-text";
+import { formatLogTime } from "@/lib/order-timestamps";
 
 type Props = {
   user: SessionUserDto;
@@ -25,10 +27,11 @@ const statusTone: Record<string, { bg: string; border: string; text: string }> =
 };
 
 export function CaptainSummaryCard({ user, captain }: Props) {
+  const { t } = useTranslation();
   const av = parseAvailabilityStatus(captain.availabilityStatus) ?? "OFFLINE";
   const tone = statusTone[av] ?? statusTone.OFFLINE;
-  const initial = user.fullName.trim().charAt(0) || "؟";
-  const lastSeen = formatLastSeenAr(captain.lastSeenAt);
+  const initial = user.fullName.trim().charAt(0) || t("common.placeholderInitial");
+  const lastSeen = formatLogTime(captain.lastSeenAt);
 
   return (
     <View style={styles.card}>
@@ -41,7 +44,7 @@ export function CaptainSummaryCard({ user, captain }: Props) {
             {user.fullName}
           </Text>
           <View style={[styles.badge, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-            <Text style={[styles.badgeText, { color: tone.text }]}>{availabilityLabel[av]}</Text>
+            <Text style={[styles.badgeText, { color: tone.text }]}>{availabilityLabelT(av, t)}</Text>
           </View>
         </View>
       </View>
@@ -49,18 +52,18 @@ export function CaptainSummaryCard({ user, captain }: Props) {
       <View style={styles.divider} />
 
       <View style={styles.lines}>
-        <Text style={styles.lineMuted}>المنطقة</Text>
-        <Text style={styles.lineValue}>{captain.area ?? "—"}</Text>
+        <Text style={styles.lineMuted}>{t("homeProfile.area")}</Text>
+        <Text style={styles.lineValue}>{captain.area ?? t("common.emDash")}</Text>
       </View>
 
       <View style={styles.lines}>
-        <Text style={styles.lineMuted}>نوع المركبة</Text>
+        <Text style={styles.lineMuted}>{t("homeProfile.vehicle")}</Text>
         <Text style={styles.lineValue}>{captain.vehicleType}</Text>
       </View>
 
       {lastSeen ? (
         <View style={styles.lines}>
-          <Text style={styles.lineMuted}>آخر ظهور</Text>
+          <Text style={styles.lineMuted}>{t("homeProfile.lastSeen")}</Text>
           <Text style={styles.lineValue}>{lastSeen}</Text>
         </View>
       ) : null}
@@ -75,6 +78,7 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: homeTheme.border,
+    ...homeTheme.cardShadow,
   },
   row: {
     flexDirection: "row-reverse",

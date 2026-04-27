@@ -1,5 +1,6 @@
-import type { OrderDetailDto, OrderListItemDto, OrderStatusDto } from "@/services/api/dto";
-import { formatOrderAmountAr, formatOrderAmountEnLine } from "@/lib/order-currency";
+import type { OrderDetailDto, OrderStatusDto } from "@/services/api/dto";
+import { resolveOrderFinancialBreakdownDto } from "@/lib/order-financial-breakdown";
+import i18n from "@/i18n/i18n";
 
 export type ListPrimaryKind =
   | "navigate_detail"
@@ -10,10 +11,8 @@ export type ListPrimaryKind =
 
 export type ListPrimaryAction = {
   kind: ListPrimaryKind;
-  /** English label for main button (product spec) */
-  labelEn: string;
-  /** Short Arabic hint under title */
-  labelAr: string;
+  /** i18n key under `primaryAction.*` */
+  labelKey: string;
 };
 
 /**
@@ -26,53 +25,43 @@ export function getOrderListPrimaryAction(status: OrderStatusDto): ListPrimaryAc
     case "PENDING":
       return {
         kind: "navigate_detail",
-        labelEn: "Confirm Order",
-        labelAr: "تأكيد الطلب",
+        labelKey: "primaryAction.confirmOrder",
       };
     case "ACCEPTED":
-      return { kind: "pickup", labelEn: "Picked Up", labelAr: "تم الاستلام" };
+      return { kind: "pickup", labelKey: "primaryAction.pickedUp" };
     case "PICKED_UP":
-      return { kind: "in_transit", labelEn: "On the way", labelAr: "في الطريق للعميل" };
+      return { kind: "in_transit", labelKey: "primaryAction.onTheWay" };
     case "IN_TRANSIT":
-      return { kind: "delivered", labelEn: "Delivered", labelAr: "تم التسليم" };
+      return { kind: "delivered", labelKey: "primaryAction.delivered" };
     case "DELIVERED":
     case "CANCELLED":
-      return { kind: "view_only", labelEn: "View", labelAr: "عرض" };
+      return { kind: "view_only", labelKey: "primaryAction.view" };
     default:
       return null;
   }
 }
 
-export function paymentSummaryLine(item: OrderListItemDto): string {
-  const cash = parseFloat(item.cashCollection || "0");
-  const amt = parseFloat(item.amount || "0");
-  if (cash > 0) {
-    return formatOrderAmountEnLine("Cash on delivery · collect", item.cashCollection);
-  }
-  return formatOrderAmountEnLine("Order amount ·", amt.toFixed(2));
-}
-
-export function paymentSummaryLineAr(item: OrderListItemDto): string {
-  const cash = parseFloat(item.cashCollection || "0");
-  if (cash > 0) {
-    return `نقد عند التسليم · تحصيل ${formatOrderAmountAr(item.cashCollection)}`;
-  }
-  return `قيمة الطلب · ${formatOrderAmountAr(item.amount)}`;
-}
-
 export function paymentSummaryLineFromDetail(order: OrderDetailDto): string {
-  const cash = parseFloat(order.cashCollection || "0");
-  const amt = parseFloat(order.amount || "0");
-  if (cash > 0) {
-    return formatOrderAmountEnLine("Cash on delivery · collect", order.cashCollection);
-  }
-  return formatOrderAmountEnLine("Order amount ·", amt.toFixed(2));
+  const dto = resolveOrderFinancialBreakdownDto({
+    amount: order.amount,
+    cashCollection: order.cashCollection,
+    deliveryFee: order.deliveryFee ?? null,
+    financialBreakdown: order.financialBreakdown,
+  });
+  return `${i18n.t("money.storeAmount")} ${dto.orderAmount} · ${i18n.t("money.deliveryFee")} ${dto.deliveryFee} · ${i18n.t("money.customerCollection")} ${dto.customerTotal} ₪`;
 }
 
-export function paymentSummaryLineArFromDetail(order: OrderDetailDto): string {
-  const cash = parseFloat(order.cashCollection || "0");
-  if (cash > 0) {
-    return `نقد عند التسليم · تحصيل ${formatOrderAmountAr(order.cashCollection)}`;
-  }
-  return `قيمة الطلب · ${formatOrderAmountAr(order.amount)}`;
+/** Multiline money summary for compact assignment chrome (locale from i18n). */
+export function paymentSummaryLinesFromDetail(order: OrderDetailDto): string {
+  const dto = resolveOrderFinancialBreakdownDto({
+    amount: order.amount,
+    cashCollection: order.cashCollection,
+    deliveryFee: order.deliveryFee ?? null,
+    financialBreakdown: order.financialBreakdown,
+  });
+  return [
+    i18n.t("assignment.moneyLine1", { a: dto.orderAmount }),
+    i18n.t("assignment.moneyLine2", { f: dto.deliveryFee }),
+    i18n.t("assignment.moneyLine3", { c: dto.customerTotal }),
+  ].join("\n");
 }

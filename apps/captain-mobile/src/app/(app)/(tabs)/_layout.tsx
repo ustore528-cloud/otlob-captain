@@ -1,5 +1,6 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet } from "react-native";
 import { OrdersTabBarLabel } from "@/components/navigation/orders-tab-label";
 import { homeTheme } from "@/features/home/theme";
@@ -7,11 +8,13 @@ import { homeTheme } from "@/features/home/theme";
 const TAB_ICON_FOCUS_BUMP = 1;
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
   return (
     <Tabs
       initialRouteName="orders"
       screenOptions={{
         headerShown: false,
+        sceneStyle: { backgroundColor: homeTheme.pageBackground },
         tabBarActiveTintColor: homeTheme.tabBarActive,
         tabBarInactiveTintColor: homeTheme.tabBarInactive,
         tabBarStyle: {
@@ -35,14 +38,11 @@ export default function TabsLayout() {
         tabBarItemStyle: { paddingVertical: 2 },
       }}
     >
-      {/* Tab icon (tray) is decorative; GET /me/assignment remains one live snapshot. */}
       <Tabs.Screen
         name="orders"
         options={{
-          title: "الطلب الحالي",
-          tabBarLabel: ({ color, focused }) => (
-            <OrdersTabBarLabel color={color} focused={focused} />
-          ),
+          title: t("tabs.currentOrder"),
+          tabBarLabel: ({ color, focused }) => <OrdersTabBarLabel color={color} focused={focused} />,
           tabBarIcon: ({ color, focused, size }) => (
             <Ionicons
               name={focused ? "file-tray-stacked" : "file-tray-stacked-outline"}
@@ -55,7 +55,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="archive"
         options={{
-          title: "أرشيف الطلبات",
+          title: t("tabs.archive"),
+          tabBarLabel: t("tabs.archive"),
           tabBarIcon: ({ color, focused, size }) => (
             <Ionicons
               name={focused ? "archive" : "archive-outline"}
@@ -68,7 +69,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: "الإشعارات",
+          title: t("tabs.notifications"),
+          tabBarLabel: t("tabs.notifications"),
           tabBarIcon: ({ color, focused, size }) => (
             <Ionicons
               name={focused ? "notifications" : "notifications-outline"}
@@ -81,7 +83,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: "الإعدادات",
+          title: t("tabs.settings"),
+          tabBarLabel: t("tabs.settings"),
           tabBarIcon: ({ color, focused, size }) => (
             <Ionicons
               name={focused ? "settings" : "settings-outline"}

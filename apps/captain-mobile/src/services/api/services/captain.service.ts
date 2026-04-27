@@ -1,5 +1,5 @@
 import { paths } from "@captain/shared";
-import { authRequest } from "../client";
+import { authRequest, authRequestWithMeta, type AuthRequestMeta } from "../client";
 import type {
   AssignmentOverflowResponse,
   CaptainPrepaidSummaryDto,
@@ -44,6 +44,15 @@ export const captainService = {
     registered: boolean;
   }> {
     return authRequest(paths.mobileCaptain.pushToken, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  registerPushTokenWithMeta(
+    body: { token: string; platform: "android" | "ios"; appVersion?: string | null },
+  ): Promise<AuthRequestMeta<{ registered: boolean }>> {
+    return authRequestWithMeta(paths.mobileCaptain.pushToken, {
       method: "POST",
       body: JSON.stringify(body),
     });

@@ -4,7 +4,8 @@
  */
 export { TRACKING_CONFIG, BACKGROUND_LOCATION_TASK_NAME } from "./config";
 export type { CaptainTrackingSnapshot, ForegroundPermissionState, NetworkReachability, TrackingIssue } from "./types";
-export { useCaptainTracking, type UseCaptainTrackingResult } from "./use-captain-tracking";
+export { useCaptainTrackingState, type UseCaptainTrackingResult } from "./use-captain-tracking";
+export { CaptainTrackingProvider, useCaptainTracking } from "./captain-tracking-provider";
 export { useNetworkReachability } from "./network";
 export { requestForegroundPermission, getForegroundPermissionState } from "./permission";
 export { sendCaptainLocationReliable } from "./sender";

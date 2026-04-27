@@ -27,16 +27,6 @@ function parseOptionalIsoDate(label: string, raw?: string, endOfDay?: boolean): 
   return d;
 }
 
-function assertCompanyAdminCaptainOwnership(
-  actor: { userId: string; role: AppRole },
-  captain: { createdByUserId?: string | null },
-): void {
-  if (actor.role !== "COMPANY_ADMIN") return;
-  if (!captain.createdByUserId || captain.createdByUserId !== actor.userId) {
-    throw new AppError(403, "Forbidden", "FORBIDDEN");
-  }
-}
-
 export const captainsService = {
   async create(
     input: {
@@ -230,10 +220,6 @@ export const captainsService = {
         },
         cap,
       );
-      assertCompanyAdminCaptainOwnership(
-        { userId: opts.userId, role: opts.role },
-        { createdByUserId: cap.createdByUserId ?? null },
-      );
     }
     if (isCaptainRole(opts.role) && cap.userId !== opts.userId) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
@@ -338,7 +324,6 @@ export const captainsService = {
         ...params,
         companyId: tenant.companyId,
         branchId: tenant.branchId,
-        ...(opts.role === "COMPANY_ADMIN" ? { createdByUserId: opts.userId } : {}),
       });
       return { total, items };
     }
@@ -361,10 +346,6 @@ export const captainsService = {
           branchId: actor.branchId ?? null,
         },
         cap,
-      );
-      assertCompanyAdminCaptainOwnership(
-        { userId: actor.userId, role: actor.role },
-        { createdByUserId: cap.createdByUserId ?? null },
       );
     }
     return cap;

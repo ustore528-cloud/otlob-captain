@@ -1,6 +1,8 @@
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { homeTheme } from "@/features/home/theme";
-import { ORDER_DROPOFF_LOCATION_LABEL, ORDER_PICKUP_LOCATION_LABEL } from "@/lib/order-location-labels";
+import { locationI18nKey } from "@/lib/order-location-i18n";
 import { openMapSearch } from "@/lib/open-external";
 
 type RowProps = {
@@ -9,12 +11,15 @@ type RowProps = {
   tone?: "pickup" | "dropoff";
   compact?: boolean;
   dense?: boolean;
+  mapHint: string;
 };
 
-function LocationTapRow({ label, value, tone = "pickup", compact, dense }: RowProps) {
+function LocationTapRow({ label, value, tone = "pickup", compact, dense, mapHint }: RowProps) {
   const v = value.trim();
   if (!v) return null;
   const pickupTone = tone === "pickup";
+  const iconName = pickupTone ? ("navigate-circle-outline" as const) : ("flag-outline" as const);
+  const iconColor = pickupTone ? homeTheme.accent : homeTheme.gold;
   return (
     <Pressable
       onPress={() => void openMapSearch(v)}
@@ -23,20 +28,29 @@ function LocationTapRow({ label, value, tone = "pickup", compact, dense }: RowPr
         pickupTone ? styles.rowPickup : styles.rowDropoff,
         compact && styles.rowCompact,
         dense && styles.rowDense,
+        homeTheme.cardShadow,
         pressed && styles.pressed,
       ]}
       accessibilityRole="link"
       accessibilityLabel={`${label}: ${v}`}
-      accessibilityHint="فتح الخريطة"
+      accessibilityHint={mapHint}
     >
-      <View style={styles.textCol}>
-        <Text style={[styles.label, compact && styles.labelCompact, dense && styles.labelDense]}>{label}</Text>
-        <Text
-          style={[styles.value, compact && styles.valueCompact, dense && styles.valueDense]}
-          numberOfLines={compact || dense ? 2 : 4}
-        >
-          {v}
-        </Text>
+      <View style={styles.rowShell}>
+        <View style={styles.textCol}>
+          <Text style={[styles.label, compact && styles.labelCompact, dense && styles.labelDense]}>{label}</Text>
+          <Text
+            style={[styles.value, compact && styles.valueCompact, dense && styles.valueDense]}
+            numberOfLines={compact || dense ? 2 : 4}
+          >
+            {v}
+          </Text>
+        </View>
+        <Ionicons
+          name={iconName}
+          size={dense ? 22 : compact ? 24 : 28}
+          color={iconColor}
+          style={styles.leadingIcon}
+        />
       </View>
     </Pressable>
   );
@@ -54,23 +68,26 @@ type Props = {
 };
 
 export function OrderRouteTapRows({ pickupAddress, dropoffAddress, areaFallback, compact, dense }: Props) {
+  const { t } = useTranslation();
   const drop = dropoffAddress.trim() || areaFallback?.trim() || "";
   const tight = Boolean(compact || dense);
   return (
     <View style={[styles.block, compact && styles.blockCompact, dense && styles.blockDense]}>
       <LocationTapRow
-        label={ORDER_PICKUP_LOCATION_LABEL}
+        label={t(locationI18nKey.pickup)}
         value={pickupAddress}
         tone="pickup"
         compact={tight}
         dense={dense}
+        mapHint={t("map.openHint")}
       />
       <LocationTapRow
-        label={ORDER_DROPOFF_LOCATION_LABEL}
+        label={t(locationI18nKey.dropoff)}
         value={drop}
         tone="dropoff"
         compact={tight}
         dense={dense}
+        mapHint={t("map.openHint")}
       />
     </View>
   );
@@ -81,14 +98,17 @@ const styles = StyleSheet.create({
   blockCompact: { gap: 4 },
   blockDense: { gap: 3 },
   row: {
-    flexDirection: "row-reverse",
-    alignItems: "flex-start",
-    gap: 0,
     paddingVertical: 8,
     paddingHorizontal: 9,
     borderRadius: homeTheme.radiusMd,
     borderWidth: 1,
   },
+  rowShell: {
+    flexDirection: "row-reverse",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  leadingIcon: { marginTop: 2 },
   rowPickup: {
     borderColor: homeTheme.accentMuted,
     backgroundColor: "rgba(176, 36, 50, 0.07)",
@@ -108,7 +128,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   pressed: { opacity: 0.9 },
-  textCol: { flex: 1, alignItems: "flex-end" },
+  textCol: { flex: 1, alignItems: "flex-end", minWidth: 0 },
   label: {
     fontSize: 12,
     fontWeight: "900",

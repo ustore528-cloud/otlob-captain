@@ -11,6 +11,7 @@ export const queryKeys = {
   companies: {
     root: ["companies"] as const,
     list: () => ["companies", "list"] as const,
+    deletePreview: (companyId: string) => ["companies", "deletePreview", companyId] as const,
   },
 
   branches: {

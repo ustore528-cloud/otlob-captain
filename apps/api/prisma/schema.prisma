@@ -416,6 +416,10 @@ model Captain {
 model Order {
   id                      String                      @id @default(cuid())
   orderNumber             String                      @unique @map("order_number")
+  /**
+   * رقم تسلسلي للعرض فقط — لكل شركة يبدأ من 1 ويتزايد؛ لا يُستخدم كمفتاح تقني.
+   */
+  displayOrderNo          Int?                        @map("display_order_no")
   customerName            String                      @map("customer_name")
   customerPhone           String                      @map("customer_phone")
   companyId               String                      @map("company_id")
@@ -493,6 +497,8 @@ model Order {
 
   @@index([storeId, status])
   @@index([companyId, branchId])
+  @@unique([companyId, displayOrderNo])
+  @@index([companyId, displayOrderNo])
   @@index([assignedCaptainId])
   @@index([area, status])
   @@index([createdAt])

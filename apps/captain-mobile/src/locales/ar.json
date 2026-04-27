@@ -1,0 +1,456 @@
+{
+  "common": {
+    "emDash": "—",
+    "retry": "إعادة المحاولة",
+    "loading": "جاري التحميل…",
+    "placeholderInitial": "؟"
+  },
+  "location": {
+    "pickup": "عنوان الاستلام",
+    "dropoff": "عنوان التسليم"
+  },
+  "orderStatus": {
+    "PENDING": "قيد الانتظار",
+    "CONFIRMED": "مؤكد",
+    "ASSIGNED": "معروض للكابتن",
+    "ACCEPTED": "مقبول",
+    "PICKED_UP": "تم الاستلام",
+    "IN_TRANSIT": "قيد التوصيل",
+    "DELIVERED": "تم التسليم",
+    "CANCELLED": "ملغى"
+  },
+  "assignmentLog": {
+    "title": "سجل التعيينات",
+    "responsePENDING": "في انتظار القرار",
+    "responseACCEPTED": "مقبول",
+    "responseREJECTED": "مرفوض",
+    "responseEXPIRED": "انتهت المهلة",
+    "responseCANCELLED": "ملغى",
+    "expiresAt": "· ينتهي {{time}}",
+    "unknownResponse": "غير معروف: {{code}}"
+  },
+  "primaryAction": {
+    "confirmOrder": "تأكيد الطلب",
+    "pickedUp": "تم الاستلام",
+    "onTheWay": "في الطريق للعميل",
+    "delivered": "تم التسليم",
+    "view": "عرض"
+  },
+  "workflowAdvance": {
+    "pickedUpFromStore": "تم الاستلام من المتجر",
+    "onTheWayToCustomer": "في الطريق للعميل",
+    "markDelivered": "تم تسليم الطلب"
+  },
+  "assignmentKind": {
+    "offer": "عرض",
+    "active": "نشط"
+  },
+  "tabs": {
+    "currentOrder": "الطلب الحالي",
+    "archive": "أرشيف الطلبات",
+    "notifications": "الإشعارات",
+    "settings": "الإعدادات"
+  },
+  "ordersTabLabel": {
+    "line1": "الطلب",
+    "line2": "الحالي",
+    "a11y": "الطلب الحالي"
+  },
+  "orderCard": {
+    "orderTitle": "طلب #{{id}}",
+    "serialLabel": "طلب #",
+    "workbenchLinkedRibbon": "نفس الطلب في «التعيين الحالي» أعلاه",
+    "cancelsIn": "سيتم الإلغاء خلال {{time}}",
+    "orderDetailsA11y": "تفاصيل الطلب {{id}}",
+    "callA11y": "اتصال {{phone}}"
+  },
+  "workbench": {
+    "loadError": "تعذّر تحميل التعيين.",
+    "errorAccept": "تعذّر القبول",
+    "errorReject": "تعذّر الرفض",
+    "errorUpdate": "تعذّر تحديث الحالة",
+    "orderLine": "طلب #{{n}}",
+    "orderLineFallback": "طلب جديد",
+    "store": "المتجر",
+    "orderLocation": "موقع الطلب",
+    "customer": "بيانات العميل",
+    "phone": "الهاتف",
+    "quickActions": "إجراءات سريعة",
+    "mapPickup": "خريطة الاستلام",
+    "mapDropoff": "خريطة التسليم",
+    "timeRemaining": "المتبقي: {{time}}",
+    "timeRemainingSeconds": "متبقي {{seconds}} ثانية للقبول",
+    "details": "التفاصيل",
+    "reject": "رفض",
+    "accept": "قبول"
+  },
+  "currentAssignment": {
+    "title": "الطلبات الحالية",
+    "sub": "تعرض الشاشة الطلبات الحالية كما يعيدها الخادم، وكل طلب في بطاقة مستقلة."
+  },
+  "assignmentEmpty": {
+    "line1": "خذ لك دقيقة راحة، رزقك بالطريق",
+    "line2": "جاهزين نعرض أول طلب جديد لحظة وصوله"
+  },
+  "assignmentBar": {
+    "readOnly": "لا تتوفر إجراءات على هذا الطلب في وضعك الحالي.",
+    "offerCountdown": "الوقت المتبقي للموافقة أو الرفض على الطلب",
+    "declineA11y": "رفض العرض",
+    "acceptA11y": "قبول الطلب",
+    "decline": "رفض",
+    "acceptOrder": "قبول الطلب",
+    "acceptConfirmHint": "تأكيد",
+    "orderDetailsFullA11y": "تفاصيل الطلب كاملة",
+    "orderDetailsTitle": "تفاصيل الطلب",
+    "fullDetailsHint": "اضغط لعرض كل التفاصيل والمسار",
+    "pickupA11y": "الاستلام: {{v}}",
+    "dropoffA11y": "التسليم: {{v}}"
+  },
+  "map": {
+    "openHint": "فتح الخريطة"
+  },
+  "orderStatusProgress": {
+    "title": "تقدّم التسليم",
+    "currentStep": "الخطوة الحالية",
+    "stepAccepted": "قبول الطلب",
+    "stepPickedUp": "الاستلام من المتجر",
+    "stepInTransit": "في الطريق للعميل",
+    "stepDelivered": "تسليم الطلب",
+    "beforeDeliveryTitle": "قبل بدء التسليم",
+    "currentStatus": "الحالة الحالية: {{status}}",
+    "beforeDeliveryHint": "بعد قبول العرض وتحويل الطلب إلى «مقبول»، يظهر هنا مسار الاستلام والتسليم خطوة بخطوة.",
+    "cancelledBanner": "هذا الطلب ملغى ولا يمكن متابعة التسليم."
+  },
+  "workbenchOrderCard": {
+    "openDetailsA11y": "الطلب {{n}}، فتح التفاصيل",
+    "details": "التفاصيل",
+    "orderDetailsA11y": "تفاصيل الطلب",
+    "callA11y": "اتصال {{phone}}"
+  },
+  "ordersHistory": {
+    "loadError": "تعذّر تحميل الطلبات.",
+    "loading": "جاري جلب الطلبات…",
+    "loadingInitial": "جاري التحميل…",
+    "retry": "إعادة المحاولة",
+    "titleArchive": "أرشيف الطلبات",
+    "titleAvailable": "الطلبات المتاحة",
+    "filterStatus": "الحالة",
+    "filterRange": "الفترة",
+    "statusAll": "الكل",
+    "rangeAll": "كل الفترات",
+    "range7d": "آخر 7 أيام",
+    "range30d": "آخر 30 يومًا",
+    "countNone": "لا نتائج",
+    "countDelivered": "{{count}} طلب مُسلَّم",
+    "countOrders": "{{count}} طلب",
+    "registryLabel": "سجل الطلبات",
+    "registryHint": "اضغط البطاقة للتفاصيل",
+    "assignmentSectionLabel": "التعيين الحالي",
+    "minimalTitle": "الطلبات",
+    "minimalSub": "الأسفل: سجل الطلبات (الترتيب من الخادم). عند وجود عرض أو توصيل نشط، يظهر شريط الإجراءات أدناه — القبول والرفض من الشريط وليس من البطاقة فقط.",
+    "listSectionTitle": "سجل الطلبات",
+    "listSectionHint": "بطاقات مستقلة — اضغط للتفاصيل. الصف المميز يربط بنفس الطلب في «التعيين الحالي» إن وُجد.",
+    "heroSubArchive": "طلبات اكتمل تسليمها فقط — اضغط للتفاصيل",
+    "heroSubAvailable": "الطلبات المسندة والسجل — اضغط للتفاصيل والمسار",
+    "errorListSub": "تعذّر تحميل القائمة",
+    "loadMore": "تحميل المزيد…",
+    "emptyMinimal": "لا توجد طلبات حاليًا.",
+    "emptyArchiveTitle": "لا توجد طلبات مُسلَّمة",
+    "emptyArchiveBody": "جرّب توسيع الفترة أعلاه، أو عد لاحقًا بعد تسليم طلبات جديدة.",
+    "emptyListTitle": "لا توجد طلبات",
+    "emptyListBody": "جرّب تغيير الفلاتر أعلاه، أو عد لاحقًا بعد تنفيذ طلبات جديدة."
+  },
+  "earnings": {
+    "title": "ملخص الأرباح",
+    "guest": "سجّل الدخول لعرض إحصائياتك.",
+    "loading": "جاري تحميل الملخص…",
+    "subServer": "طلبات مسلّمة فقط — من الخادم",
+    "kicker": "أداؤك",
+    "filterPeriod": "الفترة",
+    "rangeAll": "كل الفترات",
+    "range7d": "آخر 7 أيام",
+    "range30d": "آخر 30 يومًا",
+    "rangeMonth": "هذا الشهر",
+    "rangeDescAll": "كل طلباتك المسلّمة المسجّلة",
+    "rangeDesc7d": "الطلبات المسلّمة خلال آخر سبعة أيام",
+    "rangeDesc30d": "الطلبات المسلّمة خلال آخر ثلاثين يومًا",
+    "rangeDescMonth": "الطلبات المسلّمة منذ بداية الشهر الحالي",
+    "emptyTitle": "لا بيانات في هذه الفترة",
+    "emptyBody": "عند تسليم الطلبات ستظهر هنا أرقام التحصيل والإجمالي. جرّب «كل الفترات» أو غيّر نطاق التاريخ.",
+    "totalCollection": "إجمالي التحصيل",
+    "totalCollectionHint": "مجموع المبالغ المطلوب تحصيلها من الطلبات المسلّمة",
+    "statDelivered": "طلبات مسلّمة",
+    "statOrderValue": "قيمة الطلبات",
+    "note": "الأرقام من الخادم لطلبات بحالة «تم التسليم» ضمن الفترة المختارة. قد تختلف عن الرصيد الفعلي حسب التسويات."
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "sub": "تنبيهات الطلبات والتحديثات — اضغط على البطاقة المرتبطة بطلب للتفاصيل",
+    "subLoading": "تحديثات وطلبات — مرتبة حسب التاريخ",
+    "new": "جديد",
+    "read": "مقروء",
+    "orderLinked": "مرتبط بطلب",
+    "notLinked": "بدون ربط",
+    "hintTappable": "اضغط لفتح تفاصيل الطلب",
+    "hintGeneral": "تنبيه عام — لا يوجد رابط مباشر لطلب",
+    "empty": "لا توجد إشعارات بعد.",
+    "today": "اليوم",
+    "yesterday": "أمس"
+  },
+  "openExternal": {
+    "phoneNoNumberTitle": "لا يوجد رقم",
+    "phoneNoNumberBody": "رقم الجوال غير صالح للاتصال.",
+    "phoneCannotOpenTitle": "تعذّر الاتصال",
+    "phoneCannotOpenBody": "لا يمكن فتح تطبيق الهاتف على هذا الجهاز.",
+    "phoneFailedTitle": "تعذّر الاتصال",
+    "phoneFailedBody": "حاول مرة أخرى.",
+    "whatsappInvalidTitle": "لا يمكن فتح واتساب",
+    "whatsappInvalidBody": "يلزم رقم جوال دولي كامل (مثال: +970 أو +972). الأرقام المحلية التي تبدأ بـ 05… غير كافية بدون كود الدولة.",
+    "whatsappFailedTitle": "تعذّر فتح واتساب",
+    "whatsappFailedBody": "تأكد من تثبيت واتساب أو أن الرقم يتضمّن كود الدولة.",
+    "mapFailedTitle": "تعذّر فتح الخريطة",
+    "mapFailedBody": "حاول مرة أخرى."
+  },
+  "apiClient": {
+    "badEnvelope": "استجابة غير متوقعة من الخادم",
+    "requestFailed": "فشل الطلب",
+    "noTokenBridge": "لم يُهيّأ اتصال الجلسة",
+    "noAccessToken": "لا يوجد رمز وصول"
+  },
+  "push": {
+    "androidChannelName": "طلبات 2in",
+    "androidChannelDescription": "تنبيهات عروض الطلبات والتحديثات المهمة من 2in",
+    "foregroundTitleDefault": "طلب جديد بانتظار قبولك",
+    "foregroundBodyDefault": "لديك عرض طلب جديد. اضغط لفتح التفاصيل.",
+    "permissionDeniedTitle": "الإشعارات غير مفعّلة",
+    "permissionDeniedBody": "فعّل الإشعارات لاستلام تنبيهات الطلبات الجديدة. يمكنك تفعيلها من إعدادات النظام.",
+    "permissionDeniedDismiss": "ليس الآن",
+    "permissionOpenSettings": "فتح الإعدادات"
+  },
+  "queryError": {
+    "title": "تعذّر التحميل",
+    "fallback": "تحقق من الاتصال ثم أعد المحاولة.",
+    "retry": "إعادة المحاولة"
+  },
+  "auth": {
+    "invalidCredentials": "رقم الجوال/البريد أو كلمة المرور غير صحيحة.",
+    "forbiddenRole": "هذا التطبيق مخصّص لحسابات الكابتن فقط.",
+    "forbidden": "ملف الكابتن غير متوفر لهذا الحساب.",
+    "loginFailed": "تعذّر تسجيل الدخول.",
+    "unexpected": "حدث خطأ غير متوقع."
+  },
+  "availability": {
+    "controlTitle": "حالة التوفر",
+    "controlSubtitle": "يتحكم ظهورك في التوزيع والعروض الجديدة",
+    "labelActive": "فعال",
+    "labelOffline": "غير فعال",
+    "hintActive": "يستقبل الطلبات الجديدة",
+    "hintOffline": "لا يستقبل طلبات جديدة"
+  },
+  "profile": {
+    "title": "حسابي",
+    "sub": "بياناتك وحالة التوفر",
+    "name": "الاسم",
+    "phone": "الجوال",
+    "email": "البريد",
+    "area": "المنطقة",
+    "currentAvailability": "التوفر الحالي",
+    "signOut": "تسجيل الخروج",
+    "updateErrorTitle": "تعذّر التحديث",
+    "updateErrorHint": "حاول مرة أخرى.",
+    "availabilityChangeTitle": "تغيير حالة التوفر",
+    "availabilityChangeSubtitle": "نفس الإعدادات كما في لوحة الكابتن — تُحدَّث فورًا"
+  },
+  "home": {
+    "title": "لوحة الكابتن",
+    "greet": "مرحبًا",
+    "sub": "نظرة سريعة على حالتك — التنفيذ من «الطلبات المتاحة»",
+    "loadingMe": "جاري تحميل بياناتك…",
+    "loadProfileErrorTitle": "تعذّر تحميل الملف",
+    "hintFooter": "لتنفيذ الطلبات والعروض استخدم «الطلبات المتاحة». للإعدادات والأرباح والتتبع: «الإعدادات»."
+  },
+  "errors": {
+    "mutationGeneric": "تعذّر إكمال العملية.",
+    "offerExpired": "انتهت مهلة قبول هذا العرض.",
+    "noPendingAssignment": "لا يوجد عرض قابل للقبول لهذا الطلب. قد تكون المهلة انتهت أو أُعيد التوزيع. اسحب للتحديث.",
+    "sessionPrepareFailed": "تعذّر تجهيز الجلسة. جرّب تحديث الصفحة أو تسجيل الدخول مرة أخرى.",
+    "noActiveOffer": "لا يوجد عرض نشط لهذا الطلب. قد تكون المهلة انتهت أو أُعيد التوزيع. اسحب للتحديث.",
+    "unexpected": "حدث خطأ غير متوقع."
+  },
+  "money": {
+    "sectionTitle": "المالية والتحصيل",
+    "storeAmount": "مبلغ المتجر",
+    "deliveryFee": "رسوم التوصيل",
+    "deliveryFeeInferred": "رسوم التوصيل (مُستنتجة)",
+    "customerCollection": "مبلغ التحصيل من العميل",
+    "hintInferred": "تم استنتاج رسوم التوصيل من الفرق بين التحصيل ومبلغ المتجر عند عدم وجود حقل منفصل.",
+    "hintCod": "نقد عند التسليم — استخدم الحاسبة أدناه للباقي.",
+    "hintNoCod": "لا يوجد تحصيل منفصل من العميل — الإجمالي يطابق مبلغ المتجر."
+  },
+  "homeProfile": {
+    "area": "المنطقة",
+    "vehicle": "نوع المركبة",
+    "lastSeen": "آخر ظهور"
+  },
+  "orderDetailHeader": {
+    "kicker": "رقم الطلب",
+    "meta": "أُنشئ {{created}} · عُدّل {{updated}}"
+  },
+  "orderDetail": {
+    "created": "أُنشئ",
+    "pickupTime": "وقت الاستلام",
+    "deliveryTime": "وقت التسليم",
+    "notRecorded": "غير مسجّل",
+    "sectionOrder": "الطلب",
+    "sectionRestaurant": "المطعم",
+    "sectionCustomer": "العميل",
+    "sectionAddresses": "العناوين",
+    "sectionNotes": "ملاحظات",
+    "customerLine": "العميل: {{name}}",
+    "areaLine": "المنطقة: {{area}}",
+    "storeLine": "المتجر: {{name}} ({{area}})",
+    "hintFromStore": "من المتجر",
+    "hintCustomerAddress": "عنوان العميل",
+    "mapHintPickup": "فتح الخريطة على عنوان الاستلام",
+    "mapHintDropoff": "فتح الخريطة على عنوان التسليم",
+    "notesField": "ملاحظات",
+    "callA11y": "اتصال {{phone}}"
+  },
+  "assignment": {
+    "moneyLine1": "مبلغ المتجر: {{a}} ₪",
+    "moneyLine2": "رسوم التوصيل: {{f}} ₪",
+    "moneyLine3": "مبلغ التحصيل من العميل: {{c}} ₪"
+  },
+  "prepaid": {
+    "labelRemaining": "الرصيد المتبقي",
+    "metricCommission": "نسبة العمولة",
+    "metricEstimatedOrders": "طلبات تقديرية",
+    "estimatedByFees": "حسب رسوم التوصيل",
+    "bodyExplain": "يتم الخصم من رسوم التوصيل فقط بعد تسليم الطلب. مثال: إذا كانت رسوم التوصيل 10 ILS والعمولة 15%، يتم خصم 1.5 ILS بعد التسليم.",
+    "rule1": "• لا يتم الخصم إلا بعد تسليم الطلب",
+    "rule2": "• لا يتم الخصم من الطلبات الملغاة",
+    "rule3": "• عند انخفاض الرصيد قد يتوقف استقبال طلبات جديدة حتى الشحن",
+    "blocked": "الرصيد غير كافٍ لاستقبال طلبات جديدة مؤقتًا.",
+    "low": "رصيدك منخفض. يرجى التواصل مع الإدارة لإعادة الشحن."
+  },
+  "login": {
+    "title": "2in",
+    "subtitle": "تسجيل دخول الكابتن",
+    "lead": "أدخل رقم الجوال أو البريد الإلكتروني المسجّل لدينا، وكلمة المرور.",
+    "fieldIdentifier": "رقم الجوال أو البريد",
+    "fieldPassword": "كلمة المرور",
+    "submit": "تسجيل الدخول"
+  },
+  "screenHeader": {
+    "back": "رجوع"
+  },
+  "assignmentDetail": {
+    "title": "تفاصيل الطلب",
+    "invalidId": "معرّف الطلب غير صالح",
+    "loading": "جاري التحميل…",
+    "sessionPreparing": "جاري تجهيز الجلسة…",
+    "cannotDisplay": "لا يمكن عرض الطلب",
+    "errOpen": "تعذّر فتح الطلب",
+    "errOpenFallback": "تحقق من الصلاحيات أو الرابط.",
+    "mutationAccept": "تعذّر القبول",
+    "mutationReject": "تعذّر الرفض",
+    "mutationStatus": "تعذّر تحديث الحالة"
+  },
+  "ordersLive": {
+    "title": "الطلبات الحالية",
+    "sub": "تعرض الشاشة الطلبات الحالية كما يعيدها الخادم، وكل طلب في بطاقة مستقلة."
+  },
+  "tracking": {
+    "title": "التتبع",
+    "guest": "سجّل الدخول لإرسال موقعك للخادم.",
+    "intro": "عندما تكون متاحًا (لست غير متصل)، يُرسل موقعك تلقائيًا والتطبيق في المقدّمة. لا يوجد مفتاح تتبع منفصل — استخدم التوفر في الصفحة الرئيسية. قد يُضاف تتبع الخلفية لاحقًا.",
+    "subAvailabilityDriven": "لإيقاف المشاركة انتقل إلى غير متصل من الصفحة الرئيسية. اسمح بالوصول إلى الموقع ليظهر فريق العمل أنك متاح.",
+    "sectionTrackingControl": "إرسال الموقع",
+    "trackingOnCaption": "مفعّل — أنت متاح",
+    "trackingOffCaption": "متوقف — غير متصل أو غير مسجّل",
+    "permissionCallout": "لمشاركة موقعك عندما تكون متاحًا، اسمح بالوصول إلى الموقع لهذا التطبيق.",
+    "cardLocationTitle": "تتبع الموقع",
+    "cardLocationHint": "POST /mobile/captain/me/location كل ~30 ثانية",
+    "sectionPermissions": "الصلاحيات",
+    "sectionStatus": "الحالة",
+    "permissionLabel": "إذن الموقع",
+    "permissionGranted": "مسموح",
+    "permissionDenied": "مرفوض",
+    "permissionUnknown": "غير محدد",
+    "btnRequestAgain": "إعادة طلب الإذن",
+    "btnAppSettings": "إعدادات التطبيق",
+    "labelNetwork": "الشبكة",
+    "labelApp": "التطبيق",
+    "reachabilityOnline": "متصل",
+    "reachabilityOffline": "غير متصل",
+    "reachabilityUnknown": "جارٍ التحقق…",
+    "appForeground": "في المقدّمة",
+    "appBackground": "في الخلفية — الإرسال متوقف مؤقتًا",
+    "labelOutbox": "في انتظار الإرسال",
+    "sectionLastGps": "آخر قراءة GPS",
+    "sectionLastServer": "آخر تأكيد من الخادم",
+    "issueTitle": "تنبيه",
+    "issuePermissionForeground": "يلزم السماح بالموقع أثناء استخدام التطبيق لمتابعة التتبع.",
+    "issueNetworkOffline": "لا يوجد اتصال — تم حفظ النقطة لإرسالها عند عودة الشبكة.",
+    "issuePermissionDeniedSettings": "لم يُمنح إذن الموقع. يمكن تفعيله من إعدادات التطبيق."
+  },
+  "realtime": {
+    "newOrderTitle": "طلب جديد وصل",
+    "newOrderMessage": "طلب رقم {{serial}} بانتظار قبولك",
+    "newOrderMessageFallback": "لديك طلب جديد بانتظار القبول",
+    "orderUpdatedTitle": "تحديث على الطلب",
+    "orderUpdatedMessage": "تم تحديث حالة أحد الطلبات لديك",
+    "assignmentEndedTitle": "انتهى التعيين الحالي",
+    "assignmentEndedMessage": "يمكنك انتظار عرض جديد أو تحديث القائمة",
+    "dismissBannerA11y": "إغلاق التنبيه"
+  },
+  "overflow": {
+    "titleOne": "طلب إضافي لا يظهر في البطاقة الرئيسية",
+    "titleMany": "{{count}} طلبات إضافية لا تظهر في البطاقة الرئيسية",
+    "warningTitle": "تعذّر التحقق من الطلبات الإضافية الآن",
+    "warningHint": "قد تكون هناك طلبات ثانوية غير معروضة حالياً.",
+    "retry": "إعادة المحاولة",
+    "retryA11y": "إعادة محاولة جلب الطلبات الإضافية",
+    "detailsHint": "افتح التفاصيل من القائمة أدناه أو من الأرشيف.",
+    "kindOffer": "عرض",
+    "kindActive": "نشط",
+    "orderA11y": "طلب {{serial}} — {{kind}}"
+  },
+  "whatsapp": {
+    "label": "واتساب",
+    "a11y": "واتساب {{phone}}"
+  },
+  "assignmentOffer": {
+    "countdown": "⏱ {{seconds}} ث"
+  },
+  "workStatus": {
+    "a11yLabel": "حالة الشغل: {{label}}"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "hubSub": "كل ما هو خارج تنفيذ الطلبات المباشر: حساب، أدوات، وتفضيلات",
+    "language": "اللغة",
+    "languageHint": "عربي، إنجليزي أو عبري — يُحفظ على هذا الجهاز.",
+    "langEn": "English",
+    "langAr": "العربية",
+    "langHe": "עברית",
+    "hubSectionAccount": "الحساب",
+    "hubSectionTools": "أدوات",
+    "hubSectionApp": "التطبيق",
+    "hubSectionExtra": "إضافي",
+    "hubProfileLabel": "الملف الشخصي",
+    "hubProfileHint": "الاسم، الجهة، المنطقة",
+    "hubAvailabilityLabel": "حالة التوفر",
+    "hubAvailabilityHint": "متاح، مشغول، خارج الخدمة — من نفس شاشة الحساب",
+    "hubSignOutLabel": "تسجيل الخروج",
+    "hubSignOutHint": "من أسفل شاشة الملف الشخصي",
+    "hubEarningsLabel": "الأرباح",
+    "hubEarningsHint": "ملخص التحصيل",
+    "hubTrackingLabel": "تتبع الموقع",
+    "hubTrackingHint": "إذن الموقع وإرسال الإحداثيات",
+    "hubAppNotifLabel": "تنبيهات التطبيق",
+    "hubAppNotifHint": "قريبًا — تفضيلات الصوت والظهور",
+    "hubQuickHomeLabel": "لوحة سريعة",
+    "hubQuickHomeHint": "ملخص الحالة وآخر تنبيه — اختياري"
+  }
+}

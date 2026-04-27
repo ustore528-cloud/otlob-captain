@@ -52,7 +52,22 @@
     "phase23:verify-company-admin-company-wallet-read": "tsx scripts/phase23-verify-company-admin-company-wallet-read.ts",
     "phase261:verify-company-admin-store-topup": "tsx scripts/phase261-verify-company-admin-store-topup.ts",
     "phase262:verify-company-admin-captain-prepaid-idempotency": "tsx scripts/phase262-verify-company-admin-captain-prepaid-idempotency.ts",
-    "phase263:verify-company-admin-finance-topup-sweep": "tsx scripts/phase263-verify-company-admin-finance-topup-sweep.ts"
+    "phase263:verify-company-admin-finance-topup-sweep": "tsx scripts/phase263-verify-company-admin-finance-topup-sweep.ts",
+    "phase31:verify-company-wallet-spending-limit": "tsx scripts/phase31-verify-company-wallet-spending-limit.ts",
+    "phase311:fix-single-missing-company-scope": "tsx scripts/phase311-fix-single-missing-company-scope-user.ts",
+    "phase322:verify-company-wide-distribution-scope": "tsx scripts/phase322-verify-company-wide-distribution-scope.ts",
+    "phase323:verify-company-admin-distribution-actions": "tsx scripts/phase323-verify-company-admin-distribution-actions.ts",
+    "phase324:verify-company-admin-auto-distribution": "tsx scripts/phase324-verify-company-admin-auto-distribution.ts",
+    "phase330:preview-company-delete-archive": "tsx scripts/phase330-preview-company-delete-archive.ts",
+    "phase331:verify-company-archive": "tsx scripts/phase331-verify-company-archive.ts",
+    "phase340:preview-user-cleanup": "tsx scripts/phase340-preview-user-cleanup.ts",
+    "phase341:apply-user-cleanup": "tsx scripts/phase341-apply-user-cleanup.ts",
+    "phaseS2:verify-operational-store-order-create": "tsx scripts/phaseS2-verify-operational-store-order-create.ts",
+    "phaseS41:verify-storeless-company-finance": "tsx scripts/phaseS41-verify-storeless-company-finance.ts",
+    "ensure:qa-default-branch": "tsx scripts/ensure-default-branch-for-company.ts",
+    "backfill:order-display-numbers": "tsx scripts/backfill-order-display-numbers.ts",
+    "dev:inspect-captain-push-tokens": "tsx scripts/inspect-captain-push-tokens.ts",
+    "dev:send-captain-test-push": "tsx scripts/send-captain-test-push.ts"
   },
   "dependencies": {
     "@captain/shared": "0.1.0",

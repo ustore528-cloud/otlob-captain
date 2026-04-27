@@ -18,7 +18,7 @@ type Props = {
   onDropRejectedByGuard?: () => void;
 };
 
-const defaultReassignHint = "هذا الكابتن خارج نطاق مشرف المتجر لهذا الطلب (أو اختر من القائمة المتوافقة).";
+const defaultReassignHint = "هذا الكابتن خارج نطاق التوزيع المسموح لهذا الطلب (أو اختر من القائمة المتوافقة).";
 
 export function CaptainQuickDropPanel({
   captains,

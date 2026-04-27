@@ -2,12 +2,14 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useEffect, useRef } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { homeTheme } from "@/features/home/theme";
 import { useInAppTopBannerStore } from "@/store/in-app-top-banner-store";
 
 const AUTO_DISMISS_MS = 7_000;
 
 export function InAppTopBanner() {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const current = useInAppTopBannerStore((s) => s.current);
   const dismissBanner = useInAppTopBannerStore((s) => s.dismissBanner);
@@ -75,7 +77,7 @@ export function InAppTopBanner() {
               onPress={() => dismissBanner(current.id)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="إغلاق التنبيه"
+              accessibilityLabel={t("realtime.dismissBannerA11y")}
               style={({ pressed }) => [styles.dismiss, pressed && styles.pressed]}
             >
               <Ionicons name="close" size={16} color={homeTheme.textSubtle} />
@@ -118,7 +120,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: homeTheme.accentSoft,
+    backgroundColor: "#FDEBEC",
   },
   textCol: {
     flex: 1,
@@ -134,7 +136,7 @@ const styles = StyleSheet.create({
   },
   message: {
     marginTop: 1,
-    color: homeTheme.textSubtle,
+    color: homeTheme.textMuted,
     fontSize: 12,
     lineHeight: 17,
     textAlign: "right",

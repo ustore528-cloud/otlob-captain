@@ -1,0 +1,169 @@
+{
+  "generatedAt": "2026-04-26T00:35:43.275Z",
+  "proposalOnly": true,
+  "databaseWritesPerformed": false,
+  "affectedUsers": 6,
+  "actionSummary": {
+    "assign_company": 4,
+    "assign_branch": 0,
+    "deactivate_user": 0,
+    "manual_review": 2,
+    "no_action": 0
+  },
+  "confidenceSummary": {
+    "high": 4,
+    "medium": 0,
+    "low": 0,
+    "none": 2
+  },
+  "proposals": [
+    {
+      "userId": "cmocpq2h10008ume0wwn6n9ev",
+      "email": "ad2min1@admin.com",
+      "phone": "0522132565",
+      "role": "BRANCH_MANAGER",
+      "currentCompanyId": null,
+      "currentBranchId": null,
+      "relatedCaptainId": null,
+      "relatedCaptainCompanyId": null,
+      "relatedCaptainBranchId": null,
+      "relatedOwnedStoreCount": 0,
+      "relatedOwnedStoreCompanyIds": [],
+      "relatedOwnedStoreBranchIds": [],
+      "relatedBranchRecordCompanyId": null,
+      "possibleInferredCompanyId": null,
+      "possibleInferredBranchId": null,
+      "inferenceSource": "no_reliable_relation",
+      "confidence": "none",
+      "proposedAction": "manual_review",
+      "reason": "No verified tenant relation found.",
+      "riskNote": "High risk to auto-assign. Manual review required."
+    },
+    {
+      "userId": "cmocxpp8y006kumhoijqtpre1",
+      "email": "ustore5228@gmail.com",
+      "phone": "0522222222",
+      "role": "BRANCH_MANAGER",
+      "currentCompanyId": null,
+      "currentBranchId": null,
+      "relatedCaptainId": null,
+      "relatedCaptainCompanyId": null,
+      "relatedCaptainBranchId": null,
+      "relatedOwnedStoreCount": 0,
+      "relatedOwnedStoreCompanyIds": [],
+      "relatedOwnedStoreBranchIds": [],
+      "relatedBranchRecordCompanyId": null,
+      "possibleInferredCompanyId": null,
+      "possibleInferredBranchId": null,
+      "inferenceSource": "no_reliable_relation",
+      "confidence": "none",
+      "proposedAction": "manual_review",
+      "reason": "No verified tenant relation found.",
+      "riskNote": "High risk to auto-assign. Manual review required."
+    },
+    {
+      "userId": "cmo9nfy3y0002um84vllw02iz",
+      "email": "store@example.com",
+      "phone": "+966500000003",
+      "role": "STORE_ADMIN",
+      "currentCompanyId": null,
+      "currentBranchId": null,
+      "relatedCaptainId": null,
+      "relatedCaptainCompanyId": null,
+      "relatedCaptainBranchId": null,
+      "relatedOwnedStoreCount": 1,
+      "relatedOwnedStoreCompanyIds": [
+        "cd8xptlzhophhzlxl036ehf6g"
+      ],
+      "relatedOwnedStoreBranchIds": [
+        "cpkeiii7o4nfcxx7d0ymncwcs"
+      ],
+      "relatedBranchRecordCompanyId": null,
+      "possibleInferredCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "possibleInferredBranchId": "cpkeiii7o4nfcxx7d0ymncwcs",
+      "inferenceSource": "active_owned_store_relation",
+      "confidence": "high",
+      "proposedAction": "assign_company",
+      "reason": "User owns active store(s) with tenant linkage.",
+      "riskNote": "Direct store ownership relation."
+    },
+    {
+      "userId": "cmob0w1oa000cumiwsjzl5qgj",
+      "email": "smoke-store-a2@example.com",
+      "phone": "+966500010101",
+      "role": "STORE_ADMIN",
+      "currentCompanyId": null,
+      "currentBranchId": null,
+      "relatedCaptainId": null,
+      "relatedCaptainCompanyId": null,
+      "relatedCaptainBranchId": null,
+      "relatedOwnedStoreCount": 1,
+      "relatedOwnedStoreCompanyIds": [
+        "cd8xptlzhophhzlxl036ehf6g"
+      ],
+      "relatedOwnedStoreBranchIds": [
+        "cmob0vznz0001umiwd5v1bpx0"
+      ],
+      "relatedBranchRecordCompanyId": null,
+      "possibleInferredCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "possibleInferredBranchId": "cmob0vznz0001umiwd5v1bpx0",
+      "inferenceSource": "active_owned_store_relation",
+      "confidence": "high",
+      "proposedAction": "assign_company",
+      "reason": "User owns active store(s) with tenant linkage.",
+      "riskNote": "Direct store ownership relation."
+    },
+    {
+      "userId": "cmob0w1ud000eumiwq3k0a9vd",
+      "email": "smoke-store-b1@example.com",
+      "phone": "+966500010102",
+      "role": "STORE_ADMIN",
+      "currentCompanyId": null,
+      "currentBranchId": null,
+      "relatedCaptainId": null,
+      "relatedCaptainCompanyId": null,
+      "relatedCaptainBranchId": null,
+      "relatedOwnedStoreCount": 1,
+      "relatedOwnedStoreCompanyIds": [
+        "cmob0w0bz0002umiweako63e2"
+      ],
+      "relatedOwnedStoreBranchIds": [
+        "cmob0w0u10004umiwtv41ooye"
+      ],
+      "relatedBranchRecordCompanyId": null,
+      "possibleInferredCompanyId": "cmob0w0bz0002umiweako63e2",
+      "possibleInferredBranchId": "cmob0w0u10004umiwtv41ooye",
+      "inferenceSource": "active_owned_store_relation",
+      "confidence": "high",
+      "proposedAction": "assign_company",
+      "reason": "User owns active store(s) with tenant linkage.",
+      "riskNote": "Direct store ownership relation."
+    },
+    {
+      "userId": "cmob1289s0000umakazdzxouh",
+      "email": "smoke-store-a1@example.com",
+      "phone": "+966500010100",
+      "role": "STORE_ADMIN",
+      "currentCompanyId": null,
+      "currentBranchId": null,
+      "relatedCaptainId": null,
+      "relatedCaptainCompanyId": null,
+      "relatedCaptainBranchId": null,
+      "relatedOwnedStoreCount": 1,
+      "relatedOwnedStoreCompanyIds": [
+        "cd8xptlzhophhzlxl036ehf6g"
+      ],
+      "relatedOwnedStoreBranchIds": [
+        "cpkeiii7o4nfcxx7d0ymncwcs"
+      ],
+      "relatedBranchRecordCompanyId": null,
+      "possibleInferredCompanyId": "cd8xptlzhophhzlxl036ehf6g",
+      "possibleInferredBranchId": "cpkeiii7o4nfcxx7d0ymncwcs",
+      "inferenceSource": "active_owned_store_relation",
+      "confidence": "high",
+      "proposedAction": "assign_company",
+      "reason": "User owns active store(s) with tenant linkage.",
+      "riskNote": "Direct store ownership relation."
+    }
+  ]
+}

@@ -4,12 +4,14 @@ import { loadDashboardStats } from "@/lib/dashboard-stats";
 import {
   canAccessCaptainsPage,
   canAccessIncubatorHost,
+  canAccessReportsPage,
   canAccessUsersPage,
   canListOrdersRole,
   isDispatchRole,
 } from "@/lib/rbac-roles";
 import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/stores/auth-store";
+import { redirect } from "react-router-dom";
 
 /** مطابق لمفتاح قائمة الطلبات الافتراضي في صفحة الطلبات — للتحميل المسبق */
 export const ORDERS_PAGE_INITIAL_LIST_PARAMS = { page: 1, pageSize: 50, status: "", orderNumber: "", customerPhone: "" };
@@ -118,5 +120,13 @@ export async function usersLoader() {
     queryKey: queryKeys.users.list(params),
     queryFn: () => api.users.list({ page: 1, pageSize: 80 }),
   });
+  return null;
+}
+
+export async function reportsLoader() {
+  const token = useAuthStore.getState().token;
+  const role = useAuthStore.getState().user?.role;
+  if (!token) return redirect("/login");
+  if (!canAccessReportsPage(role)) return redirect("/");
   return null;
 }

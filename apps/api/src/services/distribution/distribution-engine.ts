@@ -40,6 +40,11 @@ export type DistributionRequestContext = {
    * supervisor link match for SUPERVISOR_LINKED — same idea as read-path bypass in `supervisor-order-read-scope`.
    */
   bypassSupervisorLinkScope?: boolean;
+  /**
+   * COMPANY_ADMIN only (set in `mergeEngineCtx`): same-company/branch is enough; do not require
+   * `captain.createdByUserId === order.ownerUserId` and broaden AUTO pool to all branch captains.
+   */
+  bypassOrderOwnerCaptainFleetForCompanyAdmin?: boolean;
 };
 type AssignmentPath = "automatic" | "manual";
 
@@ -224,6 +229,7 @@ export class DistributionEngine {
           if (!order) return true;
 
           if (order.distributionMode === DistributionMode.AUTO && order.status === OrderStatus.ASSIGNED) {
+            /** No engineCtx: owner-fleet pool only (see Phase 3.2.4 note on `offerNextAutoCaptainTx`). */
             const next = await this.offerNextAutoCaptainTx(tx, order.id, null);
             logDistributionTimeout(next ? "AUTO_REOFFER_OK" : "AUTO_REOFFER_STOPPED", {
               orderId: order.id,
@@ -267,6 +273,7 @@ export class DistributionEngine {
     if (!order) return;
     if (order.archivedAt) return;
     if (order.distributionMode === DistributionMode.AUTO) {
+      /** No engineCtx: owner-fleet pool only (see Phase 3.2.4 note on `offerNextAutoCaptainTx`). */
       await this.offerNextAutoCaptainTx(tx, orderId, actorUserId);
     } else {
       await tx.order.update({
@@ -287,6 +294,7 @@ export class DistributionEngine {
     actorUserId: string | null,
     overrideGate?: AutomaticMultiOrderOverrideGateInput,
     requestId?: string,
+    engineCtx?: DistributionRequestContext,
   ): Promise<{ captainId: string } | null> {
     const policy: AutoDistributionPolicy = overrideGate
       ? "OVERRIDE_MULTI_ORDER"
@@ -316,8 +324,20 @@ export class DistributionEngine {
       });
     }
 
+    /**
+     * Pool selection (Phase 3.2.3 / 3.2.4):
+     * - With `bypassOrderOwnerCaptainFleetForCompanyAdmin` (COMPANY_ADMIN staff path), use all captains in the
+     *   order branch that pass base auto rules (no `createdByUserId === order.ownerUserId` filter).
+     * - Without that flag (including `processDueTimeouts` / `afterCaptainRejectTx` when `engineCtx` is omitted),
+     *   auto re-offers use the order-owner fleet (`order.ownerUserId`) on purpose: there is no staff actor
+     *   to apply company-wide intent, so we keep the historical owner-scoped automatic pool for unattended flow.
+     */
+    const orderOwnerForPool =
+      engineCtx?.bypassOrderOwnerCaptainFleetForCompanyAdmin === true
+        ? null
+        : (order.ownerUserId ?? null);
     const pool = await tx.captain.findMany({
-      where: eligibleCaptainsForAutoDistribution(order.branchId, order.ownerUserId ?? null),
+      where: eligibleCaptainsForAutoDistribution(order.branchId, orderOwnerForPool),
       orderBy: { id: "asc" },
     });
 
@@ -507,7 +527,11 @@ export class DistributionEngine {
     return { captainId: selectedCaptain.id };
   }
 
-  async startAutoDistribution(orderId: string, actorUserId: string | null) {
+  async startAutoDistribution(
+    orderId: string,
+    actorUserId: string | null,
+    engineCtx?: DistributionRequestContext,
+  ) {
     return prisma.$transaction(async (tx) => {
       await lockOrderDistributionTx(tx, orderId);
 
@@ -533,13 +557,25 @@ export class DistributionEngine {
         data: { lastDistributionResetAt: new Date() },
       });
 
-      await this.offerNextAutoCaptainTx(tx, orderId, actorUserId);
+      await this.offerNextAutoCaptainTx(
+        tx,
+        orderId,
+        actorUserId,
+        undefined,
+        engineCtx?.requestId,
+        engineCtx,
+      );
 
       return tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
     }, DISTRIBUTION_TRANSACTION_OPTIONS);
   }
 
-  async startAutoDistributionVisible(orderId: string, actorUserId: string | null, requestId?: string) {
+  async startAutoDistributionVisible(
+    orderId: string,
+    actorUserId: string | null,
+    requestId?: string,
+    engineCtx?: DistributionRequestContext,
+  ) {
     return prisma.$transaction(async (tx) => {
       await lockOrderDistributionTx(tx, orderId);
       const order = await loadOrder(tx, orderId);
@@ -567,6 +603,7 @@ export class DistributionEngine {
         actorUserId,
         { manualMultiOrderOverrideEnabled: true, overrideSource: "AUTO_VISIBLE_BATCH" },
         requestId,
+        engineCtx,
       );
       return tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
     }, DISTRIBUTION_TRANSACTION_OPTIONS);
@@ -646,7 +683,7 @@ export class DistributionEngine {
         totalMs: Date.now() - t0,
       });
 
-      await this.offerNextAutoCaptainTx(tx, orderId, actorUserId, undefined, ctx.requestId);
+      await this.offerNextAutoCaptainTx(tx, orderId, actorUserId, undefined, ctx.requestId, ctx);
       logEngineTiming("resend_distribution", "offer_next_auto_done", {
         requestId: ctx.requestId,
         orderId,
@@ -841,7 +878,11 @@ export class DistributionEngine {
         { companyId: order.companyId, branchId: order.branchId },
         { companyId: targetCaptain.companyId, branchId: targetCaptain.branchId },
       );
-      if (order.ownerUserId && targetCaptain.createdByUserId !== order.ownerUserId) {
+      if (
+        !ctx.bypassOrderOwnerCaptainFleetForCompanyAdmin &&
+        order.ownerUserId &&
+        targetCaptain.createdByUserId !== order.ownerUserId
+      ) {
         throw new AppError(403, "Captain does not belong to this order owner's fleet.", "OWNER_MISMATCH");
       }
       if (!ctx.bypassSupervisorLinkScope) {
@@ -1056,7 +1097,11 @@ export class DistributionEngine {
         { companyId: order.companyId, branchId: order.branchId },
         { companyId: targetCaptain.companyId, branchId: targetCaptain.branchId },
       );
-      if (order.ownerUserId && targetCaptain.createdByUserId !== order.ownerUserId) {
+      if (
+        !ctx.bypassOrderOwnerCaptainFleetForCompanyAdmin &&
+        order.ownerUserId &&
+        targetCaptain.createdByUserId !== order.ownerUserId
+      ) {
         throw new AppError(403, "Captain does not belong to this order owner's fleet.", "OWNER_MISMATCH");
       }
       if (!ctx.bypassSupervisorLinkScope) {

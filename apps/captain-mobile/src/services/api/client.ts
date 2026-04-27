@@ -1,4 +1,5 @@
 import { paths } from "@captain/shared";
+import i18n from "@/i18n/i18n";
 import { env } from "@/utils/env";
 import { ApiClientError } from "./errors";
 import { getTokenBridge } from "./token-bridge";
@@ -23,7 +24,7 @@ function unwrapData<T>(json: unknown): T {
   ) {
     return (json as ApiSuccessEnvelope<T>).data;
   }
-  throw new ApiClientError("استجابة غير متوقعة من الخادم", 500, "BAD_ENVELOPE");
+  throw new ApiClientError(i18n.t("apiClient.badEnvelope"), 500, "BAD_ENVELOPE");
 }
 
 function throwFromErrorBody(status: number, json: unknown): never {
@@ -31,7 +32,7 @@ function throwFromErrorBody(status: number, json: unknown): never {
   if (body && body.success === false && body.error) {
     throw new ApiClientError(body.error.message, status, body.error.code, body.error.details);
   }
-  throw new ApiClientError("فشل الطلب", status);
+  throw new ApiClientError(i18n.t("apiClient.requestFailed"), status);
 }
 
 /**
@@ -100,6 +101,13 @@ export type AuthRequestOptions = RequestInit & {
   skipAuth?: boolean;
 };
 
+export type AuthRequestMeta<T> = {
+  data: T;
+  status: number;
+  url: string;
+  responseBody: unknown;
+};
+
 /**
  * Authenticated request with optional single 401 → refresh → retry.
  */
@@ -107,7 +115,7 @@ export async function authRequest<T>(path: string, init: AuthRequestOptions = {}
   const { skipAuth, ...rest } = init;
   const bridge = getTokenBridge();
   if (!bridge && !skipAuth) {
-    throw new ApiClientError("لم يُهيّأ اتصال الجلسة", 503, "NO_TOKEN_BRIDGE");
+    throw new ApiClientError(i18n.t("apiClient.noTokenBridge"), 503, "NO_TOKEN_BRIDGE");
   }
 
   const run = async (token: string | null) => {
@@ -133,7 +141,59 @@ export async function authRequest<T>(path: string, init: AuthRequestOptions = {}
 
   const token = skipAuth ? null : bridge?.getAccess() ?? null;
   if (!skipAuth && !token) {
-    throw new ApiClientError("لا يوجد رمز وصول", 401, "NO_ACCESS_TOKEN");
+    throw new ApiClientError(i18n.t("apiClient.noAccessToken"), 401, "NO_ACCESS_TOKEN");
+  }
+
+  try {
+    return await run(token);
+  } catch (e) {
+    if (e instanceof ApiClientError && e.status === 401 && !skipAuth) {
+      const refreshed = await performRefresh();
+      if (!refreshed) throw e;
+      const next = getTokenBridge()?.getAccess() ?? null;
+      if (!next) throw e;
+      return await run(next);
+    }
+    throw e;
+  }
+}
+
+export async function authRequestWithMeta<T>(path: string, init: AuthRequestOptions = {}): Promise<AuthRequestMeta<T>> {
+  const { skipAuth, ...rest } = init;
+  const bridge = getTokenBridge();
+  if (!bridge && !skipAuth) {
+    throw new ApiClientError(i18n.t("apiClient.noTokenBridge"), 503, "NO_TOKEN_BRIDGE");
+  }
+
+  const run = async (token: string | null): Promise<AuthRequestMeta<T>> => {
+    const h = mergeHeaders(rest);
+    const headers = h as Record<string, string>;
+    if (!skipAuth && token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const url = `${env.apiUrl}${path}`;
+    const res = await fetch(url, {
+      ...rest,
+      headers,
+    });
+    const text = await res.text();
+    const json = parseJson(text);
+
+    if (!res.ok) {
+      throwFromErrorBody(res.status, json);
+    }
+
+    return {
+      data: unwrapData<T>(json),
+      status: res.status,
+      url,
+      responseBody: json,
+    };
+  };
+
+  const token = skipAuth ? null : bridge?.getAccess() ?? null;
+  if (!skipAuth && !token) {
+    throw new ApiClientError(i18n.t("apiClient.noAccessToken"), 401, "NO_ACCESS_TOKEN");
   }
 
   try {

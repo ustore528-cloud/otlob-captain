@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenHeader } from "@/components/screen-header";
@@ -6,7 +7,7 @@ import { WorkStatusBanner } from "@/features/work-status";
 import { useInnerToolBack } from "@/hooks/use-inner-tool-back";
 import {
   AvailabilityControl,
-  availabilityLabel,
+  availabilityLabelT,
   parseAvailabilityStatus,
   useUpdateAvailability,
 } from "@/features/availability";
@@ -18,6 +19,7 @@ import { useAuth } from "@/hooks/use-auth";
 import type { CaptainAvailabilityStatus } from "@/services/api/dto";
 
 export default function ProfileTab() {
+  const { t } = useTranslation();
   const { user, captain, signOut, isAuthenticated } = useAuth();
   const goBack = useInnerToolBack();
   const meQuery = useCaptainMe({ enabled: isAuthenticated, staleTime: 20_000 });
@@ -31,25 +33,25 @@ export default function ProfileTab() {
   const onAvailability = useCallback(
     (next: CaptainAvailabilityStatus) => {
       updateAv.mutate(next, {
-        onError: (e) => alertMutationError("تعذّر التحديث", e, "حاول مرة أخرى."),
+        onError: (e) => alertMutationError(t("profile.updateErrorTitle"), e, t("profile.updateErrorHint")),
       });
     },
-    [updateAv],
+    [updateAv, t],
   );
 
   return (
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
       <WorkStatusBanner />
-      <ScreenHeader title="حسابي" onBack={goBack} />
+      <ScreenHeader title={t("profile.title")} onBack={goBack} />
       <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.screenSub}>بياناتك وحالة التوفر</Text>
+        <Text style={styles.screenSub}>{t("profile.sub")}</Text>
 
         <View style={styles.card}>
-          <Row label="الاسم" value={user?.fullName ?? "—"} />
-          <Row label="الجوال" value={user?.phone ?? "—"} />
-          <Row label="البريد" value={user?.email ?? "—"} />
-          <Row label="المنطقة" value={captain?.area ?? "—"} />
-          <Row label="التوفر الحالي" value={availabilityLabel[currentAvailability]} />
+          <Row label={t("profile.name")} value={user?.fullName ?? t("common.emDash")} />
+          <Row label={t("profile.phone")} value={user?.phone ?? t("common.emDash")} />
+          <Row label={t("profile.email")} value={user?.email ?? t("common.emDash")} />
+          <Row label={t("profile.area")} value={captain?.area ?? t("common.emDash")} />
+          <Row label={t("profile.currentAvailability")} value={availabilityLabelT(currentAvailability, t)} />
         </View>
 
         <View style={{ height: 16 }} />
@@ -58,8 +60,8 @@ export default function ProfileTab() {
           value={currentAvailability}
           pending={updateAv.isPending}
           onChange={onAvailability}
-          title="تغيير حالة التوفر"
-          subtitle="نفس الإعدادات كما في لوحة الكابتن — تُحدَّث فورًا"
+          title={t("profile.availabilityChangeTitle")}
+          subtitle={t("profile.availabilityChangeSubtitle")}
           compact
         />
 
@@ -69,7 +71,7 @@ export default function ProfileTab() {
             void signOut();
           }}
         >
-          <Text style={styles.outText}>تسجيل الخروج</Text>
+          <Text style={styles.outText}>{t("profile.signOut")}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>

@@ -1,9 +1,11 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { ComponentProps } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import type { CaptainAvailabilityStatus } from "@/services/api/dto";
 import { homeTheme } from "@/features/home/theme";
-import { AVAILABILITY_ORDER, availabilityHint, availabilityLabel } from "../labels";
+import { AVAILABILITY_ORDER } from "../labels";
+import { availabilityHintT, availabilityLabelT } from "@/lib/availability-text";
 
 const icons: Record<CaptainAvailabilityStatus, ComponentProps<typeof Ionicons>["name"]> = {
   AVAILABLE: "checkmark-circle-outline",
@@ -33,18 +35,21 @@ export function AvailabilityControl({
   pending = false,
   disabled = false,
   onChange,
-  title = "حالة التوفر",
-  subtitle = "يتحكم ظهورك في التوزيع والعروض الجديدة",
+  title,
+  subtitle,
   compact = false,
 }: AvailabilityControlProps) {
+  const { t } = useTranslation();
+  const resolvedTitle = title ?? t("availability.controlTitle");
+  const resolvedSubtitle = subtitle !== undefined ? subtitle : t("availability.controlSubtitle");
   const blocked = pending || disabled;
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>{title}</Text>
-      {subtitle ? (
+      <Text style={styles.title}>{resolvedTitle}</Text>
+      {resolvedSubtitle ? (
         <Text style={styles.sub} numberOfLines={compact ? 2 : undefined}>
-          {subtitle}
+          {resolvedSubtitle}
         </Text>
       ) : null}
       <View style={[styles.grid, compact && styles.gridCompact]}>
@@ -66,7 +71,7 @@ export function AvailabilityControl({
               disabled={blocked}
               accessibilityRole="button"
               accessibilityState={{ selected: active, disabled: blocked }}
-              accessibilityLabel={`${availabilityLabel[key]}. ${availabilityHint[key]}`}
+              accessibilityLabel={`${availabilityLabelT(key, t)}. ${availabilityHintT(key, t)}`}
             >
               <View style={styles.optionRow}>
                 <Ionicons
@@ -76,11 +81,11 @@ export function AvailabilityControl({
                 />
                 <View style={styles.optionText}>
                   <Text style={[styles.optionTitle, active && styles.optionTitleActive]}>
-                    {availabilityLabel[key]}
+                    {availabilityLabelT(key, t)}
                   </Text>
                   {!compact ? (
                     <Text style={styles.optionHint} numberOfLines={2}>
-                      {availabilityHint[key]}
+                      {availabilityHintT(key, t)}
                     </Text>
                   ) : null}
                 </View>

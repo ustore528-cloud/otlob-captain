@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -17,6 +18,7 @@ import { loginFormSchema } from "@/features/auth/validation/login-schema";
 import { homeTheme } from "@/features/home/theme";
 
 export function LoginScreen() {
+  const { t } = useTranslation();
   const { login, loading, error } = useLogin();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -45,7 +47,7 @@ export function LoginScreen() {
   }, [identifier, password, login]);
 
   return (
-    <Screen title="اطلب كابتن" subtitle="تسجيل دخول الكابتن">
+    <Screen title={t("login.title")} subtitle={t("login.subtitle")}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
@@ -56,12 +58,10 @@ export function LoginScreen() {
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.lead}>
-            أدخل رقم الجوال أو البريد الإلكتروني المسجّل لدينا، وكلمة المرور.
-          </Text>
+          <Text style={styles.lead}>{t("login.lead")}</Text>
 
           <TextField
-            label="رقم الجوال أو البريد"
+            label={t("login.fieldIdentifier")}
             value={identifier}
             onChangeText={(t) => {
               setIdentifier(t);
@@ -75,7 +75,7 @@ export function LoginScreen() {
           />
 
           <TextField
-            label="كلمة المرور"
+            label={t("login.fieldPassword")}
             value={password}
             onChangeText={(t) => {
               setPassword(t);
@@ -103,7 +103,7 @@ export function LoginScreen() {
             {loading ? (
               <ActivityIndicator color={homeTheme.onAccent} />
             ) : (
-              <Text style={styles.primaryText}>تسجيل الدخول</Text>
+              <Text style={styles.primaryText}>{t("login.submit")}</Text>
             )}
           </Pressable>
         </ScrollView>

@@ -1,8 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { OrderDetailDto } from "@/services/api/dto";
 import { homeTheme } from "@/features/home/theme";
-import { orderStatusAr } from "@/lib/order-status-ar";
+import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
 import { WhatsAppActionButton } from "@/components/ui/whatsapp-action-button";
 import { openPhoneDialer } from "@/lib/open-external";
 import { orderStatusAccent, type StatusAccent } from "../utils/order-status-accent";
@@ -29,8 +30,9 @@ export function CaptainWorkbenchOrderCard({
   visualDensity = "default",
   onOpenDetail,
 }: Props) {
+  const { t } = useTranslation();
   const accent: StatusAccent = orderStatusAccent(order.status);
-  const statusLabel = orderStatusAr[order.status] ?? order.status;
+  const statusLabel = t(orderStatusTranslationKey(order.status));
   const liveOps = visualDensity === "liveOperations";
   const compactEffective = Boolean(compact || liveOps);
 
@@ -40,12 +42,12 @@ export function CaptainWorkbenchOrderCard({
         onPress={onOpenDetail}
         style={({ pressed }) => [styles.headerRow, liveOps && styles.headerRowLiveOps, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`Order ${formatOrderSerial(order.orderNumber)}, open details`}
+        accessibilityLabel={t("workbenchOrderCard.openDetailsA11y", { n: formatOrderSerial(order.orderNumber, order.displayOrderNo) })}
       >
         <View style={styles.headerText}>
-          <Text style={[styles.serialLabel, liveOps && styles.serialLabelLiveOps]}>Order #</Text>
+          <Text style={[styles.serialLabel, liveOps && styles.serialLabelLiveOps]}>{t("orderCard.serialLabel")}</Text>
           <Text style={[styles.serial, liveOps && styles.serialLiveOps]} numberOfLines={1}>
-            {formatOrderSerial(order.orderNumber)}
+            {formatOrderSerial(order.orderNumber, order.displayOrderNo)}
           </Text>
         </View>
         <View style={[styles.badge, { backgroundColor: accent.bg, borderColor: accent.border }]}>
@@ -77,7 +79,7 @@ export function CaptainWorkbenchOrderCard({
           style={({ pressed }) => [styles.iconBtn, styles.callBtn, pressed && styles.pressed]}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel={`اتصال ${order.customerPhone}`}
+          accessibilityLabel={t("workbenchOrderCard.callA11y", { phone: order.customerPhone })}
         >
           <Ionicons name="call-outline" size={liveOps ? 18 : 20} color={homeTheme.accent} />
         </Pressable>
@@ -86,10 +88,10 @@ export function CaptainWorkbenchOrderCard({
           onPress={onOpenDetail}
           style={({ pressed }) => [styles.detailBtn, liveOps && styles.detailBtnLiveOps, pressed && styles.pressed]}
           accessibilityRole="button"
-          accessibilityLabel="Order details"
+          accessibilityLabel={t("workbenchOrderCard.orderDetailsA11y")}
         >
           <Text style={[styles.detailBtnText, liveOps && styles.detailBtnTextLiveOps]}>
-            {compactEffective ? "التفاصيل" : "Details"}
+            {t("workbenchOrderCard.details")}
           </Text>
         </Pressable>
       </View>
@@ -105,6 +107,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: homeTheme.border,
     marginBottom: 3,
+    ...homeTheme.cardShadow,
   },
   cardCompact: {
     padding: 6,

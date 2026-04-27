@@ -5,8 +5,8 @@ type ExpoPushMessage = {
   to: string;
   title: string;
   body: string;
-  sound: "default";
-  channelId: "captain-orders";
+  sound: "new_order.wav";
+  channelId: "captain-orders-v2";
   priority: "high";
   data?: Record<string, unknown>;
 };
@@ -29,9 +29,18 @@ type CaptainOrderPushInput = {
   title: string;
   body: string;
   orderId: string;
+  assignmentId?: string | null;
   orderNumber?: string | null;
   kind: "OFFER" | "REASSIGNED" | "ALERT";
   status?: string | null;
+};
+
+export type SendToCaptainUserOutcome = {
+  userId: string;
+  tokenRowsFound: number;
+  validExpoTokenRows: number;
+  expoTickets: ExpoPushTicket[];
+  expoRawResponse: unknown;
 };
 
 function isExpoPushToken(token: string): boolean {
@@ -53,7 +62,7 @@ async function postExpoPush(messages: ExpoPushMessage[]): Promise<unknown> {
     body: JSON.stringify(messages),
   });
   const headersAt = Date.now();
-  const json = (await res.json().catch(() => null)) as { data?: ExpoPushTicket[] } | null;
+  const json = (await res.json().catch(() => null)) as { data?: ExpoPushTicket[]; errors?: unknown } | null;
   const bodyAt = Date.now();
   // eslint-disable-next-line no-console
   console.info("[orders-action-timing]", {
@@ -66,6 +75,11 @@ async function postExpoPush(messages: ExpoPushMessage[]): Promise<unknown> {
     requestMessages: messages.length,
   });
   if (!res.ok) {
+    // eslint-disable-next-line no-console
+    console.error("[pushNotificationService.postExpoPush] expo_http_error", {
+      status: res.status,
+      body: json,
+    });
     throw new Error(`expo_push_http_${res.status}`);
   }
   return json;
@@ -202,7 +216,7 @@ export const pushNotificationService = {
   async sendToCaptainUser(
     userId: string,
     payload: { title: string; body: string; data?: Record<string, unknown> },
-  ): Promise<void> {
+  ): Promise<SendToCaptainUserOutcome | null> {
     const t0 = Date.now();
     try {
       const tokenRepo = prisma.captainPushToken;
@@ -210,11 +224,11 @@ export const pushNotificationService = {
         // Defensive guard: if runtime Prisma client is stale, skip push but keep API healthy.
         // eslint-disable-next-line no-console
         console.warn("[pushNotificationService.sendToCaptainUser] captainPushToken delegate unavailable");
-        return;
+        return null;
       }
       const rows = await tokenRepo.findMany({
         where: { userId, isActive: true },
-        select: { id: true, token: true },
+        select: { id: true, token: true, platform: true },
         take: 10,
         orderBy: { updatedAt: "desc" },
       });
@@ -225,20 +239,27 @@ export const pushNotificationService = {
         phase: "active_tokens_loaded",
         userId,
         tokenRows: rows.length,
+        platforms: rows.map((r) => r.platform),
         msFromEnter: Date.now() - t0,
       });
       if (rows.length === 0) {
         // eslint-disable-next-line no-console
         console.warn("[pushNotificationService.sendToCaptainUser] no_active_tokens", { userId });
-        return;
+        return {
+          userId,
+          tokenRowsFound: 0,
+          validExpoTokenRows: 0,
+          expoTickets: [],
+          expoRawResponse: null,
+        };
       }
       const validRows = rows.filter((r) => isExpoPushToken(r.token));
       const messages: ExpoPushMessage[] = validRows.map((r) => ({
           to: r.token,
           title: payload.title,
           body: payload.body,
-          sound: "default",
-          channelId: "captain-orders",
+          sound: "new_order.wav",
+          channelId: "captain-orders-v2",
           priority: "high",
           data: payload.data,
         }));
@@ -248,7 +269,13 @@ export const pushNotificationService = {
           userId,
           tokenRows: rows.length,
         });
-        return;
+        return {
+          userId,
+          tokenRowsFound: rows.length,
+          validExpoTokenRows: 0,
+          expoTickets: [],
+          expoRawResponse: null,
+        };
       }
       // eslint-disable-next-line no-console
       console.info("[orders-action-timing]", {
@@ -262,6 +289,20 @@ export const pushNotificationService = {
 
       const json = (await postExpoPush(messages)) as { data?: ExpoPushTicket[] } | null;
       const tickets = json?.data ?? [];
+      // eslint-disable-next-line no-console
+      console.info("[captain-expo-push] ticket_response", {
+        userId,
+        tokenRowsFound: rows.length,
+        validExpoTokenRows: validRows.length,
+        tickets: tickets.map((t) => ({
+          status: t.status ?? null,
+          id: t.id ?? null,
+          message: t.message ?? null,
+          error: t.details?.error ?? null,
+        })),
+        rawErrors: (json as { errors?: unknown } | null)?.errors ?? null,
+        expoRawResponse: json ?? null,
+      });
       if (tickets.length > 0) {
         const okTicketTokenPairs = tickets
           .map((t, i) => ({ ticketId: t.id, tokenId: validRows[i]?.id }))
@@ -306,25 +347,69 @@ export const pushNotificationService = {
         ticketCount: tickets.length,
         totalMs: Date.now() - t0,
       });
+      return {
+        userId,
+        tokenRowsFound: rows.length,
+        validExpoTokenRows: validRows.length,
+        expoTickets: tickets,
+        expoRawResponse: json ?? null,
+      };
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error("[pushNotificationService.sendToCaptainUser]", {
         userId,
         error: e instanceof Error ? e.message : String(e),
       });
+      return null;
     }
   },
 
   async sendCaptainOrderPush(input: CaptainOrderPushInput): Promise<void> {
-    await this.sendToCaptainUser(input.userId, {
+    const captain = await prisma.captain.findFirst({
+      where: { userId: input.userId },
+      select: { id: true },
+    });
+    const activeTokenCount = await prisma.captainPushToken.count({
+      where: { userId: input.userId, isActive: true },
+    });
+    // eslint-disable-next-line no-console
+    console.info("[new-order-push] preparing push", {
+      captainId: captain?.id ?? null,
+      captainUserId: input.userId,
+      orderId: input.orderId,
+      assignmentId: input.assignmentId ?? null,
+      numberOfTokensFound: activeTokenCount,
+      title: input.title,
+    });
+    const outcome = await this.sendToCaptainUser(input.userId, {
       title: input.title,
       body: input.body,
       data: {
+        type: "NEW_ORDER",
         orderId: input.orderId,
+        assignmentId: input.assignmentId ?? undefined,
         orderNumber: input.orderNumber ?? undefined,
         kind: input.kind,
         status: input.status ?? undefined,
       },
+    });
+    // eslint-disable-next-line no-console
+    console.info("[new-order-push] expo ticket result", {
+      orderId: input.orderId,
+      assignmentId: input.assignmentId ?? null,
+      captainId: captain?.id ?? null,
+      captainUserId: input.userId,
+      tokenRowsFound: outcome?.tokenRowsFound ?? null,
+      validExpoTokenRows: outcome?.validExpoTokenRows ?? null,
+      tickets:
+        outcome?.expoTickets.map((t) => ({
+          status: t.status ?? null,
+          id: t.id ?? null,
+          message: t.message ?? null,
+          error: t.details?.error ?? null,
+        })) ?? null,
+      hadTransportError: outcome === null,
+      expoRawResponse: outcome?.expoRawResponse ?? null,
     });
   },
 };

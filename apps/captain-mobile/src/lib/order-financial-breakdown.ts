@@ -1,13 +1,16 @@
 /**
  * Re-exports shared inference so captain mobile and API stay aligned.
  *
- * The **delivery fee** shown in UI is **inferred** from `amount` and `cashCollection` only
- * (`max(0, customerTotal - orderAmount)` when COD). It is **not** an authoritative priced
- * delivery line until the backend stores explicit fee/payout fields — see
- * `@captain/shared` `order-financial-inference.ts` for full limitations.
+ * **Authoritative path:** use `financialBreakdown` from `GET /orders/:id` (canonical
+ * `amount` + `delivery_fee` + `cash_collection`).
+ *
+ * **Fallback (list / legacy rows):** `inferOrderFinancialBreakdown(amount, cashCollection)` when
+ * `delivery_fee` was not stored — see `inferLegacyOrderFinancialBreakdown` in `@captain/shared`.
  */
 
 import {
+  inferCanonicalOrderFinancialBreakdown,
+  inferLegacyOrderFinancialBreakdown,
   inferOrderFinancialBreakdown,
   type OrderFinancialBreakdownDto,
 } from "@captain/shared";
@@ -50,6 +53,24 @@ export function dtoToCaptainShape(f: OrderFinancialBreakdownDto): CaptainOrderFi
 }
 
 export { inferOrderFinancialBreakdown };
+
+/**
+ * Resolves the same money snapshot the API attaches in `financialBreakdown`, for list/overflow
+ * rows that only expose raw `amount` / `deliveryFee` / `cashCollection`.
+ */
+export function resolveOrderFinancialBreakdownDto(args: {
+  amount: string;
+  cashCollection: string;
+  deliveryFee?: string | null;
+  financialBreakdown?: OrderFinancialBreakdownDto | null;
+}): OrderFinancialBreakdownDto {
+  if (args.financialBreakdown) return args.financialBreakdown;
+  const feeRaw = args.deliveryFee;
+  if (feeRaw != null && String(feeRaw).trim() !== "") {
+    return inferCanonicalOrderFinancialBreakdown(args.amount, String(feeRaw), args.cashCollection);
+  }
+  return inferLegacyOrderFinancialBreakdown(args.amount, args.cashCollection);
+}
 
 export function formatIlsAmount(n: number): string {
   return round2(n).toFixed(2);

@@ -14,12 +14,16 @@ const prisma = new PrismaClient();
 
 type ScopeRow = {
   id: string;
+  fullName: string;
   email: string | null;
   phone: string;
   role: UserRole;
   isActive: boolean;
   companyId: string | null;
   branchId: string | null;
+  publicOwnerCode: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 async function main() {
@@ -27,12 +31,16 @@ async function main() {
     where: { isActive: true },
     select: {
       id: true,
+      fullName: true,
       email: true,
       phone: true,
       role: true,
       isActive: true,
       companyId: true,
       branchId: true,
+      publicOwnerCode: true,
+      createdAt: true,
+      updatedAt: true,
     },
     orderBy: [{ role: "asc" }, { createdAt: "asc" }],
   });

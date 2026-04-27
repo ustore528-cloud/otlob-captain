@@ -1,11 +1,12 @@
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import type { OrderStatusDto } from "@/services/api/dto";
 import { homeTheme } from "@/features/home/theme";
 import { ORDER_CURRENCY_SUFFIX_AR } from "@/lib/order-currency";
 import {
   dtoToCaptainShape,
-  inferOrderFinancialBreakdown,
   formatIlsAmount,
+  resolveOrderFinancialBreakdownDto,
   type CaptainOrderFinancialBreakdown,
   type OrderFinancialBreakdownDto,
 } from "@/lib/order-financial-breakdown";
@@ -14,16 +15,16 @@ import {
   shouldShowCashChangeCalculator,
   shouldShowOrderFinancialSection,
 } from "@/lib/order-payment-ui-visibility";
+import { isRtlLng } from "@/i18n/i18n";
+import type { TFunction } from "i18next";
 
 export type OrderFinancialSectionProps = {
   amount: string;
   cashCollection: string;
-  /** يحدد إن كان يُسمح بعرض المالية — يجب أن يطابق `order.status` من الطلب */
+  deliveryFee?: string | null;
   orderStatus: OrderStatusDto;
-  /** من `GET` تفاصيل الطلب عند توفرها — يطابق `inferOrderFinancialBreakdown` على الخادم */
   financialBreakdown?: OrderFinancialBreakdownDto | null;
   variant?: "default" | "compact";
-  /** إخفاء عنوان القسم عند التغليف داخل `SectionCard` */
   hideTitle?: boolean;
 };
 
@@ -31,86 +32,100 @@ function FinancialRows({
   b,
   compact,
   deliveryFeeSource,
+  rowFlex,
+  rtl,
+  t,
 }: {
   b: CaptainOrderFinancialBreakdown;
   compact: boolean;
   deliveryFeeSource: OrderFinancialBreakdownDto["deliveryFeeSource"];
+  rowFlex: "row" | "row-reverse";
+  rtl: boolean;
+  t: TFunction;
 }) {
-  const rowStyle = compact ? styles.rowCompact : styles.row;
+  const rowBase = compact ? styles.rowCompactBase : styles.rowBase;
+  const alignEnd = rtl ? "right" : "left";
+  const alignStart = rtl ? "left" : "right";
   const deliveryLabel =
-    deliveryFeeSource === "inferred"
-      ? "الفرق / رسوم التوصيل (مُستنتجة)"
-      : "رسوم التوصيل";
+    deliveryFeeSource === "inferred" ? t("money.deliveryFeeInferred") : t("money.deliveryFee");
+  const suffix = ` ${ORDER_CURRENCY_SUFFIX_AR}`;
   return (
     <>
-      <View style={rowStyle}>
-        <Text style={styles.label}>قيمة الطلب (دفع للمتجر)</Text>
-        <Text style={styles.value}>
-          {formatIlsAmount(b.payToStore)} {ORDER_CURRENCY_SUFFIX_AR}
+      <View style={[rowBase, { flexDirection: rowFlex }]}>
+        <Text style={[styles.label, { textAlign: alignEnd }]}>{t("money.storeAmount")}</Text>
+        <Text style={[styles.value, { textAlign: alignStart }]}>
+          {formatIlsAmount(b.payToStore)}
+          {suffix}
         </Text>
       </View>
-      <View style={rowStyle}>
-        <Text style={styles.label}>{deliveryLabel}</Text>
-        <Text style={styles.value}>
-          {b.deliveryFee > 0 ? `${formatIlsAmount(b.deliveryFee)} ${ORDER_CURRENCY_SUFFIX_AR}` : "—"}
+      <View style={[rowBase, { flexDirection: rowFlex }]}>
+        <Text style={[styles.label, { textAlign: alignEnd }]}>{deliveryLabel}</Text>
+        <Text style={[styles.value, { textAlign: alignStart }]}>
+          {b.deliveryFee > 0 ? `${formatIlsAmount(b.deliveryFee)}${suffix}` : `0.00${suffix}`}
         </Text>
       </View>
-      <View style={rowStyle}>
-        <Text style={styles.label}>التحصيل من العميل</Text>
-        <Text style={[styles.value, styles.valueAccent]}>
-          {formatIlsAmount(b.collectFromCustomer)} {ORDER_CURRENCY_SUFFIX_AR}
-        </Text>
-      </View>
-      <View style={[styles.totalStrip, compact && styles.totalStripCompact]}>
-        <Text style={styles.totalLabel}>الإجمالي النهائي للعميل</Text>
-        <Text style={styles.totalValue}>
-          {formatIlsAmount(b.finalTotalFromCustomer)} {ORDER_CURRENCY_SUFFIX_AR}
+      <View style={[styles.customerCollectStrip, compact && styles.customerCollectStripCompact, { flexDirection: rowFlex }]}>
+        <Text style={[styles.customerCollectLabel, { textAlign: alignEnd }]}>{t("money.customerCollection")}</Text>
+        <Text style={[styles.customerCollectValue, { textAlign: alignStart }]}>
+          {formatIlsAmount(b.collectFromCustomer)}
+          {suffix}
         </Text>
       </View>
       {deliveryFeeSource === "inferred" ? (
-        <Text style={styles.hintMuted}>
-          الرسوم أعلاه مُستنتجة من الفرق بين «التحصيل من العميل» و«قيمة الطلب» — قد تشمل توصيلاً أو رسوماً
-          أخرى؛ لا يوجد حقل منفصل في الخادم حالياً.
-        </Text>
+        <Text style={[styles.hintMuted, { textAlign: alignEnd }]}>{t("money.hintInferred")}</Text>
       ) : null}
       {b.isCashOnDelivery ? (
-        <Text style={styles.hint}>نقد عند التسليم — استخدم الحاسبة أدناه للباقي</Text>
+        <Text style={[styles.hint, { textAlign: alignEnd }]}>{t("money.hintCod")}</Text>
       ) : (
-        <Text style={styles.hint}>لا يوجد مبلغ تحصيل نقدي منفصل — الإجمالي = قيمة الطلب</Text>
+        <Text style={[styles.hint, { textAlign: alignEnd }]}>{t("money.hintNoCod")}</Text>
       )}
     </>
   );
 }
 
-/**
- * قسم مالي موحّد: قيمة الطلب، رسوم التوصيل المُشتقة، الإجمالي، وحاسبة نقد عند التوصيل.
- * لا يُعرض شيء إلا في مرحلة التوصيل للعميل (`IN_TRANSIT`) — انظر `order-payment-ui-visibility`.
- */
 export function OrderFinancialSection({
   amount,
   cashCollection,
+  deliveryFee,
   orderStatus,
   financialBreakdown,
   variant = "default",
   hideTitle = false,
 }: OrderFinancialSectionProps) {
+  const { t, i18n } = useTranslation();
+  const lng = i18n.resolvedLanguage ?? i18n.language;
+  const rtl = isRtlLng(lng);
+  const rowFlex: "row" | "row-reverse" = rtl ? "row-reverse" : "row";
+  const titleAlign = rtl ? "right" : "left";
+
   if (!shouldShowOrderFinancialSection(orderStatus)) {
     return null;
   }
 
-  const dto = financialBreakdown ?? inferOrderFinancialBreakdown(amount, cashCollection);
+  const dto = resolveOrderFinancialBreakdownDto({ amount, cashCollection, deliveryFee, financialBreakdown });
   const b = dtoToCaptainShape(dto);
   const compact = variant === "compact";
-  const showCalculator =
-    shouldShowCashChangeCalculator(orderStatus) && b.finalTotalFromCustomer > 0;
+  const showCalculator = shouldShowCashChangeCalculator(orderStatus) && b.finalTotalFromCustomer > 0;
 
   return (
     <View style={styles.wrap}>
-      {hideTitle ? null : <Text style={styles.title}>المالية والتحصيل</Text>}
-      <FinancialRows b={b} compact={compact} deliveryFeeSource={dto.deliveryFeeSource} />
+      {hideTitle ? null : (
+        <Text style={[styles.title, { textAlign: titleAlign }]}>{t("money.sectionTitle")}</Text>
+      )}
+      <FinancialRows
+        b={b}
+        compact={compact}
+        deliveryFeeSource={dto.deliveryFeeSource}
+        rowFlex={rowFlex}
+        rtl={rtl}
+        t={t}
+      />
       {showCalculator ? (
         <View style={styles.calcWrap}>
-          <IsraeliCashChangeCalculator customerTotalIls={b.finalTotalFromCustomer} variant={compact ? "compact" : "default"} />
+          <IsraeliCashChangeCalculator
+            customerTotalIls={b.finalTotalFromCustomer}
+            variant={compact ? "compact" : "default"}
+          />
         </View>
       ) : null}
     </View>
@@ -125,11 +140,9 @@ const styles = StyleSheet.create({
     color: homeTheme.textSubtle,
     fontSize: 11,
     fontWeight: "900",
-    textAlign: "right",
     marginBottom: 4,
   },
-  row: {
-    flexDirection: "row-reverse",
+  rowBase: {
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: 12,
@@ -141,8 +154,7 @@ const styles = StyleSheet.create({
     borderBottomColor: homeTheme.border,
     borderColor: homeTheme.border,
   },
-  rowCompact: {
-    flexDirection: "row-reverse",
+  rowCompactBase: {
     justifyContent: "space-between",
     alignItems: "center",
     gap: 8,
@@ -158,58 +170,50 @@ const styles = StyleSheet.create({
     color: homeTheme.textMuted,
     fontSize: 12,
     fontWeight: "700",
-    textAlign: "right",
     lineHeight: 18,
   },
   value: {
     color: homeTheme.text,
     fontSize: 16,
     fontWeight: "900",
-    textAlign: "left",
   },
-  valueAccent: {
-    color: homeTheme.accent,
-  },
-  totalStrip: {
+  customerCollectStrip: {
     marginTop: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     backgroundColor: homeTheme.accentSoft,
-    borderWidth: 1,
-    borderColor: homeTheme.accentMuted,
-    flexDirection: "row-reverse",
+    borderWidth: 2,
+    borderColor: homeTheme.accent,
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
-  totalStripCompact: {
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+  customerCollectStripCompact: {
+    paddingVertical: 12,
+    paddingHorizontal: 12,
   },
-  totalLabel: {
+  customerCollectLabel: {
     color: homeTheme.text,
-    fontSize: 12,
-    fontWeight: "800",
-    textAlign: "right",
+    fontSize: 13,
+    fontWeight: "900",
     flex: 1,
+    lineHeight: 18,
   },
-  totalValue: {
+  customerCollectValue: {
     color: homeTheme.accent,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "900",
   },
   hint: {
     color: homeTheme.textSubtle,
     fontSize: 11,
-    textAlign: "right",
     lineHeight: 16,
     marginTop: 4,
   },
   hintMuted: {
     color: homeTheme.textMuted,
     fontSize: 10,
-    textAlign: "right",
     lineHeight: 15,
     marginTop: 4,
   },

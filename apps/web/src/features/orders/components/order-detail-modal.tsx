@@ -8,6 +8,7 @@ import { LoadingBlock } from "@/components/ui/loading-block";
 import { orderStatusBadgeVariant, orderStatusLabel } from "@/lib/order-status";
 import { storeSubscriptionLabel } from "@/lib/store-subscription-label";
 import { tableDateLocale } from "@/i18n/date-locale";
+import { formatOrderDisplayLabel } from "@captain/shared";
 import type { OrderDetail, StoreSubscriptionType } from "@/types/api";
 import { OrderFinancialStrip } from "@/features/orders/components/order-financial-strip";
 
@@ -24,9 +25,11 @@ type Props = {
   loading: boolean;
   error: Error | null;
   order: OrderDetail | null | undefined;
+  /** When true, omit operational store block and use neutral order-amount wording. */
+  hideStoreSection?: boolean;
 };
 
-export function OrderDetailModal({ open, onClose, loading, error, order }: Props) {
+export function OrderDetailModal({ open, onClose, loading, error, order, hideStoreSection = false }: Props) {
   const { t, i18n } = useTranslation();
   const dateLocale = tableDateLocale(i18n.resolvedLanguage ?? i18n.language);
   const notRecorded = t("common.notRecorded");
@@ -41,7 +44,14 @@ export function OrderDetailModal({ open, onClose, loading, error, order }: Props
           <>
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="text-muted">{t("orders.detailModal.orderLabel")}</span>
-              <span className="font-mono font-medium text-foreground" dir="ltr">
+              <span
+                className="text-lg font-semibold tabular-nums text-foreground"
+                dir="ltr"
+                title={order.orderNumber}
+              >
+                {formatOrderDisplayLabel(order.displayOrderNo ?? null, order.orderNumber)}
+              </span>
+              <span className="font-mono text-xs text-muted-foreground" dir="ltr" title={order.orderNumber}>
                 {order.orderNumber}
               </span>
               <Badge variant={orderStatusBadgeVariant(order.status)}>{orderStatusLabel(order.status)}</Badge>
@@ -57,6 +67,7 @@ export function OrderDetailModal({ open, onClose, loading, error, order }: Props
                 deliveryFee={order.deliveryFee}
                 breakdown={order.financialBreakdown}
                 variant="modal"
+                amountLineKey={hideStoreSection ? "orderAmount" : "storeAmount"}
               />
               <div className="flex flex-wrap justify-between gap-2 rounded-md border border-dashed border-card-border px-3 py-2 text-sm" dir="ltr">
                 <span className="text-muted-foreground">{t("financial.profitCommission")}</span>
@@ -113,7 +124,7 @@ export function OrderDetailModal({ open, onClose, loading, error, order }: Props
               </div>
             </div>
 
-            {store ? (
+            {store && !hideStoreSection ? (
               <div className="grid gap-3 rounded-lg border border-card-border bg-background/70 p-3 text-sm">
                 <div className="font-medium text-foreground">{store.name}</div>
                 <div className="flex flex-wrap items-center gap-2">

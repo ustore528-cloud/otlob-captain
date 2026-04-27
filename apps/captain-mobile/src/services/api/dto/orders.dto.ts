@@ -32,6 +32,7 @@ export type AssignmentLogEntryDto = {
 export type OrderDetailDto = {
   id: string;
   orderNumber: string;
+  displayOrderNo?: number | null;
   /** الكابتن المعيّن حاليًا — يُطابق واجهة الخادم */
   assignedCaptainId: string | null;
   status: OrderStatusDto;
@@ -42,8 +43,14 @@ export type OrderDetailDto = {
   area: string;
   amount: string;
   cashCollection: string;
+  /** Persisted delivery fee; null on legacy rows — matches API `toOrderDetailDto`. */
+  deliveryFee?: string | null;
   /** Snapshot aligned with API `toOrderDetailDto` — inferred fees until explicit backend fields exist. */
   financialBreakdown?: OrderFinancialBreakdownDto;
+  /** Real pickup instant — do not substitute `updatedAt`. */
+  pickedUpAt?: string | null;
+  /** Real delivery instant — do not substitute `updatedAt`. */
+  deliveredAt?: string | null;
   notes: string | null;
   store: StoreSummaryDto;
   createdAt: string;
@@ -54,6 +61,7 @@ export type OrderDetailDto = {
 export type OrderListItemDto = {
   id: string;
   orderNumber: string;
+  displayOrderNo?: number | null;
   status: OrderStatusDto;
   customerName: string;
   customerPhone: string;
@@ -62,6 +70,7 @@ export type OrderListItemDto = {
   area: string;
   amount: string;
   cashCollection: string;
+  deliveryFee?: string | null;
   store: Pick<StoreSummaryDto, "id" | "name" | "area">;
   createdAt: string;
   updatedAt: string;

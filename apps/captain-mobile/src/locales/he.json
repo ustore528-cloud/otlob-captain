@@ -1,0 +1,456 @@
+{
+  "common": {
+    "emDash": "—",
+    "retry": "נסה שוב",
+    "loading": "טוען…",
+    "placeholderInitial": "?"
+  },
+  "location": {
+    "pickup": "כתובת איסוף",
+    "dropoff": "כתובת מסירה"
+  },
+  "orderStatus": {
+    "PENDING": "ממתין",
+    "CONFIRMED": "מאושר",
+    "ASSIGNED": "הוצע לשליח",
+    "ACCEPTED": "התקבל",
+    "PICKED_UP": "נאסף",
+    "IN_TRANSIT": "בדרך",
+    "DELIVERED": "נמסר",
+    "CANCELLED": "בוטל"
+  },
+  "assignmentLog": {
+    "title": "יומן שיבוצים",
+    "responsePENDING": "ממתין להחלטה",
+    "responseACCEPTED": "התקבל",
+    "responseREJECTED": "נדחה",
+    "responseEXPIRED": "פג תוקף",
+    "responseCANCELLED": "בוטל",
+    "expiresAt": "· עד {{time}}",
+    "unknownResponse": "לא ידוע: {{code}}"
+  },
+  "primaryAction": {
+    "confirmOrder": "אישור הזמנה",
+    "pickedUp": "נאסף",
+    "onTheWay": "בדרך ללקוח",
+    "delivered": "נמסר",
+    "view": "צפייה"
+  },
+  "workflowAdvance": {
+    "pickedUpFromStore": "נאסף מהחנות",
+    "onTheWayToCustomer": "בדרך ללקוח",
+    "markDelivered": "סמן כנמסר"
+  },
+  "assignmentKind": {
+    "offer": "הצעה",
+    "active": "פעיל"
+  },
+  "tabs": {
+    "currentOrder": "הזמנה נוכחית",
+    "archive": "ארכיון",
+    "notifications": "התראות",
+    "settings": "הגדרות"
+  },
+  "ordersTabLabel": {
+    "line1": "הזמנה",
+    "line2": "נוכחית",
+    "a11y": "הזמנה נוכחית"
+  },
+  "orderCard": {
+    "orderTitle": "הזמנה #{{id}}",
+    "serialLabel": "הזמנה #",
+    "workbenchLinkedRibbon": "אותה הזמנה כמו בסרגל העבודה למעלה",
+    "cancelsIn": "יובטל תוך {{time}}",
+    "orderDetailsA11y": "פרטי הזמנה {{id}}",
+    "callA11y": "התקשר {{phone}}"
+  },
+  "workbench": {
+    "loadError": "לא ניתן לטעון שיבוץ.",
+    "errorAccept": "הקבלה נכשלה",
+    "errorReject": "הדחייה נכשלה",
+    "errorUpdate": "עדכון הסטטוס נכשל",
+    "orderLine": "הזמנה #{{n}}",
+    "orderLineFallback": "הזמנה חדשה",
+    "store": "חנות",
+    "orderLocation": "מסלול",
+    "customer": "לקוח",
+    "phone": "טלפון",
+    "quickActions": "פעולות מהירות",
+    "mapPickup": "מפה: איסוף",
+    "mapDropoff": "מפה: מסירה",
+    "timeRemaining": "נשאר: {{time}}",
+    "timeRemainingSeconds": "נותרו {{seconds}} שניות לאישור",
+    "details": "פרטים",
+    "reject": "דחה",
+    "accept": "אשר"
+  },
+  "currentAssignment": {
+    "title": "הזמנות נוכחיות",
+    "sub": "מציג הזמנות נוכחיות כפי שהשרת מחזיר, כל אחת בכרטיס נפרד."
+  },
+  "assignmentEmpty": {
+    "line1": "קחו רגע—ההזמנה הבאה בדרך.",
+    "line2": "הזמנה חדשה תוצג ברגע שתגיע."
+  },
+  "assignmentBar": {
+    "readOnly": "אין פעולות זמינות עבור הזמנה זו במצב הנוכחי.",
+    "offerCountdown": "זמן נותר לאשר או לדחות את ההצעה",
+    "declineA11y": "דחה הצעה",
+    "acceptA11y": "אשר הזמנה",
+    "decline": "דחה",
+    "acceptOrder": "אשר הזמנה",
+    "acceptConfirmHint": "אישור",
+    "orderDetailsFullA11y": "פרטי הזמנה מלאים",
+    "orderDetailsTitle": "פרטי הזמנה",
+    "fullDetailsHint": "הקש לכל הפרטים ולמסלול",
+    "pickupA11y": "איסוף: {{v}}",
+    "dropoffA11y": "מסירה: {{v}}"
+  },
+  "map": {
+    "openHint": "פתח מפה"
+  },
+  "orderStatusProgress": {
+    "title": "התקדמות מסירה",
+    "currentStep": "השלב הנוכחי",
+    "stepAccepted": "הזמנה התקבלה",
+    "stepPickedUp": "נאסף מהחנות",
+    "stepInTransit": "בדרך ללקוח",
+    "stepDelivered": "נמסר",
+    "beforeDeliveryTitle": "לפני תחילת המסירה",
+    "currentStatus": "מצב נוכחי: {{status}}",
+    "beforeDeliveryHint": "לאחר שתאשרו את ההצעה וההזמנה תהיה במצב «התקבל», מסלול האיסוף והמסירה יופיע כאן שלב אחר שלב.",
+    "cancelledBanner": "ההזמנה בוטלה. אי אפשר להמשיך במסירה."
+  },
+  "workbenchOrderCard": {
+    "openDetailsA11y": "הזמנה {{n}}, פתח פרטים",
+    "details": "פרטים",
+    "orderDetailsA11y": "פרטי הזמנה",
+    "callA11y": "התקשר {{phone}}"
+  },
+  "ordersHistory": {
+    "loadError": "לא ניתן לטעון הזמנות.",
+    "loading": "טוען הזמנות…",
+    "loadingInitial": "טוען…",
+    "retry": "נסה שוב",
+    "titleArchive": "ארכיון הזמנות",
+    "titleAvailable": "הזמנות זמינות",
+    "filterStatus": "סטטוס",
+    "filterRange": "תקופה",
+    "statusAll": "הכול",
+    "rangeAll": "כל התקופות",
+    "range7d": "7 ימים אחרונים",
+    "range30d": "30 ימים אחרונים",
+    "countNone": "אין תוצאות",
+    "countDelivered": "{{count}} הזמנות שסופקו",
+    "countOrders": "{{count}} הזמנות",
+    "registryLabel": "היסטוריית הזמנות",
+    "registryHint": "הקש על כרטיס לפרטים",
+    "assignmentSectionLabel": "השיבוץ הנוכחי",
+    "minimalTitle": "הזמנות",
+    "minimalSub": "למטה: היסטוריית הזמנות (לפי השרת). כשיש הצעה או משלוח פעיל, סרגל הפעולות מופיע למטה — אשר או דחה מהסרגל, לא רק מהכרטיס.",
+    "listSectionTitle": "היסטוריית הזמנות",
+    "listSectionHint": "כרטיסים נפרדים — הקש לפרטים. השורה המודגשת מקושרת לאותה הזמנה ב«השיבוץ הנוכחי» אם קיים.",
+    "heroSubArchive": "רק הזמנות שסופקו — הקש לפרטים",
+    "heroSubAvailable": "הזמנות משויכות והיסטוריה — הקש לפרטים ולמסלול",
+    "errorListSub": "לא ניתן לטעון את הרשימה",
+    "loadMore": "טוען עוד…",
+    "emptyMinimal": "אין הזמנות כרגע.",
+    "emptyArchiveTitle": "אין הזמנות שסופקו",
+    "emptyArchiveBody": "נסה להרחיב את התקופה למעלה, או חזור אחרי משלוחים חדשים.",
+    "emptyListTitle": "אין הזמנות",
+    "emptyListBody": "נסה לשנות את המסננים למעלה, או חזור אחרי פעילות חדשה."
+  },
+  "earnings": {
+    "title": "סיכום רווחים",
+    "guest": "התחבר כדי לראות נתונים.",
+    "loading": "טוען סיכום…",
+    "subServer": "הזמנות שסופקו בלבד — מהשרת",
+    "kicker": "הביצועים שלך",
+    "filterPeriod": "תקופה",
+    "rangeAll": "כל התקופות",
+    "range7d": "7 ימים אחרונים",
+    "range30d": "30 ימים אחרונים",
+    "rangeMonth": "החודש",
+    "rangeDescAll": "כל ההזמנות שסופקו במערכת",
+    "rangeDesc7d": "הזמנות שסופקו בימים האחרונים",
+    "rangeDesc30d": "הזמנות שסופקו ב־30 הימים האחרונים",
+    "rangeDescMonth": "הזמנות שסופקו מתחילת החודש",
+    "emptyTitle": "אין נתונים לתקופה זו",
+    "emptyBody": "אחרי שתספק הזמנות יופיעו כאן סכומי גבייה. נסה «כל התקופות» או שנה טווח.",
+    "totalCollection": "סה״כ לגבייה",
+    "totalCollectionHint": "סכום שיש לגבות מהזמנות שסופקו",
+    "statDelivered": "הזמנות שסופקו",
+    "statOrderValue": "ערך הזמנות",
+    "note": "המספרים מהשרת להזמנות בסטטוס «נמסר» בטווח שנבחר. הם עשויים להשתנות מהיתרה בפועל לפי התאמות."
+  },
+  "notifications": {
+    "title": "התראות",
+    "sub": "עדכוני הזמנות — הקש על כרטיס מקושר להזמנה לפרטים",
+    "subLoading": "עדכונים והזמנות — לפי תאריך",
+    "new": "חדש",
+    "read": "נקרא",
+    "orderLinked": "מקושר להזמנה",
+    "notLinked": "ללא קישור",
+    "hintTappable": "הקש לפתיחת פרטי הזמנה",
+    "hintGeneral": "התראה כללית — אין קישור ישיר להזמנה",
+    "empty": "אין התראות עדיין.",
+    "today": "היום",
+    "yesterday": "אתמול"
+  },
+  "openExternal": {
+    "phoneNoNumberTitle": "אין מספר",
+    "phoneNoNumberBody": "מספר הטלפון אינו תקין לחיוג.",
+    "phoneCannotOpenTitle": "לא ניתן לחייג",
+    "phoneCannotOpenBody": "לא ניתן לפתוח את אפליקציית הטלפון במכשיר זה.",
+    "phoneFailedTitle": "לא ניתן לחייג",
+    "phoneFailedBody": "נסה שוב.",
+    "whatsappInvalidTitle": "לא ניתן לפתוח וואטסאפ",
+    "whatsappInvalidBody": "נדרש מספר בינלאומי מלא (לדוגמה +970 או +972).",
+    "whatsappFailedTitle": "לא ניתן לפתוח וואטסאפ",
+    "whatsappFailedBody": "וודא שוואטסאפ מותקן ושהמספר כולל קידומת מדינה.",
+    "mapFailedTitle": "לא ניתן לפתוח מפה",
+    "mapFailedBody": "נסה שוב."
+  },
+  "apiClient": {
+    "badEnvelope": "תשובה לא צפויה מהשרת",
+    "requestFailed": "הבקשה נכשלה",
+    "noTokenBridge": "חיבור הסשן אינו מוכן",
+    "noAccessToken": "אין אסימון גישה"
+  },
+  "push": {
+    "androidChannelName": "הזמנות 2in",
+    "androidChannelDescription": "הצעות הזמנה ועדכונים חשובים מ-2in",
+    "foregroundTitleDefault": "הזמנה חדשה ממתינה",
+    "foregroundBodyDefault": "יש לך הצעת הזמנה חדשה. הקש לפרטים.",
+    "permissionDeniedTitle": "התראות כבויות",
+    "permissionDeniedBody": "הפעל התראות כדי לקבל הצעות הזמנה חדשות. ניתן להפעיל בהגדרות המערכת.",
+    "permissionDeniedDismiss": "לא עכשיו",
+    "permissionOpenSettings": "פתיחת הגדרות"
+  },
+  "queryError": {
+    "title": "לא ניתן לטעון",
+    "fallback": "בדוק חיבור ונסה שוב.",
+    "retry": "נסה שוב"
+  },
+  "auth": {
+    "invalidCredentials": "מספר/אימייל או סיסמה שגויים.",
+    "forbiddenRole": "האפליקציה מיועדת לחשבונות שליחים בלבד.",
+    "forbidden": "אין פרופיל שליח לחשבון זה.",
+    "loginFailed": "ההתחברות נכשלה.",
+    "unexpected": "משהו השתבש."
+  },
+  "availability": {
+    "controlTitle": "זמינות",
+    "controlSubtitle": "שולט האם מופיעים בחלוקה ובהצעות חדשות",
+    "labelActive": "פעיל",
+    "labelOffline": "כבוי",
+    "hintActive": "מקבל הזמנות חדשות",
+    "hintOffline": "לא מקבל הזמנות חדשות"
+  },
+  "profile": {
+    "title": "החשבון שלי",
+    "sub": "הפרטים והזמינות",
+    "name": "שם",
+    "phone": "טלפון",
+    "email": "אימייל",
+    "area": "אזור",
+    "currentAvailability": "זמינות נוכחית",
+    "signOut": "התנתקות",
+    "updateErrorTitle": "העדכון נכשל",
+    "updateErrorHint": "נסה שוב.",
+    "availabilityChangeTitle": "שינוי זמינות",
+    "availabilityChangeSubtitle": "כמו בלוח הבקרה — מתעדכן מיד"
+  },
+  "home": {
+    "title": "לוח הקפטן",
+    "greet": "שלום",
+    "sub": "מבט קצר על המצב — נהג הזמנות מ«הזמנות זמינות»",
+    "loadingMe": "טוען את הפרופיל…",
+    "loadProfileErrorTitle": "לא ניתן לטעון את הפרופיל",
+    "hintFooter": "להרצת הזמנות והצעות השתמש ב«הזמנות זמינות». להגדרות, רווחים ומעקב: «הגדרות»."
+  },
+  "errors": {
+    "mutationGeneric": "לא ניתן להשלים את הפעולה.",
+    "offerExpired": "תוקף ההצעה לקבלה הסתיים.",
+    "noPendingAssignment": "אין הצעה שניתן לקבל. ייתכן שפג תוקף או שחולקה מחדש. משוך לרענון.",
+    "sessionPrepareFailed": "לא ניתן להכין את הסשן. רענן או התחבר שוב.",
+    "noActiveOffer": "אין הצעה פעילה. ייתכן שפג תוקף או שחולקה מחדש. משוך לרענון.",
+    "unexpected": "משהו השתבש."
+  },
+  "money": {
+    "sectionTitle": "כספים וגבייה",
+    "storeAmount": "סכום לחנות",
+    "deliveryFee": "דמי משלוח",
+    "deliveryFeeInferred": "דמי משלוח (מסיקים)",
+    "customerCollection": "סכום גבייה מהלקוח",
+    "hintInferred": "דמי המשלוח חושבו מהפרש בין גבייה לסכום החנות כשאין שדה נפרד.",
+    "hintCod": "תשלום במזומן במסירה — השתמש במחשבון למטה לעודף.",
+    "hintNoCod": "אין גבייה נפרדת מהלקוח — הסכומים תואמים לסכום החנות."
+  },
+  "homeProfile": {
+    "area": "אזור",
+    "vehicle": "סוג כלי",
+    "lastSeen": "מופע אחרון"
+  },
+  "orderDetailHeader": {
+    "kicker": "מספר הזמנה",
+    "meta": "נוצר {{created}} · עודכן {{updated}}"
+  },
+  "orderDetail": {
+    "created": "נוצר",
+    "pickupTime": "זמן איסוף",
+    "deliveryTime": "זמן מסירה",
+    "notRecorded": "לא נרשם",
+    "sectionOrder": "הזמנה",
+    "sectionRestaurant": "מסעדה",
+    "sectionCustomer": "לקוח",
+    "sectionAddresses": "כתובות",
+    "sectionNotes": "הערות",
+    "customerLine": "לקוח: {{name}}",
+    "areaLine": "אזור: {{area}}",
+    "storeLine": "חנות: {{name}} ({{area}})",
+    "hintFromStore": "מהחנות",
+    "hintCustomerAddress": "כתובת הלקוח",
+    "mapHintPickup": "פתח מפה לכתובת איסוף",
+    "mapHintDropoff": "פתח מפה לכתובת מסירה",
+    "notesField": "הערות",
+    "callA11y": "התקשר {{phone}}"
+  },
+  "assignment": {
+    "moneyLine1": "סכום חנות: {{a}} ₪",
+    "moneyLine2": "דמי משלוח: {{f}} ₪",
+    "moneyLine3": "סכום גבייה מהלקוח: {{c}} ₪"
+  },
+  "prepaid": {
+    "labelRemaining": "יתרה נותרת",
+    "metricCommission": "אחוז עמלה",
+    "metricEstimatedOrders": "הזמנות משוערות",
+    "estimatedByFees": "לפי דמי משלוח",
+    "bodyExplain": "ניכויים נגבים מדמי המשלוח בלבד לאחר מסירת הזמנה. דוגמה: אם דמי המשלוח 10 ₪ והעמלה 15%, מנכים 1.5 ₪ אחרי המסירה.",
+    "rule1": "• ניכוי רק אחרי מסירת ההזמנה",
+    "rule2": "• אין ניכוי להזמנות שבוטלו",
+    "rule3": "• ביתרה נמוכה עשויה להיעצר קבלת הזמנות חדשות עד טעינה",
+    "blocked": "היתרה אינה מספיקה לקבלת הזמנות חדשות כרגע.",
+    "low": "היתרה נמוכה. פנה לניהול לטעינה."
+  },
+  "login": {
+    "title": "2in",
+    "subtitle": "התחברות קפטן",
+    "lead": "הזן את הטלפון או האימייל ואת הסיסמה הרשומים אצלנו.",
+    "fieldIdentifier": "טלפון או אימייל",
+    "fieldPassword": "סיסמה",
+    "submit": "התחברות"
+  },
+  "screenHeader": {
+    "back": "חזרה"
+  },
+  "assignmentDetail": {
+    "title": "פרטי הזמנה",
+    "invalidId": "מזהה הזמנה לא תקין",
+    "loading": "טוען…",
+    "sessionPreparing": "מכין את הסשן…",
+    "cannotDisplay": "לא ניתן להציג את ההזמנה",
+    "errOpen": "לא ניתן לפתוח הזמנה",
+    "errOpenFallback": "בדיקת הרשאות או הקישור.",
+    "mutationAccept": "הקבלה נכשלה",
+    "mutationReject": "הדחייה נכשלה",
+    "mutationStatus": "עדכון סטטוס נכשל"
+  },
+  "ordersLive": {
+    "title": "הזמנות נוכחיות",
+    "sub": "המסך מציג הזמנות לפי השרת; לכל הזמנה כרטיס נפרד."
+  },
+  "tracking": {
+    "title": "מעקב",
+    "guest": "התחבר כדי לשלוח את המיקום לשרת.",
+    "intro": "כשאתה זמין (לא במצב לא מקוון), המיקום נשלח אוטומטית כשהאפליקציה בחזית. אין מתג מעקב נפרד — השתמש בזמינות במסך הבית. מעקב ברקע עשוי להתווסף בהמשך.",
+    "subAvailabilityDriven": "כדי להפסיק שיתוף עבור למצב לא מקוון במסך הבית. אשר גישת מיקום כדי שהצוות יראה אותך כשאתה זמין.",
+    "sectionTrackingControl": "שליחת מיקום",
+    "trackingOnCaption": "פעיל — אתה זמין",
+    "trackingOffCaption": "מושבת — לא מקוון או לא מחובר",
+    "permissionCallout": "כדי לשתף את המיקום כשאתה זמין, אפשר גישת מיקום לאפליקציה.",
+    "cardLocationTitle": "מעקב מיקום",
+    "cardLocationHint": "POST /mobile/captain/me/location בערך כל 30 ש׳׳",
+    "sectionPermissions": "הרשאות",
+    "sectionStatus": "מצב",
+    "permissionLabel": "הרשאת מיקום",
+    "permissionGranted": "מותר",
+    "permissionDenied": "נדחה",
+    "permissionUnknown": "לא הוגדר",
+    "btnRequestAgain": "בקש שוב הרשאה",
+    "btnAppSettings": "הגדרות אפליקציה",
+    "labelNetwork": "רשת",
+    "labelApp": "אפליקציה",
+    "reachabilityOnline": "מקוון",
+    "reachabilityOffline": "לא מקוון",
+    "reachabilityUnknown": "בודק…",
+    "appForeground": "בחזית",
+    "appBackground": "ברקע — השליחה מושהית זמנית",
+    "labelOutbox": "ממתין לשליחה",
+    "sectionLastGps": "קריאת GPS אחרונה",
+    "sectionLastServer": "אישור שרת אחרון",
+    "issueTitle": "הודעה",
+    "issuePermissionForeground": "נדרשת הרשאת מיקום בזמן שימוש באפליקציה כדי להמשיך במעקב.",
+    "issueNetworkOffline": "אין חיבור — הנקודה נשמרה לשליחה כשהרשת חוזרת.",
+    "issuePermissionDeniedSettings": "לא הוענקה הרשאת מיקום. אפשר להפעיל בהגדרות האפליקציה."
+  },
+  "realtime": {
+    "newOrderTitle": "הגיעה הזמנה חדשה",
+    "newOrderMessage": "הזמנה #{{serial}} ממתינה לקבלתך",
+    "newOrderMessageFallback": "יש הזמנה חדשה שמחכה לקבלה",
+    "orderUpdatedTitle": "עדכון הזמנה",
+    "orderUpdatedMessage": "אחת ההזמנות שלך עודכנה",
+    "assignmentEndedTitle": "ההקצה הנוכחית הסתיימה",
+    "assignmentEndedMessage": "אפשר לחכות להצעה חדשה או לרענן את הרשימה",
+    "dismissBannerA11y": "סגור התראה"
+  },
+  "overflow": {
+    "titleOne": "הזמנה נוספת שאינה בכרטיס הראשי",
+    "titleMany": "{{count}} הזמנות נוספות שאינן בכרטיס הראשי",
+    "warningTitle": "לא ניתן לאמת הזמנות נוספות כרגע",
+    "warningHint": "ייתכנו הזמנות משניות שאינן מוצגות עכשיו.",
+    "retry": "נסה שוב",
+    "retryA11y": "נסה שוב לטעון הזמנות נוספות",
+    "detailsHint": "פתח פרטים מהרשימה למטה או מהארכיון.",
+    "kindOffer": "הצעה",
+    "kindActive": "פעיל",
+    "orderA11y": "הזמנה {{serial}} — {{kind}}"
+  },
+  "whatsapp": {
+    "label": "וואטסאפ",
+    "a11y": "וואטסאפ {{phone}}"
+  },
+  "assignmentOffer": {
+    "countdown": "⏱ {{seconds}} שנ׳"
+  },
+  "workStatus": {
+    "a11yLabel": "מצב עבודה: {{label}}"
+  },
+  "settings": {
+    "title": "הגדרות",
+    "hubSub": "חשבון, כלים והעדפות מחוץ לביצוע הזמנות בזמן אמת.",
+    "language": "שפה",
+    "languageHint": "עברית, ערבית או אנגלית — נשמר במכשיר זה.",
+    "langEn": "English",
+    "langAr": "العربية",
+    "langHe": "עברית",
+    "hubSectionAccount": "חשבון",
+    "hubSectionTools": "כלים",
+    "hubSectionApp": "האפליקציה",
+    "hubSectionExtra": "נוסף",
+    "hubProfileLabel": "פרופיל",
+    "hubProfileHint": "שם, גורם, אזור",
+    "hubAvailabilityLabel": "זמינות",
+    "hubAvailabilityHint": "מופעל, כבוי — מאותו מסך חשבון",
+    "hubSignOutLabel": "התנתקות",
+    "hubSignOutHint": "בתחתית מסך הפרופיל",
+    "hubEarningsLabel": "הכנסות",
+    "hubEarningsHint": "סיכום גבייה",
+    "hubTrackingLabel": "מעקב מיקום",
+    "hubTrackingHint": "הרשאת מיקום ושליחת קואורדינטות",
+    "hubAppNotifLabel": "התראות האפליקציה",
+    "hubAppNotifHint": "בקרוב — עדיפויות צליל והופעה",
+    "hubQuickHomeLabel": "לוח מהיר",
+    "hubQuickHomeHint": "סיכום מצב והתראה אחרונה — אופציונלי"
+  }
+}

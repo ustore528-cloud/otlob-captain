@@ -16,15 +16,22 @@ import {
   type Prisma,
 } from "@prisma/client";
 import { prisma } from "../src/lib/prisma.js";
-import { companyAdminTopUpStoreWallet } from "../src/services/company-admin-wallet-topup.service.js";
+import {
+  buildCompanyAdminStoreTopUpTransferBase,
+  companyAdminTopUpStoreWallet,
+} from "../src/services/company-admin-wallet-topup.service.js";
 import {
   assertCanReadCompanyWallet,
   companyWalletService,
   type CompanyWalletActor,
 } from "../src/services/company-wallet.service.js";
-import { captainPrepaidBalanceService } from "../src/services/captain-prepaid-balance.service.js";
+import {
+  buildCompanyAdminCaptainCoDebitIdempotencyKey,
+  captainPrepaidBalanceService,
+} from "../src/services/captain-prepaid-balance.service.js";
 import { financePrepaidChargeClientIdempotencyKey, LEDGER_REF_CAPTAIN_PREPAID_OP } from "../src/config/captain-prepaid-ledger.js";
 import { superAdminWalletTopupService } from "../src/services/super-admin-wallet-topup.service.js";
+import { TRANSFER_FROM_KEY_SUFFIX, TRANSFER_TO_KEY_SUFFIX } from "../src/services/ledger/transfer.js";
 import { AppError } from "../src/utils/errors.js";
 import { money } from "../src/services/ledger/money.js";
 import type { AppRole } from "../src/lib/rbac-roles.js";
@@ -97,11 +104,17 @@ async function main() {
     throw new Error("Need a second company for cross-tenant checks.");
   }
 
+  const coWalletRow = await prisma.walletAccount.findFirst({
+    where: { ownerType: WalletOwnerType.COMPANY, ownerId: ca.companyId },
+  });
+  if (!coWalletRow) {
+    throw new Error("No company wallet for CA company (Phase 3.1: store must share company currency)");
+  }
   const storeWallet = await prisma.walletAccount.findFirst({
-    where: { ownerType: WalletOwnerType.STORE, companyId: ca.companyId },
+    where: { ownerType: WalletOwnerType.STORE, companyId: ca.companyId, currency: coWalletRow.currency },
   });
   if (!storeWallet) {
-    throw new Error(`No STORE wallet for company ${ca.companyId}`);
+    throw new Error(`No STORE wallet for company ${ca.companyId} with currency ${coWalletRow.currency}`);
   }
   const ourStore = await prisma.store.findUniqueOrThrow({ where: { id: storeWallet.ownerId } });
   const otherStore = await prisma.store.findFirst({
@@ -124,6 +137,17 @@ async function main() {
     throw new Error("No captain in other company");
   }
 
+  // Phase 3.1: CA store/captain top-ups debit the company wallet — ensure float before those steps.
+  const floatProbe = (await companyWalletService.getCompanyWalletBalance(companyActor(sa), ca.companyId!))
+    .balanceCached;
+  if (money(floatProbe).lt(money("1.00"))) {
+    await companyWalletService.superAdminTopUpCompanyWallet(companyActor(sa), {
+      companyId: ca.companyId!,
+      amount: "15.00",
+      idempotencyKey: `p263-prefloat-${runKey}`,
+      reason: "phase263 prefloat for CA spending-limit tests",
+    });
+  }
   const companyWalletBeforeStr = (
     await companyWalletService.getCompanyWalletBalance(companyActor(ca), ca.companyId)
   ).balanceCached;
@@ -142,9 +166,14 @@ async function main() {
     throw new Error("first store top-up must not be idempotent");
   }
   const leStore = await prisma.ledgerEntry.findUniqueOrThrow({ where: { id: s1.ledgerEntryId } });
+  const storeBase = buildCompanyAdminStoreTopUpTransferBase(ca.companyId, ourStore.id, storeIdem);
+  const storeToKey = storeBase + TRANSFER_TO_KEY_SUFFIX;
   checks.push({
     id: "ca_store_own_company",
-    pass: money(leStore.amount).equals(money(storeAmount)) && metaSource(leStore, "company_admin_store_wallet_topup"),
+    pass:
+      money(leStore.amount).equals(money(storeAmount)) &&
+      metaSource(leStore, "company_admin_store_topup_store_credit") &&
+      leStore.idempotencyKey === storeToKey,
     details: { ledgerEntryId: leStore.id, idempotencyKey: leStore.idempotencyKey },
   });
 
@@ -159,10 +188,13 @@ async function main() {
     pass: s2.idempotent && s1.ledgerEntryId === s2.ledgerEntryId,
     details: { replay: s2.idempotent },
   });
-  const ledgerDupStore = await prisma.ledgerEntry.count({
-    where: { idempotencyKey: `ca-topup:store:${ourStore.id}:${storeIdem}` },
+  const fromCount = await prisma.ledgerEntry.count({ where: { idempotencyKey: storeBase + TRANSFER_FROM_KEY_SUFFIX } });
+  const toCount = await prisma.ledgerEntry.count({ where: { idempotencyKey: storeBase + TRANSFER_TO_KEY_SUFFIX } });
+  checks.push({
+    id: "ca_store_ledger_single_row",
+    pass: fromCount === 1 && toCount === 1,
+    details: { fromCount, toCount },
   });
-  checks.push({ id: "ca_store_ledger_single_row", pass: ledgerDupStore === 1, details: { count: ledgerDupStore } });
 
   try {
     await companyAdminTopUpStoreWallet(prepaidActor(ca), {
@@ -236,6 +268,17 @@ async function main() {
     where: { captainId: ourCaptain.id, prepaidLedgerOperationId: wantCapKey, type: CaptainBalanceTransactionType.CHARGE },
   });
   checks.push({ id: "ca_captain_single_cbt", pass: cbtDup === 1, details: { count: cbtDup } });
+  const coDebitsKey = buildCompanyAdminCaptainCoDebitIdempotencyKey(ca.companyId, ourCaptain.id, capIdem);
+  const leCoDebits = await prisma.ledgerEntry.findUnique({ where: { idempotencyKey: coDebitsKey } });
+  checks.push({
+    id: "ca_captain_company_wallet_debit_ledger",
+    pass:
+      Boolean(leCoDebits) &&
+      leCoDebits!.entryType === LedgerEntryType.WALLET_TRANSFER &&
+      money(leCoDebits!.amount).equals(money(capAmount).negated()) &&
+      metaSource(leCoDebits!, "company_admin_captain_topup_company_debit"),
+    details: { ledgerEntryId: leCoDebits?.id },
+  });
 
   try {
     await captainPrepaidBalanceService.chargeCaptainWithClientIdempotency({
@@ -282,10 +325,11 @@ async function main() {
   const companyWalletAfterStoreCaptain = (
     await companyWalletService.getCompanyWalletBalance(companyActor(ca), ca.companyId)
   ).balanceCached;
+  const wantCompanyDelta = money(storeAmount).plus(money(capAmount));
   checks.push({
-    id: "company_wallet_untouched_by_store_captain",
-    pass: companyWalletBeforeStr === companyWalletAfterStoreCaptain,
-    details: { balance: companyWalletAfterStoreCaptain },
+    id: "company_wallet_debited_by_ca_topups",
+    pass: money(companyWalletBeforeStr).minus(money(companyWalletAfterStoreCaptain)).equals(wantCompanyDelta),
+    details: { before: companyWalletBeforeStr, after: companyWalletAfterStoreCaptain, expectedDebit: wantCompanyDelta.toFixed(2) },
   });
 
   // —— 3) Company wallet: CA cannot top up; read rules ——

@@ -1,4 +1,5 @@
 import { Alert, Linking } from "react-native";
+import i18n from "@/i18n/i18n";
 import { normalizePhoneForWhatsApp } from "@/lib/phone-whatsapp-normalize";
 
 export { normalizePhoneForWhatsApp };
@@ -11,36 +12,33 @@ export function sanitizePhoneForDial(phone: string): string {
 export async function openPhoneDialer(phone: string): Promise<void> {
   const n = sanitizePhoneForDial(phone);
   if (!n) {
-    Alert.alert("لا يوجد رقم", "رقم الجوال غير صالح للاتصال.");
+    Alert.alert(i18n.t("openExternal.phoneNoNumberTitle"), i18n.t("openExternal.phoneNoNumberBody"));
     return;
   }
   const url = `tel:${n}`;
   try {
     const can = await Linking.canOpenURL(url);
     if (!can) {
-      Alert.alert("تعذّر الاتصال", "لا يمكن فتح تطبيق الهاتف على هذا الجهاز.");
+      Alert.alert(i18n.t("openExternal.phoneCannotOpenTitle"), i18n.t("openExternal.phoneCannotOpenBody"));
       return;
     }
     await Linking.openURL(url);
   } catch {
-    Alert.alert("تعذّر الاتصال", "حاول مرة أخرى.");
+    Alert.alert(i18n.t("openExternal.phoneFailedTitle"), i18n.t("openExternal.phoneFailedBody"));
   }
 }
 
 export async function openWhatsAppChat(phone: string): Promise<void> {
   const d = normalizePhoneForWhatsApp(phone);
   if (!d) {
-    Alert.alert(
-      "لا يمكن فتح واتساب",
-      "يلزم رقم جوال دولي كامل لفلسطين (+970) أو إسرائيل (+972)، بصيغة واضحة (مثال: +9725… أو +97059…). الأرقام المحلية التي تبدأ بـ 05… غير كافية بدون كود الدولة.",
-    );
+    Alert.alert(i18n.t("openExternal.whatsappInvalidTitle"), i18n.t("openExternal.whatsappInvalidBody"));
     return;
   }
   const url = `https://wa.me/${d}`;
   try {
     await Linking.openURL(url);
   } catch {
-    Alert.alert("تعذّر فتح واتساب", "تأكد من تثبيت واتساب أو أن الرقم يتضمّن كود الدولة.");
+    Alert.alert(i18n.t("openExternal.whatsappFailedTitle"), i18n.t("openExternal.whatsappFailedBody"));
   }
 }
 
@@ -55,7 +53,7 @@ export async function openMapSearch(address: string): Promise<void> {
   try {
     await Linking.openURL(url);
   } catch {
-    Alert.alert("تعذّر فتح الخريطة", "حاول مرة أخرى.");
+    Alert.alert(i18n.t("openExternal.mapFailedTitle"), i18n.t("openExternal.mapFailedBody"));
   }
 }
 
@@ -65,6 +63,6 @@ export async function openMapCoordinates(lat: number, lng: number): Promise<void
   try {
     await Linking.openURL(url);
   } catch {
-    Alert.alert("تعذّر فتح الخريطة", "حاول مرة أخرى.");
+    Alert.alert(i18n.t("openExternal.mapFailedTitle"), i18n.t("openExternal.mapFailedBody"));
   }
 }

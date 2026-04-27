@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { homeTheme } from "@/features/home/theme";
@@ -10,6 +11,7 @@ import { useAndroidOrdersTabBackConfirm } from "@/hooks/use-android-orders-tab-b
 
 /** Orders tab: current orders as returned by backend policy. */
 export function OrdersLiveScreen() {
+  const { t } = useTranslation();
   useAndroidOrdersTabBackConfirm();
   const {
     orders,
@@ -40,14 +42,14 @@ export function OrdersLiveScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>الطلبات الحالية</Text>
-          <Text style={styles.sub}>تعرض الشاشة الطلبات الحالية كما يعيدها الخادم، وكل طلب في بطاقة مستقلة.</Text>
+          <Text style={styles.title}>{t("ordersLive.title")}</Text>
+          <Text style={styles.sub}>{t("ordersLive.sub")}</Text>
 
           <View style={styles.assignmentBlock}>
             {isLoading ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator size="small" color={homeTheme.accent} />
-                <Text style={styles.muted}>Loading…</Text>
+                <Text style={styles.muted}>{t("common.loading")}</Text>
               </View>
             ) : null}
 
@@ -55,7 +57,7 @@ export function OrdersLiveScreen() {
               <View style={styles.inlineError}>
                 <Text style={styles.inlineErrorText}>{errorMessage}</Text>
                 <Pressable onPress={retryLoadAssignment} style={styles.inlineRetry}>
-                  <Text style={styles.inlineRetryText}>Retry</Text>
+                  <Text style={styles.inlineRetryText}>{t("common.retry")}</Text>
                 </Pressable>
               </View>
             ) : null}

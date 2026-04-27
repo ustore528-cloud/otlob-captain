@@ -1,11 +1,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import type { CaptainActionResult } from "../utils/captain-order-actions";
 import { homeTheme } from "@/features/home/theme";
-import { ORDER_DROPOFF_LOCATION_LABEL, ORDER_PICKUP_LOCATION_LABEL } from "@/lib/order-location-labels";
+import { locationI18nKey } from "@/lib/order-location-i18n";
 import type { OrderDetailDto } from "@/services/api/dto";
-import { paymentSummaryLineArFromDetail } from "@/features/orders/utils/order-list-primary-action";
-import { formatAssignmentOfferCountdownAr } from "@/lib/assignment-offer-seconds-left";
+import { paymentSummaryLinesFromDetail } from "@/features/orders/utils/order-list-primary-action";
+import { formatAssignmentOfferCountdown } from "@/lib/assignment-offer-seconds-left";
 
 type Props = {
   actions: CaptainActionResult;
@@ -27,17 +28,19 @@ function InlineOrderSummary({
   order: OrderDetailDto;
   onOpenDetail: () => void;
 }) {
-  const pay = paymentSummaryLineArFromDetail(order);
-  const pickup = order.pickupAddress?.trim() || "—";
-  const drop = (order.dropoffAddress || order.area || "").trim() || "—";
+  const { t } = useTranslation();
+  const pay = paymentSummaryLinesFromDetail(order);
+  const dash = t("common.emDash");
+  const pickup = order.pickupAddress?.trim() || dash;
+  const drop = (order.dropoffAddress || order.area || "").trim() || dash;
   return (
     <View style={styles.sumWrap}>
       <View style={styles.sumLocBlock}>
-        <Text style={styles.sumLocLabel}>{ORDER_PICKUP_LOCATION_LABEL}</Text>
+        <Text style={styles.sumLocLabel}>{t(locationI18nKey.pickup)}</Text>
         <Text style={styles.sumLocValue} numberOfLines={4}>
           {pickup}
         </Text>
-        <Text style={[styles.sumLocLabel, styles.sumLocLabelSpaced]}>{ORDER_DROPOFF_LOCATION_LABEL}</Text>
+        <Text style={[styles.sumLocLabel, styles.sumLocLabelSpaced]}>{t(locationI18nKey.dropoff)}</Text>
         <Text style={styles.sumLocValue} numberOfLines={4}>
           {drop}
         </Text>
@@ -46,10 +49,10 @@ function InlineOrderSummary({
         onPress={onOpenDetail}
         style={({ pressed }) => [styles.detailsCard, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel="تفاصيل الطلب كاملة"
+        accessibilityLabel={t("assignmentBar.orderDetailsFullA11y")}
       >
         <View style={styles.detailsCardBody}>
-          <Text style={styles.detailsCardTitle}>تفاصيل الطلب</Text>
+          <Text style={styles.detailsCardTitle}>{t("assignmentBar.orderDetailsTitle")}</Text>
           {order.customerName ? (
             <Text style={styles.detailsLine} numberOfLines={1}>
               {order.customerName}
@@ -62,7 +65,7 @@ function InlineOrderSummary({
           <Text style={styles.detailsPay} numberOfLines={2}>
             {pay}
           </Text>
-          <Text style={styles.detailsHint}>اضغط لعرض كل التفاصيل والمسار</Text>
+          <Text style={styles.detailsHint}>{t("assignmentBar.fullDetailsHint")}</Text>
         </View>
         <Ionicons name="chevron-back" size={18} color={homeTheme.accent} />
       </Pressable>
@@ -90,6 +93,7 @@ export function AssignmentActionsBar({
   compactSummary = false,
   onOpenOrderDetail,
 }: Props) {
+  const { t } = useTranslation();
   const compact = compactSummary;
   const showInlineOrder =
     compact &&
@@ -104,7 +108,7 @@ export function AssignmentActionsBar({
     return (
       <View style={[styles.dockWrap, dockShadow]}>
         <View style={styles.readOnly}>
-          <Text style={styles.readOnlyText}>لا تتوفر إجراءات على هذا الطلب في وضعك الحالي.</Text>
+          <Text style={styles.readOnlyText}>{t("assignmentBar.readOnly")}</Text>
         </View>
       </View>
     );
@@ -119,9 +123,9 @@ export function AssignmentActionsBar({
       <View style={[styles.dockWrap, dockShadow, compact && styles.dockWrapCompact]}>
         {showCountdown ? (
           <View style={[styles.offerCountdownRow, compact && styles.offerCountdownRowCompact]}>
-            <Text style={styles.offerCountdownLabel}>الوقت المتبقي للموافقة أو الرفض على الطلب</Text>
+            <Text style={styles.offerCountdownLabel}>{t("assignmentBar.offerCountdown")}</Text>
             <Text style={[styles.offerCountdownDigits, urgent && styles.offerCountdownUrgent, compact && styles.offerCountdownDigitsCompact]}>
-              {showCountdown ? formatAssignmentOfferCountdownAr(offerSecondsRemaining) : "—"}
+              {showCountdown ? formatAssignmentOfferCountdown(t, sec) : t("common.emDash")}
             </Text>
           </View>
         ) : null}
@@ -137,11 +141,11 @@ export function AssignmentActionsBar({
             onPress={onReject}
             disabled={busy}
             accessibilityRole="button"
-            accessibilityLabel="Decline offer"
+            accessibilityLabel={t("assignmentBar.declineA11y")}
           >
             <Ionicons name="close-outline" size={compact ? 18 : 22} color={homeTheme.dangerText} />
             <Text style={[styles.btnRejectText, compact && styles.btnRejectTextCompact]} numberOfLines={1}>
-              رفض
+              {t("assignmentBar.decline")}
             </Text>
           </Pressable>
           <Pressable
@@ -154,7 +158,7 @@ export function AssignmentActionsBar({
             onPress={onAccept}
             disabled={busy}
             accessibilityRole="button"
-            accessibilityLabel="Confirm order"
+            accessibilityLabel={t("assignmentBar.acceptA11y")}
           >
             {busy ? (
               <ActivityIndicator color={homeTheme.onAccent} size="small" />
@@ -163,11 +167,11 @@ export function AssignmentActionsBar({
                 <Ionicons name="checkmark-circle" size={compact ? 18 : 22} color={homeTheme.onAccent} />
                 <View style={styles.btnAcceptTextCol}>
                   <Text style={[styles.btnAcceptText, compact && styles.btnAcceptTextCompact]} numberOfLines={1}>
-                    قبول الطلب
+                    {t("assignmentBar.acceptOrder")}
                   </Text>
                   {!compact ? (
                     <Text style={styles.btnAcceptSub} numberOfLines={1}>
-                      Confirm
+                      {t("assignmentBar.acceptConfirmHint")}
                     </Text>
                   ) : null}
                 </View>
@@ -193,6 +197,7 @@ export function AssignmentActionsBar({
           onPress={onAdvance}
           disabled={busy}
           accessibilityRole="button"
+          accessibilityLabel={t(actions.labelKey)}
         >
           {busy ? (
             <ActivityIndicator color={homeTheme.onAccent} size="small" />
@@ -200,11 +205,8 @@ export function AssignmentActionsBar({
             <View style={styles.btnAdvanceInner}>
               <Ionicons name="arrow-forward-circle" size={compact ? 18 : 22} color={homeTheme.onAccent} />
               <View style={styles.btnAdvanceTextCol}>
-                <Text style={[styles.btnAdvanceEn, compact && styles.btnAdvanceEnCompact]} numberOfLines={1}>
-                  {actions.labelEn}
-                </Text>
-                <Text style={[styles.btnAdvanceAr, compact && styles.btnAdvanceArCompact]} numberOfLines={2}>
-                  {actions.labelAr}
+                <Text style={[styles.btnAdvanceEn, compact && styles.btnAdvanceEnCompact]} numberOfLines={2}>
+                  {t(actions.labelKey)}
                 </Text>
               </View>
             </View>

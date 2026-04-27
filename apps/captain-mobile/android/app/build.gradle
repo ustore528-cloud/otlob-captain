@@ -2,13 +2,20 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
-def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+// `rootDir` here is the `:app` module dir (`android/app`). One parent is `android/`, not the JS app root.
+// Expo/RN need the directory that contains this app's `package.json` (captain-mobile workspace package).
+def projectRoot = rootProject.rootDir.parentFile.absolutePath
 
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
 react {
+    // RN's default `root` is `rootProject/../` (see ReactExtension.kt). With Gradle rooted at
+    // `android/`, that becomes the monorepo root — wrong cwd for Metro. JS app lives one level up.
+    // Use `:app` projectDir (`android/app`) so `../../` always resolves to `apps/captain-mobile`.
+    root.set(project.file("../../"))
+
     entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
     reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
     hermesCommand = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
