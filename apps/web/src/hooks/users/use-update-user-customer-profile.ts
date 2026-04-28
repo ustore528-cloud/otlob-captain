@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import i18n from "@/i18n/i18n";
 import { queryKeys } from "@/lib/api/query-keys";
 import { api } from "@/lib/api/singleton";
 import type { UpdateCustomerProfilePayload } from "@/lib/api/services/users";
@@ -10,9 +11,9 @@ export function useUpdateUserCustomerProfile() {
     mutationFn: ({ id, body }: { id: string; body: UpdateCustomerProfilePayload }) =>
       api.users.updateCustomerProfile(id, body),
     onSuccess: async () => {
-      toastSuccess("تم حفظ بيانات العميل");
+      toastSuccess(String(i18n.t("mutationToasts.customerProfileSaved")));
       await qc.invalidateQueries({ queryKey: queryKeys.users.root });
     },
-    onError: (e) => toastApiError(e, "تعذر حفظ بيانات العميل"),
+    onError: (e) => toastApiError(e, String(i18n.t("mutationToasts.customerProfileFailed"))),
   });
 }

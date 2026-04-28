@@ -1,10 +1,16 @@
-import type { ActiveMapCaptain } from "@/types/api";
+import type { OrderStatus, ActiveMapCaptain } from "@/types/api";
 import { assignmentOfferSecondsLeft, captainMapVisual } from "@/features/distribution/captain-map-visual";
+import { isRtlLang } from "@/i18n/i18n";
+import i18n from "@/i18n/i18n";
+import { getLocalizedText } from "@/i18n/localize-dynamic-text";
 
 export type QuickAlertPreset = "review_order" | "contact_customer" | "speed_delivery" | "contact_dispatch";
 
-/** نصوص موحّدة للواجهة ولـ API (إشعار يظهر في تطبيق الكابتن) */
-export const QUICK_ALERT_PRESET_COPY: Record<QuickAlertPreset, { title: string; message: string }> = {
+/**
+ * API notification copy sent to the captain app.
+ * Intentionally kept stable (Arabic) — UI labels are translated separately.
+ */
+export const QUICK_ALERT_PRESET_API_COPY: Record<QuickAlertPreset, { title: string; message: string }> = {
   review_order: {
     title: "تنبيه من التوزيع: مراجعة الطلب",
     message: "يُرجى مراجعة الطلب المسند والتأكد من التفاصيل.",
@@ -23,17 +29,37 @@ export const QUICK_ALERT_PRESET_COPY: Record<QuickAlertPreset, { title: string; 
   },
 };
 
+/** @deprecated Use `QUICK_ALERT_PRESET_API_COPY` (kept for backwards compatibility). */
+export const QUICK_ALERT_PRESET_COPY = QUICK_ALERT_PRESET_API_COPY;
+
 export const DISPATCH_QUICK_ALERT_TYPE = "DISPATCH_QUICK_ALERT";
+
+const VEHICLE_TYPE_TO_KEY: Record<string, "BICYCLE" | "MOTORCYCLE" | "CAR" | "CARGO"> = {
+  "بسكليت": "BICYCLE",
+  "دراجه ناريه": "MOTORCYCLE",
+  "سيارة": "CAR",
+  "شحن نقل": "CARGO",
+};
 
 function formatRecordedAt(iso: string): string {
   try {
-    return new Date(iso).toLocaleString("ar", {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
+    // Keep Western digits (0–9) regardless of UI language.
+    return new Date(iso).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short", hour12: false });
   } catch {
     return iso;
   }
+}
+
+function vehicleTypeUi(vehicleType: string): string {
+  const mapped = VEHICLE_TYPE_TO_KEY[vehicleType];
+  if (mapped) return String(i18n.t(`distribution.vehicle.${mapped}`));
+  return vehicleType;
+}
+
+function orderStatusUi(status: string | null | undefined): string {
+  if (!status) return "—";
+  const key = `orderStatus.${status}`;
+  return i18n.exists(key) ? String(i18n.t(key)) : status;
 }
 
 export type CaptainPopupHandlers = {
@@ -41,10 +67,11 @@ export type CaptainPopupHandlers = {
 };
 
 /**
- * بطاقة كابتن مدمجة لـ Leaflet — DOM فقط؛ محتوى ثابت عند `setContent`.
+ * Captain card embedded in Leaflet (DOM only).
  */
 export function buildCaptainPopupElement(c: ActiveMapCaptain, handlers: CaptainPopupHandlers): HTMLElement {
   const vis = captainMapVisual(c);
+  const visLabel = String(i18n.t(`distribution.mapVisual.${vis.labelKey}`));
   const loc = c.lastLocation!;
   const secLeft =
     c.waitingOffers > 0 && c.assignmentOfferExpiresAt
@@ -52,43 +79,61 @@ export function buildCaptainPopupElement(c: ActiveMapCaptain, handlers: CaptainP
       : null;
 
   const root = document.createElement("div");
-  root.dir = "rtl";
+  const rtl = isRtlLang(i18n.resolvedLanguage ?? i18n.language);
+  root.dir = rtl ? "rtl" : "ltr";
   root.className = "distribution-captain-popup-root";
-  root.style.cssText =
-    "min-width:168px;max-width:232px;font-size:11px;line-height:1.35;text-align:right;font-family:inherit;color:var(--foreground, #0f172a);";
+  root.style.cssText = `min-width:168px;max-width:232px;font-size:11px;line-height:1.35;text-align:${
+    rtl ? "right" : "left"
+  };font-family:inherit;color:var(--foreground, #0f172a);`;
 
+  const lang = i18n.resolvedLanguage ?? i18n.language;
   const title = document.createElement("div");
   title.style.cssText = "font-weight:800;font-size:12px;margin-bottom:3px;line-height:1.25;word-break:break-word;";
-  title.textContent = c.user.fullName;
+  title.textContent = getLocalizedText(c.user.fullName, {
+    lang,
+    valueTranslations: c.user.displayI18n?.fullName,
+    mode: "generic",
+  });
   root.appendChild(title);
 
   const meta = document.createElement("div");
   meta.style.cssText = "font-size:10px;color:var(--muted-foreground,#64748b);margin-bottom:4px;";
-  meta.textContent = `${vis.label} · ${c.vehicleType}`;
+  meta.textContent = `${visLabel} · ${vehicleTypeUi(c.vehicleType)}`;
   root.appendChild(meta);
+
+  if (c.area?.trim()) {
+    const areaEl = document.createElement("div");
+    areaEl.style.cssText = "font-size:10px;color:var(--muted-foreground,#64748b);margin-bottom:4px;word-break:break-word;";
+    areaEl.textContent = getLocalizedText(c.area, { lang, valueTranslations: c.displayI18n?.area, mode: "place" });
+    root.appendChild(areaEl);
+  }
 
   const orders = document.createElement("div");
   orders.style.cssText = "font-size:10px;margin-bottom:3px;";
-  orders.innerHTML = `<span style="font-weight:700">نشطة:</span> ${c.activeOrders} · <span style="font-weight:700">بانتظار رد:</span> ${c.waitingOffers}`;
+  orders.innerHTML = String(
+    i18n.t("distribution.popup.ordersLine", { active: c.activeOrders, waiting: c.waitingOffers }),
+  );
   root.appendChild(orders);
 
   if (c.latestOrderNumber) {
     const lo = document.createElement("div");
     lo.style.cssText = "margin-bottom:3px;font-size:10px;color:var(--muted-foreground,#64748b);";
-    lo.innerHTML = `<span dir="ltr" style="display:inline-block">${c.latestOrderNumber}</span> (${c.latestOrderStatus ?? "—"})`;
+    lo.innerHTML = `<span dir="ltr" style="display:inline-block">${c.latestOrderNumber}</span> (${orderStatusUi(
+      c.latestOrderStatus as OrderStatus,
+    )})`;
     root.appendChild(lo);
   }
 
   const time = document.createElement("div");
   time.style.cssText = "margin-bottom:4px;font-size:9px;color:var(--muted-foreground,#94a3b8);";
-  time.textContent = `الموقع: ${formatRecordedAt(loc.recordedAt)}`;
+  time.textContent = String(i18n.t("distribution.popup.location", { at: formatRecordedAt(loc.recordedAt) }));
   root.appendChild(time);
 
   if (secLeft !== null) {
     const offer = document.createElement("div");
     offer.style.cssText =
       "margin-bottom:6px;padding:3px 6px;border-radius:5px;background:rgba(245,158,11,.12);font-size:10px;font-weight:700;color:#92400e;text-align:center;";
-    offer.textContent = `مهلة القبول: ${secLeft} ث`;
+    offer.textContent = String(i18n.t("distribution.popup.acceptDeadline", { sec: secLeft }));
     root.appendChild(offer);
   }
 
@@ -100,13 +145,13 @@ export function buildCaptainPopupElement(c: ActiveMapCaptain, handlers: CaptainP
 
   const rowLabel = document.createElement("span");
   rowLabel.style.cssText = "font-size:10px;font-weight:800;color:var(--foreground,#0f172a);";
-  rowLabel.textContent = "تواصل";
+  rowLabel.textContent = String(i18n.t("distribution.popup.contact"));
 
   const toggle = document.createElement("button");
   toggle.type = "button";
   toggle.setAttribute("aria-expanded", "false");
   toggle.setAttribute("aria-haspopup", "true");
-  toggle.title = "فتح خيارات التواصل";
+  toggle.title = String(i18n.t("distribution.popup.openContactMenu"));
   toggle.style.cssText =
     "flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;border:1px solid var(--border,#e2e8f0);background:var(--background,#fff);cursor:pointer;font-size:12px;line-height:1;color:var(--foreground,#0f172a);";
   toggle.innerHTML = "&#9662;";
@@ -148,8 +193,9 @@ export function buildCaptainPopupElement(c: ActiveMapCaptain, handlers: CaptainP
     const b = document.createElement("button");
     b.type = "button";
     b.textContent = label;
-    b.style.cssText =
-      "display:block;width:100%;text-align:right;padding:6px 8px;border:none;border-radius:6px;background:transparent;cursor:pointer;font-size:11px;font-weight:600;color:var(--foreground,#0f172a);";
+    b.style.cssText = `display:block;width:100%;text-align:${
+      rtl ? "right" : "left"
+    };padding:6px 8px;border:none;border-radius:6px;background:transparent;cursor:pointer;font-size:11px;font-weight:600;color:var(--foreground,#0f172a);`;
     b.addEventListener("mouseenter", () => {
       b.style.background = "var(--muted,#f1f5f9)";
     });
@@ -165,7 +211,7 @@ export function buildCaptainPopupElement(c: ActiveMapCaptain, handlers: CaptainP
   };
 
   const tel = c.user.phone.replace(/[^\d+]/g, "");
-  const callBtn = mkBtn("اتصال بالكابتن", () => {
+  const callBtn = mkBtn(String(i18n.t("distribution.popup.callCaptain")), () => {
     if (tel) window.location.href = `tel:${tel}`;
   });
   menu.appendChild(callBtn);
@@ -176,14 +222,14 @@ export function buildCaptainPopupElement(c: ActiveMapCaptain, handlers: CaptainP
 
   const alertLabel = document.createElement("div");
   alertLabel.style.cssText = "padding:2px 8px 4px;font-size:9px;font-weight:700;color:var(--muted-foreground,#64748b);";
-  alertLabel.textContent = "تنبيه سريع للكابتن";
+  alertLabel.textContent = String(i18n.t("distribution.popup.quickAlertMenuTitle"));
   menu.appendChild(alertLabel);
 
   const presets: { preset: QuickAlertPreset; label: string }[] = [
-    { preset: "review_order", label: "مراجعة الطلب المسند" },
-    { preset: "contact_customer", label: "التواصل مع العميل" },
-    { preset: "speed_delivery", label: "تسريع التوصيل" },
-    { preset: "contact_dispatch", label: "التواصل مع غرفة التحكم" },
+    { preset: "review_order", label: String(i18n.t("distribution.popup.presets.review_order")) },
+    { preset: "contact_customer", label: String(i18n.t("distribution.popup.presets.contact_customer")) },
+    { preset: "speed_delivery", label: String(i18n.t("distribution.popup.presets.speed_delivery")) },
+    { preset: "contact_dispatch", label: String(i18n.t("distribution.popup.presets.contact_dispatch")) },
   ];
 
   for (const { preset, label } of presets) {

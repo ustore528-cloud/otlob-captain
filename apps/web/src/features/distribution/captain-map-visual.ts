@@ -1,18 +1,20 @@
 import type { ActiveMapCaptain } from "@/types/api";
 
-/** أولوية مطابقة لخريطة التوزيع: انتظار قبول → تسليم نشط → رفض حديث → متاح */
+export type CaptainMapVisualLabelKey = "WAITING_ACCEPT" | "ACTIVE_DELIVERY" | "RECENT_REJECT" | "AVAILABLE";
+
+/** Priority for distribution map: waiting to accept → active delivery → recent reject → available */
 export function captainMapVisual(c: ActiveMapCaptain): {
   border: string;
   bg: string;
   pulse: boolean;
-  label: string;
+  labelKey: CaptainMapVisualLabelKey;
 } {
   if (c.waitingOffers > 0) {
     return {
       border: "#ca8a04",
       bg: "#fef9c3",
       pulse: true,
-      label: "بانتظار قبول الكابتن",
+      labelKey: "WAITING_ACCEPT",
     };
   }
   if (c.activeOrders > 0) {
@@ -20,7 +22,7 @@ export function captainMapVisual(c: ActiveMapCaptain): {
       border: "#15803d",
       bg: "#dcfce7",
       pulse: true,
-      label: "قُبِل الطلب / قيد التوصيل",
+      labelKey: "ACTIVE_DELIVERY",
     };
   }
   if (c.recentRejects > 0) {
@@ -28,14 +30,14 @@ export function captainMapVisual(c: ActiveMapCaptain): {
       border: "#b91c1c",
       bg: "#fee2e2",
       pulse: true,
-      label: "رفض مؤخراً",
+      labelKey: "RECENT_REJECT",
     };
   }
   return {
     border: "#2563eb",
     bg: "#dbeafe",
     pulse: false,
-    label: "متاح",
+    labelKey: "AVAILABLE",
   };
 }
 

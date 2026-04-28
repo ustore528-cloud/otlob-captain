@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -43,6 +44,7 @@ type Props = {
 };
 
 export function LedgerActivityReportSection({ walletAccountId, activeTab }: Props) {
+  const { t } = useTranslation();
   const token = useAuthStore((s) => s.token);
   const scopeKey = `${activeTab}-${walletAccountId ?? "none"}`;
 
@@ -76,17 +78,17 @@ export function LedgerActivityReportSection({ walletAccountId, activeTab }: Prop
   const apply = () => {
     setClientError(null);
     const f = localDatetimeToUtcIso(draftFromLocal);
-    const t = localDatetimeToUtcIso(draftToLocal);
-    if (!f || !t) {
-      setClientError("التاريخ/الوقت غير صالح.");
+    const to = localDatetimeToUtcIso(draftToLocal);
+    if (!f || !to) {
+      setClientError(t("finance.ledgerReport.errors.invalidDate"));
       return;
     }
-    if (!isValidLedgerActivityRange(f, t)) {
-      setClientError("يجب أن يكون «من» قبل «إلى»، ولا تزيد الفترة عن 90 يوماً.");
+    if (!isValidLedgerActivityRange(f, to)) {
+      setClientError(t("finance.ledgerReport.errors.order"));
       return;
     }
     setFromUtc(f);
-    setToUtc(t);
+    setToUtc(to);
   };
 
   const ledgerEnabled = Boolean(walletAccountId);
@@ -105,7 +107,7 @@ export function LedgerActivityReportSection({ walletAccountId, activeTab }: Prop
             ? e.message
             : e instanceof Error
               ? e.message
-              : "تعذّر التصدير";
+              : t("finance.ledgerReport.exportError");
         setExportError(msg);
       } finally {
         setExporting(false);
@@ -118,22 +120,20 @@ export function LedgerActivityReportSection({ walletAccountId, activeTab }: Prop
       ? report.error.message
       : report.isError
         ? (report.error as Error).message
-        : "تعذّر التحميل";
+        : t("finance.ledgerReport.loadError");
+
+  const utcSuffix =
+    report.reportRange != null ? ` — UTC: ${report.reportRange.from} … ${report.reportRange.to}` : "";
 
   if (!ledgerEnabled) {
     return (
       <Card className="shadow-sm ring-1 ring-card-border/80">
         <CardHeader>
-          <CardTitle className="text-base">تقرير حركات المحفظة (بالفترة)</CardTitle>
-          <CardDescription>
-            حركات الدفتر ضمن فترة زمنية. يُرسل النطاق إلى الخادم كـ UTC (ISO-8601).
-          </CardDescription>
+          <CardTitle className="text-base">{t("finance.ledgerReport.title")}</CardTitle>
+          <CardDescription>{t("finance.ledgerReport.descriptionServerUtc")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <EmptyState
-            title="لا يوجد رقم محفظة"
-            description="أنشئ أول حركة أو انتظر إنشاء المحفظة ليتاح التقرير."
-          />
+          <EmptyState title={t("finance.ledgerReport.titleNoWallet")} description={t("finance.ledgerReport.descriptionNoWallet")} />
         </CardContent>
       </Card>
     );
@@ -142,11 +142,8 @@ export function LedgerActivityReportSection({ walletAccountId, activeTab }: Prop
   return (
     <Card className="shadow-sm ring-1 ring-card-border/80">
       <CardHeader>
-        <CardTitle className="text-base">تقرير حركات المحفظة (بالفترة)</CardTitle>
-        <CardDescription>
-          حركات الدفتر ضمن النطاق على الخادم (UTC). الافتراضي: آخر 7 أيام. عرض الوقت في الحقول حسب وضع
-          التصفح المحلي.
-        </CardDescription>
+        <CardTitle className="text-base">{t("finance.ledgerReport.titleAlt")}</CardTitle>
+        <CardDescription>{t("finance.ledgerReport.descriptionAlt")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <form
@@ -157,7 +154,7 @@ export function LedgerActivityReportSection({ walletAccountId, activeTab }: Prop
           }}
         >
           <label className="flex min-w-[12rem] flex-col gap-1 text-sm">
-            <span className="text-muted">من (محلي)</span>
+            <span className="text-muted">{t("finance.ledgerReport.fromLocal")}</span>
             <input
               type="datetime-local"
               className={FORM_CONTROL_CLASS}
@@ -166,7 +163,7 @@ export function LedgerActivityReportSection({ walletAccountId, activeTab }: Prop
             />
           </label>
           <label className="flex min-w-[12rem] flex-col gap-1 text-sm">
-            <span className="text-muted">إلى (محلي)</span>
+            <span className="text-muted">{t("finance.ledgerReport.toLocal")}</span>
             <input
               type="datetime-local"
               className={FORM_CONTROL_CLASS}
@@ -175,7 +172,7 @@ export function LedgerActivityReportSection({ walletAccountId, activeTab }: Prop
             />
           </label>
           <Button type="submit" size="sm">
-            تطبيق
+            {t("finance.ledgerReport.apply")}
           </Button>
           <Button
             type="button"
@@ -185,7 +182,7 @@ export function LedgerActivityReportSection({ walletAccountId, activeTab }: Prop
             onClick={onExportCsv}
             aria-busy={exporting}
           >
-            {exporting ? "جارٍ التصدير…" : "تنزيل CSV"}
+            {exporting ? t("finance.ledgerReport.exporting") : t("finance.ledgerReport.exportCsv")}
           </Button>
         </form>
 
@@ -194,10 +191,11 @@ export function LedgerActivityReportSection({ walletAccountId, activeTab }: Prop
 
         {typeof report.totalInRange === "number" ? (
           <p className="text-xs text-muted" dir="ltr">
-            في النطاق: {report.totalInRange} حركة (معروض: {report.items.length})
-            {report.reportRange
-              ? ` — UTC: ${report.reportRange.from} … ${report.reportRange.to}`
-              : null}
+            {t("finance.ledgerReport.inRangeDetail", {
+              total: report.totalInRange,
+              shown: report.items.length,
+              utcSuffix,
+            })}
           </p>
         ) : null}
 
@@ -209,7 +207,7 @@ export function LedgerActivityReportSection({ walletAccountId, activeTab }: Prop
           onLoadMore={() => void report.loadMore()}
           canLoadMore={report.canLoadMore}
           isFetchingFirst={report.isFetchingFirst}
-          emptyMessage="لا حركات في هذه الفترة."
+          emptyMessage={t("finance.ledgerReport.emptyRange")}
         />
       </CardContent>
     </Card>

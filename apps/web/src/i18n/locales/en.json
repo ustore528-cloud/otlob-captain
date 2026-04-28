@@ -1,0 +1,1258 @@
+{
+  "common": {
+    "language": "Language",
+    "brand": "2in",
+    "logout": "Log out",
+    "refresh": "Refresh",
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "saving": "Saving…",
+    "delete": "Delete",
+    "edit": "Edit",
+    "enable": "Enable",
+    "disable": "Disable",
+    "previous": "Previous",
+    "next": "Next",
+    "search": "Search",
+    "optional": "Optional",
+    "fromDate": "From date",
+    "toDate": "To date",
+    "lastUpdated": "Last updated",
+    "fullName": "Full name",
+    "phone": "Phone",
+    "password": "Password",
+    "emailOptional": "Email (optional)",
+    "all": "All",
+    "loading": "Loading…",
+    "toastErrorFallback": "Something went wrong",
+    "none": "—",
+    "notRecorded": "Not recorded",
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    }
+  },
+  "apiErrors": {
+    "loginRequired": "You must be signed in",
+    "geocodePath404": "Could not find the geocoding route (404). Make sure the API base URL in settings is only the site origin (without /api), and that the server is deployed with /api/v1/geocode/place.",
+    "geocodeBadShape": "Invalid response from the geocoding server.",
+    "geocodeBadFields": "Incomplete coordinate data from the server."
+  },
+  "mutationToasts": {
+    "captainCreated": "Captain created",
+    "captainCreateFailed": "Could not create captain",
+    "storeUpdated": "Store details updated",
+    "storeUpdateFailed": "Could not update store details",
+    "orderReassigned": "Reassigned",
+    "orderReassignFailed": "Could not reassign",
+    "redistributeSuccess": "Redistributed",
+    "redistributeFailed": "Could not redistribute",
+    "assignDragDrop": "Assigned (drag & drop)",
+    "assignManual": "Assigned manually",
+    "assignCaptainFailed": "Could not assign captain",
+    "adminStatusOk": "Order status updated (admin).",
+    "adminStatusFailed": "Could not update status",
+    "archiveOk": "Order removed from the operational list — record kept in the database.",
+    "archiveFailed": "Could not archive order",
+    "orderCreatedWithDist": "Order {{number}} created — auto distribution started.",
+    "orderCreatedNoDist": "Order {{number}} created.",
+    "autoDistFailed": "Could not start auto distribution automatically — open the orders list and press auto distribute for this order.",
+    "incubatorCreateFailed": "Could not create order",
+    "cancelCaptainSuccess": "Order cancelled for captain",
+    "cancelCaptainFailed": "Could not cancel for captain",
+    "customerProfileSaved": "Customer details saved",
+    "customerProfileFailed": "Could not save customer details",
+    "captainDeleted": "Captain and user account removed",
+    "captainDeleteFailed": "Could not delete captain",
+    "captainUpdated": "Captain details updated",
+    "captainUpdateFailed": "Could not update captain",
+    "quickAlertSent": "Alert sent: {{label}}",
+    "quickAlertFailed": "Could not send quick status alert",
+    "userCreated": "User created",
+    "userCreateFailed": "Could not create user",
+    "captainToggledOn": "Enabled",
+    "captainToggledOff": "Disabled",
+    "captainToggleFailed": "Could not update captain status",
+    "autoDistStarted": "Auto distribution started",
+    "autoDistStartFailed": "Could not start auto distribution",
+    "orderCreatedToast": "Order created",
+    "orderCreateFailed": "Could not create order",
+    "userToggledOn": "User enabled",
+    "userToggledOff": "User disabled",
+    "userToggleFailed": "Could not update user"
+  },
+  "dashboard": {
+    "footerNote": "Unified API client with React Query — ready to connect the mobile app later via the same hooks or createApiClient.",
+    "page": {
+      "welcome": "Welcome",
+      "welcomeWithName": "Welcome, {{name}}",
+      "description": "A quick operational snapshot for orders and alerts.",
+      "requestLinkTitle": "Your request link",
+      "ownerCode": "Owner code",
+      "copyLink": "Copy link",
+      "openRequestPage": "Open request page"
+    },
+    "stats": {
+      "ordersTotal": "Total orders (your scope)",
+      "ordersUnavailable": "—",
+      "ordersHintNoAccess": "Not available for your role",
+      "captainsActive": "Active captains",
+      "captainsActiveHint": "Per admin scope",
+      "role": "Role",
+      "roleHint": "Order visibility by role",
+      "lastAlert": "Latest alert",
+      "read": "Read",
+      "newBadge": "New",
+      "noNotifications": "No notifications",
+      "pendingDistribution": "Awaiting distribution",
+      "confirmedPreparing": "Preparing orders"
+    },
+    "quickWorkStatus": {
+      "title": "Quick operational status alert"
+    },
+    "quickStatus": {
+      "PRESSURE": "Pressure",
+      "LOW_ACTIVITY": "Low activity",
+      "RAISE_READINESS": "Raise readiness",
+      "ON_FIRE": "On fire"
+    },
+    "widgets": {
+      "latestNotification": {
+        "title": "Latest notification",
+        "description": "Newest alert in your inbox",
+        "unread": "Unread",
+        "empty": "No notifications yet."
+      },
+      "activity": {
+        "title": "Activity summary",
+        "description": "Latest operational events (dispatch/admin)",
+        "dispatchOnly": "Activity summary is available for management and dispatch accounts."
+      }
+    },
+    "mapSettings": {
+      "title": "Map settings",
+      "description": "Coordinates and zoom are saved on the server. Country and city are used for geocoding (Nominatim) to move the map — you can also adjust the location manually on the map.",
+      "country": "Country",
+      "countryPlaceholder": "Example: Saudi Arabia",
+      "cityRegion": "City / region",
+      "cityPlaceholder": "Example: Riyadh",
+      "searching": "Searching…",
+      "searchAndMove": "Search and move map",
+      "searchHint": "Supports: country only, city only, or country + city. Search via",
+      "pickOnMapTitle": "Pick on the map",
+      "pickOnMapBody": "Pan/zoom the map or click to set the center. Coordinates and zoom update automatically.",
+      "useCurrentCenter": "Use current map center",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "zoom": "Zoom (1–19)",
+      "suggestionSaudi": "Saudi Arabia",
+      "suggestionEgypt": "Egypt",
+      "suggestionUae": "United Arab Emirates",
+      "errors": {
+        "enterCountryOrCity": "Enter a country and/or a city, then press search.",
+        "incompleteGeocodeResponse": "Incomplete server response — try again or move the map manually.",
+        "searchFailed": "Could not search for the location.",
+        "saveFailed": "Could not save"
+      },
+      "hints": {
+        "positioned": "Positioned: {{label}}",
+        "coordinatesUpdated": "Coordinates and zoom updated."
+      },
+      "prepaid": {
+        "title": "Captain prepaid balance system",
+        "description": "Deduction happens from delivery fees only after the order is delivered.",
+        "enable": "Enable prepaid balance system",
+        "defaultCommission": "Default commission rate",
+        "minBalance": "Minimum balance to receive orders",
+        "allowCustomCommission": "Allow a custom commission rate per captain",
+        "allowManualOverride": "Allow manual assignment override when balance is low"
+      },
+      "save": "Save map settings"
+    }
+  },
+  "roles": {
+    "SUPER_ADMIN": "Platform admin",
+    "COMPANY_ADMIN": "Company admin",
+    "BRANCH_MANAGER": "Branch manager (disabled)",
+    "CAPTAIN_SUPERVISOR": "Captain supervisor (disabled)",
+    "STORE_ADMIN": "Store staff (disabled)",
+    "STORE_USER": "Store staff (disabled)",
+    "DISPATCHER": "Dispatcher (disabled)",
+    "CAPTAIN": "Captain",
+    "CUSTOMER": "Customer account (disabled)"
+  },
+  "captains": {
+    "page": {
+      "title": "Captains",
+      "description": "Manage accounts, activation, editing, and captain order reporting."
+    },
+    "legacyVehicle": {
+      "bicycle": "Bicycle",
+      "motorcycle": "Motorcycle",
+      "car": "Car",
+      "cargoVan": "Cargo / van"
+    },
+    "guidance": {
+      "title": "Guidance",
+      "description": "Activation controls whether the captain can access the system; availability is updated from the captain app or operations dashboard."
+    },
+    "stats": {
+      "deliveredOrders": "Delivered orders",
+      "activeOrders": "Active orders",
+      "lastLocation": "Last recorded location",
+      "noLocation": "No recorded location."
+    },
+    "balanceAdjustment": {
+      "title": "Adjust captain balance",
+      "captainLabel": "Captain: {{name}}",
+      "operationType": "Operation type",
+      "increase": "Increase (+)",
+      "decrease": "Decrease (-)",
+      "amount": "Amount",
+      "note": "Adjustment reason",
+      "notePlaceholder": "Write a clear reason for auditing later",
+      "confirm": "Confirm adjustment",
+      "errors": {
+        "invalidAmount": "Enter a valid amount greater than zero.",
+        "noteRequired": "Adjustment reason is required."
+      }
+    },
+    "edit": {
+      "title": "Edit captain",
+      "description": "Update account, vehicle, and area details",
+      "branchManagerSupervisorHint": "As a branch supervisor, the captain remains linked to your account."
+    },
+    "fields": {
+      "captainName": "Captain name",
+      "vehicleType": "Vehicle type",
+      "area": "Area",
+      "areaCity": "Area / city",
+      "branch": "Branch",
+      "supervisor": "Supervisor"
+    },
+    "add": {
+      "title": "Add captain",
+      "descriptionBranchManager": "Creates a captain within your branch scope and links them to the branch supervisor automatically.",
+      "descriptionSuperAdmin": "Super admin: pick the company, then branch and zone (same company only).",
+      "descriptionDefault": "Creates a platform user with captain role and an initial password for your company.",
+      "selectCompany": "— Select company —",
+      "selectBranch": "— Select branch —",
+      "loadingBranches": "Loading branches…",
+      "creating": "Creating…",
+      "saveCaptain": "Save captain",
+      "currentAccount": "your current account",
+      "supervisorAutoBind": "The captain will be linked to the branch supervisor: {{name}}.",
+      "errors": {
+        "chooseCompany": "Choose a company first (super admin).",
+        "chooseBranch": "Choose the branch the captain belongs to.",
+        "noActiveBranch": "No active branch exists for this company. Create a branch first before adding a captain."
+      }
+    },
+    "report": {
+      "title": "Captain report",
+      "titleWithName": "Report — {{name}}",
+      "description": "Orders linked to this captain (current assignment or assignment history). Filter by date, search, and area.",
+      "quickSummary": "Quick summary",
+      "activeWithCaptain": "Active orders with captain",
+      "filtersTitle": "Filter orders",
+      "areaLabel": "Area (order location)",
+      "areaPlaceholder": "Example: Riyadh",
+      "searchLabel": "Search (order #, customer, phone, address…)",
+      "loadingOrders": "Loading orders…",
+      "emptyTitle": "No matching orders",
+      "emptyDescription": "Try widening the date range or removing some filters.",
+      "paginationSummary": "Total {{total}} — page {{page}} of {{pages}}"
+    },
+    "roster": {
+      "listTitle": "Roster",
+      "count": "{{count}} captains",
+      "loading": "Loading captains…",
+      "emptyTitle": "No captains yet",
+      "emptyDescription": "Start by adding a new captain to show up in this list.",
+      "supervisorLabel": "Captain supervisor",
+      "remainingBalance": "Remaining balance ({{currency}})",
+      "commissionRate": "Commission rate",
+      "defaultCommission": "default",
+      "totalDeducted": "Total deducted ({{currency}})",
+      "chargeBalance": "Top up balance",
+      "balanceAdjust": "Adjust balance",
+      "ledger": "Transaction history",
+      "report": "Report",
+      "chargeSuccess": "Balance topped up successfully",
+      "chargeError": "Could not top up captain balance",
+      "adjustSuccess": "Balance adjustment recorded",
+      "adjustError": "Could not adjust balance",
+      "enterValidAmount": "Enter a valid amount",
+      "chargePrompt": "Top up balance for {{name}}",
+      "optionalNote": "Optional note",
+      "noLedgerTransactions": "No balance transactions yet",
+      "ledgerLoadError": "Could not load transaction history",
+      "afterTransaction": "after txn",
+      "deleteConfirm": "Delete captain “{{name}}” and their login account permanently?\nDelivered/cancelled orders will be unlinked from this captain, and assignment/location history will be removed. Cannot delete if there are in-progress orders."
+    }
+  },
+  "users": {
+    "page": {
+      "title": "Users",
+      "description": "Platform login accounts with role-based filtering and controls.",
+      "refreshList": "Refresh list",
+      "superAdminOnly": "General user creation is available only for SUPER_ADMIN. Current role: {{role}}.",
+      "unknownRole": "Unknown",
+      "filterTitle": "Filter by role",
+      "filterDescription": "Filter users by role. Customer accounts include optional delivery profile fields.",
+      "roleLabel": "Role"
+    },
+    "company": "Company",
+    "card": {
+      "accountBadge": "User account",
+      "accountPhoneCaption": "Account phone (login / contact)",
+      "emailCaption": "Email",
+      "toggleDisable": "Disable account",
+      "toggleEnable": "Enable account",
+      "toggleHint": "Changing activation is available for admins only."
+    },
+    "addUser": {
+      "title": "Add user",
+      "description": "Create a platform account using the simplified form (platform admin / company admin). Captains are created from the Captains page.",
+      "fullName": "Full name",
+      "phone": "Phone",
+      "role": "Role",
+      "choose": "Choose…",
+      "pickCompany": "Select company",
+      "createCompany": "Create new company",
+      "noCompanies": "No companies yet. Click “Create new company” to add one, then select it here.",
+      "emailOptional": "Email (optional)",
+      "password": "Password",
+      "createdCompanyAdminTitle": "Company admin created: {{name}}",
+      "createdCompanyAdminBody": "Admin code: {{code}} — request link:",
+      "creating": "Creating user…",
+      "submit": "Create user",
+      "errors": {
+        "fullName": "Name is required.",
+        "phone": "Phone is required.",
+        "password": "Password must be at least 8 characters.",
+        "role": "Choose a role.",
+        "companyPick": "Please select a company",
+        "companyMissing": "Selected company not found. Refresh the list or pick another company."
+      }
+    },
+    "createCompany": {
+      "success": "Company created",
+      "error": "Could not create company",
+      "title": "Create new company",
+      "description": "Creates a company id automatically. You can then select it for a company admin from the list.",
+      "nameLabel": "Company name",
+      "nameRequired": "Please enter a company name",
+      "cancel": "Cancel",
+      "submit": "Save company",
+      "creating": "Creating…"
+    },
+    "archiveSection": {
+      "title": "Companies — safe archive (super admin only)",
+      "description": "Review counts, then archive the company (disable only). No hard-delete of users, orders, or ledgers.",
+      "loading": "Loading…",
+      "empty": "No companies in the active list.",
+      "archive": "Archive"
+    },
+    "archiveModal": {
+      "errors": {
+        "activeOrders": "Cannot archive the company because it has unfinished orders.",
+        "invalidPhrase": "Confirmation phrase is incorrect. Type exactly: ARCHIVE COMPANY"
+      },
+      "genericError": "Could not complete archive",
+      "alreadyArchived": "Company is already archived.",
+      "success": "Company archived (hidden from active list) without deleting any data.",
+      "titleWithName": "Archive company: {{name}}",
+      "title": "Archive company",
+      "description": "This archives (disables) the company — not a hard delete. Users, orders, and wallets are not deleted.",
+      "loadingPreview": "Loading dependency preview…",
+      "previewError": "Could not load preview",
+      "alreadyDisabledInfo": "This company is already disabled (archived); details are shown for information only.",
+      "counts": {
+        "users": "Users",
+        "activeUsers": "Active users",
+        "captains": "Captains",
+        "activeCaptains": "Active captains",
+        "stores": "Stores",
+        "ordersTotal": "Orders (all)",
+        "ordersUnfinished": "Unfinished orders",
+        "walletAccounts": "Wallet accounts",
+        "ledgerEntries": "Ledger entries",
+        "activityLogs": "Activity logs (company users)",
+        "companyWalletBalance": "Company wallet balance"
+      },
+      "riskNotesTitle": "Risk notes",
+      "confirmInstruction": "To continue, type exactly:",
+      "cancel": "Cancel",
+      "confirm": "Confirm archive",
+      "archiving": "Archiving…"
+    },
+    "customerProfile": {
+      "sectionTitle": "Customer account data",
+      "sectionBody": "Same fields as “new order”: addresses, location link, area, preferred pricing, and optional map pin. Saved as a reference for the customer account.",
+      "rows": {
+        "pickup": "Pickup address",
+        "dropoff": "Drop-off address",
+        "link": "Location link",
+        "area": "Area",
+        "amount": "Order price (optional)",
+        "delivery": "Delivery fee (optional)"
+      },
+      "coordsSaved": "Saved coordinates: {{lat}}, {{lng}}",
+      "coordsNone": "No saved map coordinates — the captain can set the location from the app later.",
+      "edit": "Edit data",
+      "pickupLabel": "Pickup address",
+      "dropoffLabel": "Drop-off address",
+      "linkLabel": "Paste location link (optional)",
+      "linkHelp": "Paste a share link from Google Maps or any https link that shows the drop-off; it is saved for the captain with the order when used.",
+      "areaLabel": "Area",
+      "amountLabel": "Order price (optional)",
+      "deliveryLabel": "Delivery fee (optional)",
+      "mapNoneTitle": "No location selected on the map",
+      "mapNoneBody": "The captain can confirm/adjust drop-off in the captain app when needed. To pin a location now, enable the option below.",
+      "mapToggleTitle": "Add drop-off location on the map (optional)",
+      "mapToggleBody": "When enabled, click the map to pin the drop-off and save coordinates with the customer profile.",
+      "mapLabel": "Drop-off pin map",
+      "mapHint": "Click the map to pin the drop-off.",
+      "cancel": "Cancel",
+      "save": "Save",
+      "errors": {
+        "linkScheme": "Link must start with http or https.",
+        "linkInvalid": "Invalid URL — paste the full link.",
+        "amount": "Order price must be a positive number.",
+        "delivery": "Delivery fee must be a positive number.",
+        "mapRequired": "Map option enabled — click the map to select drop-off coordinates."
+      }
+    }
+  },
+  "stores": {
+    "page": {
+      "title": "Stores",
+      "description": "Store subscription, linked supervisor, and primary region as provided by the server.",
+      "listTitle": "List",
+      "count": "{{count}} stores",
+      "loading": "Loading stores…",
+      "emptyTitle": "No stores to display",
+      "emptyDescription": "Refresh or check role/scope settings if needed.",
+      "noSupervisor": "No supervisor",
+      "adjustSubscription": "Adjust subscription/supervisor",
+      "viewOnly": "View only"
+    },
+    "table": {
+      "store": "Store",
+      "phone": "Phone",
+      "area": "Area",
+      "subscription": "Subscription",
+      "supervisor": "Supervisor",
+      "primaryRegion": "Primary region",
+      "actions": "Actions"
+    },
+    "modal": {
+      "title": "Update store subscription",
+      "storeLabel": "Store: {{name}}",
+      "subscriptionType": "Subscription type",
+      "publicOption": "PUBLIC — public",
+      "supervisorLinkedOption": "SUPERVISOR_LINKED — supervisor-linked",
+      "supervisor": "Supervisor",
+      "branchManagerAutoLinkHint": "As a branch supervisor, the store will be linked to your account automatically when SUPERVISOR_LINKED is selected.",
+      "supervisorRequired": "SUPERVISOR_LINKED requires selecting a supervisor."
+    },
+    "subscription": {
+      "PUBLIC": "Public",
+      "SUPERVISOR_LINKED": "Supervisor-linked"
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "newOrder": "New order",
+    "distribution": "Distribution",
+    "incubator": "Incubator host",
+    "orders": "Orders",
+    "captains": "Captains",
+    "stores": "Stores",
+    "users": "Users",
+    "finance": "Finance",
+    "reports": "Reports"
+  },
+  "statuses": {
+    "captain": {
+      "OFFLINE": "Offline",
+      "AVAILABLE": "Available",
+      "BUSY": "Busy",
+      "ON_DELIVERY": "On delivery"
+    },
+    "store": {
+      "ACTIVE": "Active",
+      "INACTIVE": "Inactive"
+    }
+  },
+  "distribution": {
+    "page": {
+      "title": "Order distribution board",
+      "description": "Live management of captains and orders on the map."
+    },
+    "stats": {
+      "newOrders": "New orders",
+      "available": "Available",
+      "waiting": "Awaiting response",
+      "busy": "Busy",
+      "delayed": "Delayed orders"
+    },
+    "rail": {
+      "distribution": "Distribution",
+      "captains": "Captains",
+      "orders": "Orders",
+      "map": "Map",
+      "reports": "Reports",
+      "settings": "Settings"
+    },
+    "filters": {
+      "available": "Available",
+      "waiting": "Awaiting response",
+      "busy": "Busy",
+      "far": "Far"
+    },
+    "manualAssign": {
+      "noCompatibleCaptains": "No captains on this page match the store supervisor for this order."
+    },
+    "guard": {
+      "companyAdminOutOfScope": "This captain is outside the allowed distribution scope for this order.",
+      "supervisorOutOfScope": "This captain is outside the store supervisor scope for this order.",
+      "reassignOutOfScope": "This captain is outside the allowed distribution scope for this order (or pick a compatible captain from the list)."
+    },
+    "common": {
+      "selectedCaptain": "Selected captain"
+    },
+    "auto": {
+      "button": "Auto distribute",
+      "pending": "Distributing…",
+      "hint": "Assigns all visible orders to suitable captains",
+      "successTitle": "Auto distribution completed",
+      "successDetail": "Assigned {{assigned}} order(s), skipped {{skipped}}.",
+      "error": "Could not run auto distribution"
+    },
+    "ordersPanel": {
+      "newOrdersCount": "New orders ({{count}})",
+      "manualAssign": "Manual assign",
+      "redistribute": "Redistribute",
+      "empty": "No orders to show."
+    },
+    "urgency": {
+      "urgent": "Urgent",
+      "delayed": "Delayed",
+      "normal": "Normal"
+    },
+    "captainCard": {
+      "busy": "Busy",
+      "waiting": "Awaiting response",
+      "available": "Available",
+      "far": "Far",
+      "near": "Nearby"
+    },
+    "mapVisual": {
+      "WAITING_ACCEPT": "Waiting for captain to accept",
+      "ACTIVE_DELIVERY": "Accepted / in delivery",
+      "RECENT_REJECT": "Recent reject",
+      "AVAILABLE": "Available"
+    },
+    "map": {
+      "markerCountdown": "⏱ {{sec}}s"
+    },
+    "quickDrop": {
+      "legendIntro": "Card colors reflect the captain’s map state. Under the name:",
+      "legendWaitingNote": "means an offer needs a response, and",
+      "legendActiveNote": "means active in delivery.",
+      "receivingAssignment": "Receiving assignment…",
+      "activeOrders": "Active orders",
+      "boxWaitingTitle": "ASSIGNED offers — waiting for the captain to accept/decline",
+      "boxActiveTitle": "Accepted or in delivery (active)"
+    },
+    "vehicle": {
+      "BICYCLE": "Bicycle",
+      "MOTORCYCLE": "Motorcycle",
+      "CAR": "Car",
+      "CARGO": "Cargo / van"
+    },
+    "popup": {
+      "ordersLine": "<span style=\"font-weight:700\">Active:</span> {{active}} · <span style=\"font-weight:700\">Waiting response:</span> {{waiting}}",
+      "location": "Location: {{at}}",
+      "acceptDeadline": "Accept deadline: {{sec}}s",
+      "contact": "Contact",
+      "openContactMenu": "Open contact options",
+      "callCaptain": "Call captain",
+      "quickAlertMenuTitle": "Quick alert to captain",
+      "presets": {
+        "review_order": "Review assigned order",
+        "contact_customer": "Contact the customer",
+        "speed_delivery": "Speed up delivery",
+        "contact_dispatch": "Contact dispatch"
+      }
+    },
+    "quickAlert": {
+      "fetchCaptainFailed": "Could not load captain data to send the alert",
+      "missingCaptainAccount": "Could not resolve the captain account to send the alert. Make sure the server is up to date and GET /api/v1/captains works.",
+      "sent": "Alert sent — it will show in the captain app notifications",
+      "sendFailed": "Could not send the alert"
+    },
+    "mapUi": {
+      "title": "Captains map",
+      "hintWhileDragging": "Drop the order on a captain icon to assign (drag & drop).",
+      "hintIdle": "The pulsing yellow frame is the captain who currently has an offer; it moves automatically after a decline or when the offer expires. Drag an order card to assign manually.",
+      "autoFollow": "Auto follow (move camera with live data)",
+      "recenter": "Recenter",
+      "legendWaiting": "Waiting to accept",
+      "legendActive": "Accepted / in delivery",
+      "legendRecentReject": "Recent reject",
+      "legendAvailable": "Available"
+    },
+    "offerCountdown": {
+      "title": "Seconds left on the offer accept/decline deadline (server-synchronized; matches captain + map)",
+      "label": "Offer",
+      "sec": "s"
+    },
+    "google": {
+      "disabledTitle": "Google map is not enabled",
+      "disabledBody": "Add a Google Maps key in VITE_GOOGLE_MAPS_API_KEY to enable real tracking. When enabled, the map is restricted to Israel only.",
+      "requiredFile": "Required file:",
+      "format": "Format:",
+      "restart": "Then restart the dev server:",
+      "envFilePath": "apps/web/.env.local",
+      "envLineExample": "VITE_GOOGLE_MAPS_API_KEY=AIza...",
+      "devCommand": "npm run dev -w @captain/web",
+      "scriptLoadFailed": "Google Maps script failed to load.",
+      "authFailed": "Google Maps JavaScript API authentication failed.",
+      "loadFailedTitle": "Could not load Google Maps",
+      "loadFailedBody": "Check the key, enable Maps JavaScript API, billing, and referrer restrictions."
+    },
+    "draggable": {
+      "titleDragToMap": "Drag to assign on the map",
+      "titleAssigning": "Assignment in progress",
+      "queueTitle": "Queue position in distribution list — ref: {{number}}",
+      "queueLabel": "Queue",
+      "assigning": "Assigning…",
+      "refPrefix": "Ref:",
+      "currentCaptain": "Current captain",
+      "awaitingCaptainResponseSuffix": " (awaiting accept/decline)",
+      "autoReassignNote": "Auto distribution: on decline or when the offer expires, the order moves to another available captain automatically.",
+      "pendingToDragDrop": "To {{name}} (drag & drop)",
+      "pendingToManual": "To {{name}} (manual assign)"
+    }
+  },
+  "finance": {
+    "page": {
+      "title": "Finance",
+      "descriptionSuperAdmin": "View wallet balances and ledger activity. Top up a store or supervisor from the tools above, or top up a company wallet from the “Company wallet” tab.",
+      "descriptionCompanyAdmin": "View your company wallet balance (read-only), captain wallet, and top up captain prepaid when needed — store management is not done here.",
+      "descriptionDefault": "View wallet balances and ledger activity.",
+      "refresh": "Refresh"
+    },
+    "tools": {
+      "superAdminTitle": "Super admin tools",
+      "superAdminDescription": "Top up a store wallet or add/deduct supervisor wallet balance (branch manager/dispatcher) — POST with Idempotency-Key.",
+      "storeTopUp": "Top up store wallet",
+      "supervisorAdjust": "Adjust balance",
+      "companyAdminTitle": "Company admin tools",
+      "companyAdminDescription": "Top up captain prepaid within your company only. Amount + reason are required; idempotency is generated automatically. No company wallet top-up here.",
+      "captainPrepaidTopUp": "Top up captain prepaid"
+    },
+    "tabs": {
+      "ariaLabel": "Wallet type",
+      "supervisor": "Supervisor wallet",
+      "store": "Store wallet",
+      "captain": "Captain wallet",
+      "company": "Company wallet"
+    },
+    "balance": {
+      "title": "Balance",
+      "subtitleSupervisor": "Supervisor account linked to your company user.",
+      "subtitleStore": "Balance for the selected store.",
+      "subtitleCaptain": "Balance for the selected captain.",
+      "subtitleCompany": "Company operations wallet (orders/ops) — read-only.",
+      "companyPickerLabel": "Company (super admin)",
+      "topUpCompanyWallet": "Top up company wallet",
+      "companyAdminScopeNote": "Only your linked company wallet is shown. You cannot select another company here.",
+      "storeLabel": "Store",
+      "captainLabel": "Captain",
+      "captainPrepaidCta": "Top up captain prepaid",
+      "loadingCompany": "Loading company wallet…",
+      "errors": {
+        "tenantScope": "No company scope on your account (TENANT_SCOPE_REQUIRED). Contact administration.",
+        "forbidden": "Not allowed to view wallet balance."
+      },
+      "readOnly": "Read-only",
+      "ledgerLastUpdated": "Ledger last updated:",
+      "walletId": "Wallet id:",
+      "recentMovementsTitle": "Recent movements (up to 5)",
+      "noRecentMovements": "No movements recorded yet in the latest batch shown.",
+      "noData": "No data",
+      "balanceCard": {
+        "loading": "Loading balance…",
+        "activeWallet": "Active wallet",
+        "noWalletYet": "No wallet record yet",
+        "existsNote": "Shows the cached balance as stored on the server.",
+        "missingNote": "Wallet not created yet — shows zero until the first movement."
+      }
+    },
+    "transfer": {
+      "cardTitle": "Transfer to captain",
+      "cardDescription": "Transfer from your supervisor wallet to a captain you supervise. Available for branch managers and dispatchers only.",
+      "open": "Transfer to captain"
+    },
+    "ledger": {
+      "title": "Ledger activity",
+      "companyNote": "For the company wallet, the latest movements are shown with the balance card above. Full paging may require additional server support later.",
+      "genericTitle": "Ledger activity",
+      "genericDescriptionEnabled": "Newest first. Loading more fetches the next batch.",
+      "genericDescriptionDisabled": "No wallet id yet — ledger is not requested.",
+      "emptyStateTitle": "No wallet ledger",
+      "emptyStateDescription": "After the wallet is created and ids appear, movements can be shown here.",
+      "loadErrorFallback": "Could not load",
+      "emptyMovements": "No movements yet."
+    },
+    "ledgerReport": {
+      "title": "Wallet ledger report (by range)",
+      "descriptionServerUtc": "Ledger movements within a time range. The range is sent to the server as UTC (ISO-8601).",
+      "titleNoWallet": "No wallet id",
+      "descriptionNoWallet": "Create the first movement or wait for wallet creation to enable the report.",
+      "titleAlt": "Wallet ledger report (by range)",
+      "descriptionAlt": "Ledger movements within the server range (UTC). Default: last 7 days. Field times follow your browser locale.",
+      "fromLocal": "From (local)",
+      "toLocal": "To (local)",
+      "apply": "Apply",
+      "exportCsv": "Download CSV",
+      "exporting": "Exporting…",
+      "inRange": "In range: {{total}} movements (showing: {{shown}})",
+      "inRangeDetail": "In range: {{total}} movements (showing: {{shown}}){{utcSuffix}}",
+      "emptyRange": "No movements in this range.",
+      "errors": {
+        "invalidDate": "Invalid date/time.",
+        "order": "\"From\" must be before \"To\", and the range cannot exceed 90 days."
+      },
+      "exportError": "Could not export",
+      "loadError": "Could not load"
+    },
+    "ledgerTable": {
+      "loading": "Loading ledger…",
+      "loadMore": "Load more",
+      "colTime": "Time",
+      "colType": "Type",
+      "colAmount": "Amount",
+      "colOrder": "Order",
+      "colMetadata": "Extra metadata",
+      "orderIdTitle": "Order id in the system"
+    },
+    "transactionTypes": {
+      "SUPER_ADMIN_TOP_UP": "Top up (super admin)",
+      "WALLET_TRANSFER": "Transfer",
+      "ORDER_DELIVERED_STORE_DEBIT": "Order debit (store)",
+      "ORDER_DELIVERED_CAPTAIN_DEDUCTION": "Delivery deduction (captain)",
+      "ADJUSTMENT": "Adjustment",
+      "CAPTAIN_PREPAID_CHARGE": "Captain prepaid top-up",
+      "CAPTAIN_PREPAID_ADJUSTMENT": "Captain prepaid adjustment"
+    },
+    "csv": {
+      "SUPER_ADMIN_TOP_UP": "Top up (admin)",
+      "WALLET_TRANSFER": "Transfer",
+      "ORDER_DELIVERED_STORE_DEBIT": "Order debit (store)",
+      "ORDER_DELIVERED_CAPTAIN_DEDUCTION": "Delivery deduction (captain)",
+      "ADJUSTMENT": "Adjustment",
+      "CAPTAIN_PREPAID_CHARGE": "Captain prepaid top-up",
+      "CAPTAIN_PREPAID_ADJUSTMENT": "Captain prepaid adjustment"
+    },
+    "modals": {
+      "common": {
+        "idempotencyNotReady": "Idempotency key is not ready. Close the modal and open it again.",
+        "positiveAmount": "Enter a positive amount (up to 2 decimals).",
+        "reasonRequired": "Reason is required.",
+        "genericCompleteError": "Could not complete the request",
+        "forbidden403": "Operation not allowed (403).",
+        "close": "Close",
+        "cancel": "Cancel",
+        "amount": "Amount",
+        "amountIls": "Amount (ILS)",
+        "reason": "Reason",
+        "decimalsHint": "Up to 2 decimal places.",
+        "sending": "Sending…",
+        "confirmTopUp": "Confirm top-up",
+        "confirmAdjust": "Confirm adjustment",
+        "confirmTransfer": "Confirm transfer",
+        "transferring": "Transferring…"
+      },
+      "companyAdminCaptainPrepaid": {
+        "errors": {
+          "tenantScope": "No company scope on your account (TENANT_SCOPE_REQUIRED). Contact administration to link the account to a company.",
+          "captainOutOfCompany": "Not allowed: captain is not in your company.",
+          "reasonRequired": "Reason is required."
+        },
+        "pickCaptain": "Choose a captain.",
+        "title": "Top up captain prepaid (company admin)",
+        "description": "Uses `POST /finance/captains/.../prepaid-charge` — idempotency is generated when the modal opens. Company scope comes from the session only.",
+        "successNoop": "No new change (duplicate request with the same idempotency).",
+        "success": "Top-up recorded and prepaid balance updated.",
+        "balanceLine": "Prepaid balance: {{value}}",
+        "captain": "Captain",
+        "reasonPlaceholder": "Shown in the prepaid transaction log",
+        "confirm": "Confirm top-up"
+      },
+      "companyAdminStoreTopup": {
+        "errors": {
+          "tenantScope": "No company scope on your account (TENANT_SCOPE_REQUIRED). Contact administration to link the account to a company.",
+          "storeNotAllowed": "Not allowed: store is not in your company or you lack permission."
+        },
+        "pickStore": "Choose a store.",
+        "title": "Top up store wallet (company admin)",
+        "description": "Automatically sends an idempotency key when the modal opens. Company scope is taken from the login session — company id is not sent in the request body.",
+        "successNoop": "Completed (safe duplicate — same idempotency key).",
+        "success": "Store wallet topped up.",
+        "balanceLine": "Balance: {{value}}",
+        "store": "Store",
+        "amountPlaceholder": "Example: 100 or 10.50",
+        "reasonPlaceholder": "Short description shown in records",
+        "confirm": "Confirm top-up"
+      },
+      "superAdminCompanyTopup": {
+        "pickCompany": "Choose a company from the tab first.",
+        "chargeReasonRequired": "Top-up reason is required.",
+        "title": "Top up company wallet",
+        "description": "Super admin only. An idempotency key is generated automatically when the modal opens and is sent in the request body.",
+        "successNoop": "Completed (safe duplicate — same idempotency key in the body).",
+        "success": "Company wallet topped up.",
+        "balanceDelta": "Before: {{before}} → after: {{after}}",
+        "companyLine": "Company: {{name}}",
+        "companyIdLine": "Company id:",
+        "noCompanySelected": "No company selected — close and pick a company from the tab first.",
+        "currencyOptional": "Currency (optional, 3 letters)",
+        "currencyPlaceholder": "SAR (server default if omitted)",
+        "reasonPlaceholder": "e.g. funding order balance",
+        "ledgerEntryLine": "ledger: {{id}}",
+        "confirm": "Confirm top-up"
+      },
+      "superAdminStoreTopup": {
+        "pickStore": "Choose a store.",
+        "title": "Top up store wallet",
+        "description": "Super admin only. Sends an idempotency key automatically when the modal opens.",
+        "successNoop": "Completed (safe duplicate — same idempotency key).",
+        "success": "Wallet balance topped up.",
+        "newBalance": "New balance: {{value}}",
+        "store": "Store",
+        "amountPlaceholder": "Example: 100 or 10.50",
+        "confirm": "Confirm top-up"
+      },
+      "superAdminSupervisorTopup": {
+        "roles": {
+          "BRANCH_MANAGER": "Branch manager",
+          "DISPATCHER": "Dispatcher"
+        },
+        "pickUser": "Pick a user (branch manager or dispatcher).",
+        "title": "Adjust supervisor balance",
+        "description": "Super admin — add or deduct supervisor wallet balance with a mandatory reason.",
+        "successNoop": "Completed (safe duplicate — same idempotency key).",
+        "success": "Wallet balance adjusted.",
+        "newBalance": "New balance: {{value}}",
+        "userLabel": "User (branch manager / dispatcher)",
+        "noUsersHint": "No users with these roles in the current page (increase page size later if needed).",
+        "operationType": "Operation type",
+        "add": "Add balance",
+        "deduct": "Deduct balance",
+        "amountPlaceholder": "Example: 100 or 10.50",
+        "decimalsServerCurrencyHint": "Up to 2 decimal places. No currency selection — server default applies.",
+        "reasonPlaceholder": "Adjustment reason",
+        "confirm": "Confirm adjustment"
+      },
+      "supervisorCaptainTransfer": {
+        "pickCaptain": "Choose a captain linked to you as supervisor.",
+        "title": "Transfer to captain",
+        "description": "Supervisor only. Listed captains are those linked to you in the system. Idempotency is generated when the modal opens.",
+        "successNoop": "Completed (safe duplicate — same idempotency key).",
+        "success": "Transfer completed.",
+        "balancesLine": "Your wallet: {{from}} — captain wallet: {{to}}",
+        "captainLabel": "Captain (linked to you only)",
+        "noCaptainsHint": "No captains linked to your supervisor account — or adjust list scope later.",
+        "amountPlaceholder": "Example: 50 or 10.00",
+        "currencyHint": "No currency selection. Requires company scope and sufficient balance.",
+        "confirm": "Confirm transfer"
+      }
+    }
+  },
+  "login": {
+    "subtitle": "Sign in to the operations dashboard",
+    "identifierLabel": "Email or phone",
+    "identifierPlaceholder": "05xxxxxxxx or name@domain.com",
+    "passwordLabel": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "error": "Could not sign in"
+  },
+  "orderStatus": {
+    "PENDING": "Pending distribution",
+    "CONFIRMED": "Preparing",
+    "ASSIGNED": "Assigned",
+    "ACCEPTED": "Accepted",
+    "PICKED_UP": "Picked up",
+    "IN_TRANSIT": "Out for delivery",
+    "DELIVERED": "Delivered",
+    "CANCELLED": "Cancelled"
+  },
+  "storeSubscription": {
+    "PUBLIC": "Public",
+    "SUPERVISOR_LINKED": "Supervisor-linked"
+  },
+  "financial": {
+    "orderAmount": "Order amount",
+    "storeAmount": "Store Amount",
+    "deliveryFee": "Delivery Fee",
+    "deliveryFeeInferred": "Delivery Fee (inferred)",
+    "customerCollection": "Customer Collection Amount",
+    "profitCommission": "Profit / Commission (estimate)",
+    "sectionBreakdown": "Financial breakdown",
+    "paymentCod": "Cash on delivery",
+    "paymentNotCod": "Not COD (or zero customer total)"
+  },
+  "timestamps": {
+    "section": "Timestamps",
+    "assigned": "Assigned Time",
+    "accepted": "Accepted Time",
+    "pickup": "Pickup Time",
+    "delivery": "Delivery Time"
+  },
+  "orders": {
+    "page": {
+      "title": "Orders",
+      "description": "Search and filter, manual assignment, and redistribution for authorized roles."
+    },
+    "filter": {
+      "byPhone": "Searching customer phone.",
+      "byOrderNumber": "Searching order number (partial text)."
+    },
+    "list": {
+      "filterTitle": "Filters",
+      "filterDesc": "Order number or customer phone, and by status",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Order # or phone",
+      "statusLabel": "Status",
+      "statusAll": "All statuses",
+      "loading": "Loading orders…",
+      "emptyTitle": "No matching orders",
+      "emptyDesc": "Try changing search or status to see results.",
+      "colOrder": "Order",
+      "colFinancials": "Financials",
+      "colStatus": "Status",
+      "colCustomer": "Customer",
+      "colStore": "Store",
+      "colArea": "Area",
+      "colDate": "Date",
+      "colActions": "Actions",
+      "supervisor": "Store supervisor",
+      "noSupervisor": "None",
+      "region": "Region",
+      "detail": "Details",
+      "autoDist": "Auto distribute",
+      "manualAssign": "Manual assign",
+      "redistribute": "Redistribute",
+      "reassign": "Reassign",
+      "cancelForCaptain": "Cancel for captain",
+      "adminOverride": "Edit status (admin)",
+      "removeFromList": "Remove from list",
+      "adminModalTitle": "Edit status — admin action",
+      "adminModalDesc": "Changes order status directly (supervisors only). Choosing pending distribution, preparing, or cancelled clears the assigned captain and pending distribution offers. Not a substitute for normal distribution flows.",
+      "adminOrderLine": "Order {{number}} — current status: {{status}}",
+      "adminCurrentStatus": "Current status",
+      "adminTargetLabel": "Target status",
+      "adminConfirm": "Confirm admin change",
+      "archiveTitle": "Remove order from operational list?",
+      "archiveDesc": "The row is not deleted from the database — it is hidden from operational lists and default statistics (including after delivery). Customer-linked orders remain in the customer record. Display can be restored later via admin (unarchive).",
+      "archiveConfirm": "Confirm removal"
+    },
+    "detailModal": {
+      "title": "Order details",
+      "description": "Store snapshot from the server.",
+      "orderLabel": "Order",
+      "customerAddresses": "Customer & addresses",
+      "pickup": "Pickup",
+      "dropoff": "Drop-off",
+      "subscriptionType": "Subscription type",
+      "supervisor": "Store supervisor",
+      "noSupervisor": "No supervisor",
+      "primaryRegion": "Primary region",
+      "regionUnset": "Not set",
+      "empty": "No order data available",
+      "emptyDesc": "The order may be unavailable or the list was refreshed.",
+      "paymentLabel": "Payment:",
+      "notesTitle": "Notes / instructions"
+    }
+  },
+  "newOrder": {
+    "page": {
+      "title": "New order",
+      "titleCompany": "New company order",
+      "description": "Enter customer details and addresses. Map pin is optional; if not set, the captain can confirm the location in the app later.",
+      "descriptionCompany": "Customer data, pickup point, drop-off details, and amounts. Map is optional; if you do not pin a location here, the captain can confirm it later."
+    },
+    "form": {
+      "customerName": "Customer name",
+      "customerPhone": "Customer phone",
+      "pickupAddress": "Pickup address",
+      "pickupAddressCompany": "Pickup point",
+      "pickupPlaceholderCompany": "e.g. warehouse / store / collection address",
+      "dropoffAddress": "Drop-off address",
+      "dropoffAddressCompany": "Drop-off details",
+      "locationLink": "Paste location link (optional)",
+      "locationLinkHelp": "Paste a share link from Google Maps or any https link that shows the drop-off; it is saved in notes for the captain.",
+      "area": "Area",
+      "amount": "Store amount",
+      "amountCompany": "Order amount",
+      "deliveryFee": "Delivery fee",
+      "deliveryFeeHelp": "Use 0 for free delivery. Customer cash collection is calculated on the server ({{amountLabel}} + fee).",
+      "mapNoneTitle": "No location selected on the map",
+      "mapNoneBody": "The captain can confirm or adjust the drop-off in the captain app when the order is received. To pin a location now, enable the option below.",
+      "mapToggleTitle": "Add drop-off location on the map (optional)",
+      "mapToggleBody": "When enabled, click the map to pin the drop-off and send coordinates with the order.",
+      "mapLabel": "Drop-off pin map",
+      "mapHint": "Click the map to pin the drop-off (6 decimal precision).",
+      "notes": "Notes",
+      "back": "Back",
+      "creating": "Creating…",
+      "submit": "Create order",
+      "errors": {
+        "customerName": "Customer name is required.",
+        "customerPhone": "Customer phone is required.",
+        "phoneFormat": "Invalid phone number format.",
+        "pickup": "Pickup address is required.",
+        "pickupCompany": "Pickup point is required.",
+        "dropoff": "Drop-off address is required.",
+        "dropoffCompany": "Drop-off details are required.",
+        "area": "Area is required.",
+        "amount": "Store amount must be greater than zero.",
+        "amountCompany": "Order amount must be greater than zero.",
+        "deliveryFee": "Delivery fee must be zero or a positive number.",
+        "mapRequired": "Map option enabled — click the map to select drop-off coordinates.",
+        "linkScheme": "Link must start with http or https.",
+        "linkInvalid": "Invalid URL — paste the full link."
+      },
+      "notesLine": {
+        "locationLink": "[Location link] {{link}}",
+        "noMap": "[No map coordinates — captain can confirm drop-off in the app when needed]"
+      }
+    }
+  },
+  "incubator": {
+    "page": {
+      "title": "Incubator host",
+      "description": "Paste text, parse, review the preview, then create. Creates a normal (AUTO) order and runs the same auto distribution as the orders list."
+    },
+    "raw": {
+      "label": "Raw text",
+      "placeholder": "Paste order information here…",
+      "aria": "Raw order text"
+    },
+    "actions": {
+      "parse": "Parse and fill preview",
+      "clearPreview": "Clear preview",
+      "cancel": "Cancel",
+      "create": "Create order",
+      "creating": "Creating…"
+    },
+    "warningsTitle": "Parse warnings",
+    "preview": {
+      "title": "Order preview",
+      "description": "Required: customer name, phone, pickup and drop-off address, area, price. After creation, auto distribution runs so the order follows the usual captain flow."
+    },
+    "missing": {
+      "label": "Missing or invalid: "
+    },
+    "allRequiredOk": "All required fields are complete — you can create the order.",
+    "parseLog": "Parse log (admin)",
+    "fieldLabels": {
+      "customerName": "Customer name",
+      "customerPhone": "Customer phone",
+      "pickupAddress": "Pickup address",
+      "dropoffAddress": "Drop-off address",
+      "area": "Area",
+      "amount": "Order price",
+      "notes": "Notes (optional)"
+    },
+    "validation": {
+      "required": "Required.",
+      "phoneFormat": "Invalid format.",
+      "amountPositive": "Must be a number greater than zero."
+    },
+    "draft": {
+      "pickupFrom": "Pickup from: {{name}}",
+      "notesOrderRef": "Order # (ref): {{value}}",
+      "notesStatusRef": "Status (ref): {{value}}"
+    },
+    "notes": {
+      "rawBlockHeader": "--- Incubator: original paste ---",
+      "truncated": "…(truncated)"
+    },
+    "parser": {
+      "sourceFieldLabels": {
+        "orderNumber": "Order number",
+        "customerName": "Customer name",
+        "restaurantName": "Restaurant",
+        "orderStatus": "Order status",
+        "area": "Area",
+        "nearLocation": "Near",
+        "phone": "Phone",
+        "total": "Total"
+      },
+      "fieldListSeparator": ", ",
+      "log": {
+        "emptyInput": "Input is empty — nothing to parse.",
+        "lineEmpty": "Line {{line}}: empty — skipped.",
+        "fieldRecognized": "Line {{line}}: field «{{field}}» recognized from label «{{rawLabel}}».",
+        "unknownLabel": "Line {{line}}: unknown label «{{rawLabel}}» — no matching field.",
+        "appendedUnknown": "→ value appended to current field «{{field}}» (unknown label).",
+        "lineMalformedLabeled": "Line {{line}}: looks like a field but label/value was not parsed validly: {{snippet}}",
+        "lineContinuation": "Line {{line}}: continuation — appended to «{{field}}».",
+        "lineUnlabeled": "Line {{line}}: text with no label and no previous field — skipped: {{snippet}}",
+        "phoneNormalizeFailed": "Could not normalize phone number — check the extracted value.",
+        "totalParseFailed": "Could not parse amount from «{{field}}» — check the extracted value.",
+        "summaryMissing": "Summary: no values for fields: {{fields}}.",
+        "summaryAllFilled": "Summary: all known fields have values."
+      }
+    }
+  },
+  "reports": {
+    "pageTitle": "Reports",
+    "pageDesc": "Wallet ledger vs captain prepaid book, prepaid movements, and delivered commissions from ledger records.",
+    "rangeCardTitle": "Date range",
+    "rangeCardDesc": "Applies to all three sections. Sent to the server as UTC. Default is last 7 days.",
+    "fromLocal": "From (local)",
+    "toLocal": "To (local)",
+    "applyRange": "Apply range",
+    "rangeInvalid": "Invalid date/time.",
+    "rangeOrder": "\"From\" must be before \"To\".",
+    "rangeMax": "Range cannot exceed 90 days.",
+    "rangeError": {
+      "INVALID": "Invalid date/time.",
+      "ORDER": "\"From\" must be before \"To\".",
+      "MAX": "Range cannot exceed 90 days."
+    },
+    "reconTitle": "1 — Reconciliation summary (ledger ↔ prepaid)",
+    "reconDesc": "Compare wallet delivery-deduction lines with prepaid deductions, and prepaid charge/adjust lines with ledger lines.",
+    "reconStatDeliverLedger": "Delivery-deduction lines (wallet)",
+    "reconStatMissingPrepaid": "Missing prepaid mirror",
+    "reconStatDeliverMismatch": "Amount mismatch (delivery)",
+    "reconStatChargeRows": "Charge/adjust movements (prepaid)",
+    "reconStatMissingLedger": "Missing matching ledger line",
+    "reconStatChargeMismatch": "Amount mismatch (charge/adjust)",
+    "reconStatOrphanLedger": "Charge/adjust ledger lines without CBT (in range)",
+    "loadingSummary": "Loading summary…",
+    "prepaidTitle": "2 — Captain prepaid book (movements)",
+    "prepaidDesc": "`captain_balance_transactions` records in the range.",
+    "captain": "Captain",
+    "loadingPrepaid": "Loading prepaid book…",
+    "noCaptains": "No captains to show or insufficient list permission.",
+    "prepaidEmpty": "No movements in range",
+    "colTime": "Time",
+    "colType": "Type",
+    "colAmount": "Amount (₪ ILS)",
+    "colBalanceAfter": "Balance after (₪ ILS)",
+    "colOrder": "Order",
+    "prev": "Previous",
+    "next": "Next",
+    "pageOf": "Page {{page}} — total {{total}}",
+    "deliveredTitle": "3 — Delivered & commission (from wallet ledger)",
+    "deliveredDesc": "`ORDER_DELIVERED_CAPTAIN_DEDUCTION` lines for orders delivered in the range. “Delivery fee” shows actual (or inferred for legacy) fee. “Commission” is what was posted at delivery time; legacy rows may differ from recomputing today.",
+    "loadingDelivered": "Loading commissions…",
+    "deliveredEmpty": "No data in range",
+    "colLineTime": "Line time",
+    "colOrderNum": "Order",
+    "colStore": "Store",
+    "colCaptain": "Captain",
+    "colDeliveryFee": "Delivery fee",
+    "colCommission": "Commission",
+    "historyTitle": "4 — Order history (captain / store)",
+    "historyBadge": "New report",
+    "historyDesc": "Filter orders by creation time (`orders.created_at`) within the UTC range — not delivery time. Table, totals, and CSV use the same filters. Pickup and delivery times come from `picked_up_at` and `delivered_at`; when missing, pickup shows “Not recorded” and delivery shows “—” if not delivered.",
+    "filterCaptain": "Captain",
+    "filterStore": "Store",
+    "filterStatus": "Status",
+    "filterAll": "All",
+    "exportCsv": "Export CSV",
+    "exporting": "Exporting…",
+    "exportSuccess": "CSV exported successfully.",
+    "exportFail": "Could not export CSV",
+    "loadingHistory": "Loading order history…",
+    "totStore": "Total store amount (filtered)",
+    "totDelivery": "Total delivery fees",
+    "totCustomer": "Total customer collection",
+    "totProfit": "Total commission (estimate)",
+    "historyEmpty": "No data in range",
+    "thOrderNumber": "Order number",
+    "thStore": "Store",
+    "thCaptain": "Captain",
+    "thCaptainPhone": "Captain phone",
+    "thCustomer": "Customer",
+    "thStatus": "Status",
+    "thAssigned": "Assigned time",
+    "thAccepted": "Accepted time",
+    "thPickup": "Pickup time",
+    "thDelivery": "Delivery time",
+    "thStoreAmount": "Store amount",
+    "thDeliveryFee": "Delivery fee",
+    "thCustomerCollection": "Customer collection",
+    "thProfit": "Profit / commission"
+  },
+  "csv": {
+    "orderNumber": "Order Number",
+    "storeName": "Store",
+    "captainName": "Captain",
+    "captainPhone": "Captain Phone",
+    "customerName": "Customer",
+    "status": "Status",
+    "assignedAt": "Assigned Time",
+    "acceptedAt": "Accepted Time",
+    "pickupAt": "Pickup Time",
+    "deliveredAt": "Delivery Time",
+    "storeAmount": "Store Amount",
+    "deliveryFee": "Delivery Fee",
+    "customerCollectionAmount": "Customer Collection Amount",
+    "profitOrCommission": "Profit / Commission",
+    "pickupNotRecordedCell": "Not recorded"
+  },
+  "public": {
+    "loading": "Loading…",
+    "invalidLink": "Invalid link.",
+    "loadError": "Could not load the request page.",
+    "unavailableTitle": "Page unavailable",
+    "successTitle": "Request received",
+    "successDesc": "Thank you. A manager will follow up on your request.",
+    "newRequest": "New request",
+    "cardTitle": "Delivery request",
+    "yourName": "Your name",
+    "phone": "Phone number",
+    "pickupAddress": "Pickup address",
+    "dropoffAddress": "Drop-off address",
+    "area": "Area",
+    "zoneOptional": "Zone (optional)",
+    "zoneNone": "— No specific zone —",
+    "storeAmount": "Store Amount (₪)",
+    "summaryCollectLabel": "Customer Collection Amount",
+    "deliveryFee": "Delivery Fee (₪)",
+    "previewCollect": "Customer Collection Amount (preview): {{amount}} ₪ (= Store Amount + Delivery Fee). The server computes the final total; do not enter a separate customer total here.",
+    "notes": "Notes",
+    "submit": "Submit request",
+    "submitting": "Submitting…",
+    "submitError": "Could not submit the request.",
+    "summaryTitle": "Order summary",
+    "summaryNote": "Totals are also computed on the server as cash_collection = store amount + delivery fee."
+  },
+  "manualAssign": {
+    "title": "Manual assign",
+    "description": "Choose captain for order {{order}}",
+    "captain": "Captain",
+    "choose": "— Choose —",
+    "sending": "Sending…",
+    "confirm": "Confirm assignment",
+    "reassignTitle": "Reassign order",
+    "reassignDescription": "Move order {{order}} to another captain with logged reassignment.",
+    "supervisorPrefix": "Supervisor",
+    "noSupervisorShort": "No supervisor"
+  }
+}
+
+

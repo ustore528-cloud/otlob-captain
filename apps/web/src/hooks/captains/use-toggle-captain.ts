@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import i18n from "@/i18n/i18n";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { CaptainListItem, Paginated } from "@/types/api";
 import { api } from "@/lib/api/singleton";
@@ -23,10 +24,10 @@ export function useToggleCaptain() {
     },
     onError: (err, _v, ctx) => {
       ctx?.previous.forEach(([key, data]) => qc.setQueryData(key, data));
-      toastApiError(err, "تعذر تحديث حالة الكابتن");
+      toastApiError(err, String(i18n.t("mutationToasts.captainToggleFailed")));
     },
     onSuccess: async (_d, v) => {
-      toastSuccess(v.isActive ? "تم التفعيل" : "تم التعطيل");
+      toastSuccess(String(i18n.t(v.isActive ? "mutationToasts.captainToggledOn" : "mutationToasts.captainToggledOff")));
       await qc.invalidateQueries({ queryKey: queryKeys.captains.root });
       await qc.invalidateQueries({ queryKey: queryKeys.tracking.root });
       await qc.invalidateQueries({ queryKey: queryKeys.dashboard.root });

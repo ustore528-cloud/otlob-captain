@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import i18n from "@/i18n/i18n";
 import { invalidateOrderDistributionDomain } from "@/lib/invalidate-order-domain";
 import { api } from "@/lib/api/singleton";
 import { toastApiError, toastSuccess } from "@/lib/toast";
@@ -19,9 +20,9 @@ export function useAdminOverrideOrderStatus() {
     mutationFn: (vars: { orderId: string; status: AdminOverrideTargetStatus }) =>
       api.orders.adminOverrideStatus(vars.orderId, vars.status),
     onSuccess: async () => {
-      toastSuccess("تم تعديل حالة الطلب (إشراف).");
+      toastSuccess(String(i18n.t("mutationToasts.adminStatusOk")));
       await invalidateOrderDistributionDomain(qc);
     },
-    onError: (e) => toastApiError(e, "تعذّر تعديل الحالة"),
+    onError: (e) => toastApiError(e, String(i18n.t("mutationToasts.adminStatusFailed"))),
   });
 }

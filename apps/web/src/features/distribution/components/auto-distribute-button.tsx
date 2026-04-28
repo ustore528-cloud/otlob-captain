@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api/singleton";
 import { invalidateOrderDistributionDomain } from "@/lib/invalidate-order-domain";
@@ -11,15 +12,16 @@ type Props = {
 };
 
 export function AutoDistributeButton({ orderIds, zoneId, disabled }: Props) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const mutation = useMutation({
     mutationFn: () => api.orders.distributionAutoAssignVisible({ orderIds, zoneId }),
     onSuccess: async (data) => {
-      toastSuccess("تم التوزيع التلقائي");
-      toastSuccess(`تم توزيع ${data.assignedCount} طلب، وتخطي ${data.skippedCount} طلب.`);
+      toastSuccess(t("distribution.auto.successTitle"));
+      toastSuccess(t("distribution.auto.successDetail", { assigned: data.assignedCount, skipped: data.skippedCount }));
       await invalidateOrderDistributionDomain(qc);
     },
-    onError: (error) => toastApiError(error, "تعذر تنفيذ التوزيع التلقائي"),
+    onError: (error) => toastApiError(error, t("distribution.auto.error")),
   });
 
   return (
@@ -30,9 +32,9 @@ export function AutoDistributeButton({ orderIds, zoneId, disabled }: Props) {
         disabled={disabled || mutation.isPending || orderIds.length === 0}
         onClick={() => mutation.mutate()}
       >
-        {mutation.isPending ? "جاري التوزيع..." : "توزيع تلقائي"}
+        {mutation.isPending ? t("distribution.auto.pending") : t("distribution.auto.button")}
       </Button>
-      <p className="text-xs text-muted">يوزّع كل الطلبات المعروضة على الكباتن المناسبين</p>
+      <p className="text-xs text-muted">{t("distribution.auto.hint")}</p>
     </div>
   );
 }

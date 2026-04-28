@@ -1,4 +1,5 @@
 import { paths } from "@captain/shared";
+import i18n from "@/i18n/i18n";
 
 let unauthorizedHandler: (() => void) | null = null;
 
@@ -118,8 +119,7 @@ export async function apiFetch<T>(
     const legacy = json as { error?: string; code?: string; details?: unknown } | null;
     let fallback = legacy?.error ?? "Request failed";
     if (res.status === 404 && path.includes("/geocode/")) {
-      fallback =
-        "لم يُعثر على مسار تحديد الموقع (404). تأكد أن عنوان الـ API في الإعدادات هو أصل الموقع فقط (بدون /api)، وأن الخادم منشور بنسخة تتضمن /api/v1/geocode/place.";
+      fallback = String(i18n.t("apiErrors.geocodePath404"));
     }
     throw new ApiError(fallback, res.status, legacy?.code, legacy?.details);
   }

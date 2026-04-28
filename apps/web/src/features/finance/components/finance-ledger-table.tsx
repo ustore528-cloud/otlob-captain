@@ -1,4 +1,5 @@
 import type { FinanceLedgerEntryReadDto, FinanceLedgerEntryType } from "@/types/api";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { InlineAlert } from "@/components/ui/inline-alert";
@@ -13,19 +14,6 @@ const SAFE_METADATA_KEYS_ORDER = [
   "captainId",
   "transferGroup",
 ] as const;
-
-function entryTypeLabel(t: FinanceLedgerEntryType): string {
-  const map: Record<FinanceLedgerEntryType, string> = {
-    SUPER_ADMIN_TOP_UP: "شحن (مدير)",
-    WALLET_TRANSFER: "تحويل",
-    ORDER_DELIVERED_STORE_DEBIT: "خصم طلب (متجر)",
-    ORDER_DELIVERED_CAPTAIN_DEDUCTION: "خصم تسليم (كابتن)",
-    ADJUSTMENT: "تسوية",
-    CAPTAIN_PREPAID_CHARGE: "شحن باقة كابتن",
-    CAPTAIN_PREPAID_ADJUSTMENT: "تسوية باقة كابتن",
-  };
-  return map[t] ?? t;
-}
 
 function formatMetadata(meta: Record<string, string> | null): string {
   if (!meta) return "—";
@@ -63,12 +51,18 @@ export function FinanceLedgerTable({
   isFetchingFirst,
   emptyMessage,
 }: Props) {
+  const { t } = useTranslation();
+
+  function entryTypeLabel(type: FinanceLedgerEntryType): string {
+    return String(t(`finance.transactionTypes.${type}`, { defaultValue: type }));
+  }
+
   if (isError) {
     return <InlineAlert variant="error">{errorMessage}</InlineAlert>;
   }
 
   if (isLoading) {
-    return <LoadingBlock message="جارٍ تحميل سجل العمليات…" />;
+    return <LoadingBlock message={t("finance.ledgerTable.loading")} />;
   }
 
   if (items.length === 0) {
@@ -81,18 +75,18 @@ export function FinanceLedgerTable({
         <table className="w-full min-w-[880px] border-separate border-spacing-0 text-sm">
           <thead>
             <tr className="bg-muted/30 text-muted">
-              <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">الوقت</th>
-              <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">النوع</th>
-              <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">المبلغ</th>
-              <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">الطلب</th>
-              <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">بيانات إضافية</th>
+              <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">{t("finance.ledgerTable.colTime")}</th>
+              <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">{t("finance.ledgerTable.colType")}</th>
+              <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("finance.ledgerTable.colAmount")}</th>
+              <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">{t("finance.ledgerTable.colOrder")}</th>
+              <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">{t("finance.ledgerTable.colMetadata")}</th>
             </tr>
           </thead>
           <tbody>
             {items.map((row) => (
               <tr key={row.id} className="transition hover:bg-accent/50">
                 <td className="border-b border-card-border px-3 py-2.5 align-top text-xs" dir="ltr">
-                  {new Date(row.createdAt).toLocaleString("ar-SA")}
+                  {new Date(row.createdAt).toLocaleString("en-GB")}
                 </td>
                 <td className="border-b border-card-border px-3 py-2.5 align-top">
                   <div className="font-medium">{entryTypeLabel(row.entryType)}</div>
@@ -105,7 +99,7 @@ export function FinanceLedgerTable({
                 </td>
                 <td className="border-b border-card-border px-3 py-2.5 align-top text-xs" dir="ltr">
                   {row.orderId ? (
-                    <span className="font-mono" title="معرّف الطلب في النظام">
+                    <span className="font-mono" title={t("finance.ledgerTable.orderIdTitle")}>
                       {row.orderId}
                     </span>
                   ) : (
@@ -131,7 +125,7 @@ export function FinanceLedgerTable({
           onClick={() => onLoadMore()}
           disabled={isFetchingFirst}
         >
-          تحميل المزيد
+          {t("finance.ledgerTable.loadMore")}
         </Button>
       ) : null}
     </div>

@@ -1,0 +1,1250 @@
+{
+  "common": {
+    "language": "اللغة",
+    "brand": "2in",
+    "logout": "تسجيل الخروج",
+    "refresh": "تحديث",
+    "close": "إغلاق",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ…",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "enable": "تفعيل",
+    "disable": "تعطيل",
+    "previous": "السابق",
+    "next": "التالي",
+    "search": "بحث",
+    "optional": "اختياري",
+    "fromDate": "من تاريخ",
+    "toDate": "إلى تاريخ",
+    "lastUpdated": "آخر تحديث",
+    "fullName": "الاسم الكامل",
+    "phone": "الهاتف",
+    "password": "كلمة المرور",
+    "emailOptional": "البريد (اختياري)",
+    "all": "الكل",
+    "loading": "جارٍ التحميل…",
+    "toastErrorFallback": "حدث خطأ",
+    "none": "—",
+    "notRecorded": "غير مسجّل",
+    "status": {
+      "active": "نشط",
+      "inactive": "موقوف"
+    }
+  },
+  "apiErrors": {
+    "loginRequired": "يجب تسجيل الدخول",
+    "geocodePath404": "لم يُعثر على مسار تحديد الموقع (404). تأكد أن عنوان الـ API في الإعدادات هو أصل الموقع فقط (بدون /api)، وأن الخادم منشور بنسخة تتضمن /api/v1/geocode/place.",
+    "geocodeBadShape": "استجابة غير صالحة من خادم تحديد الموقع.",
+    "geocodeBadFields": "بيانات إحداثيات ناقصة من الخادم."
+  },
+  "mutationToasts": {
+    "captainCreated": "تم إنشاء الكابتن",
+    "captainCreateFailed": "تعذر إنشاء الكابتن",
+    "storeUpdated": "تم تحديث بيانات المتجر",
+    "storeUpdateFailed": "تعذر تحديث بيانات المتجر",
+    "orderReassigned": "تمت إعادة التعيين",
+    "orderReassignFailed": "تعذرت إعادة التعيين",
+    "redistributeSuccess": "تمت إعادة التوزيع",
+    "redistributeFailed": "تعذرت إعادة التوزيع",
+    "assignDragDrop": "تم التعيين (سحب وإفلات)",
+    "assignManual": "تم التعيين اليدوي",
+    "assignCaptainFailed": "تعذر تعيين الكابتن",
+    "adminStatusOk": "تم تعديل حالة الطلب (إشراف).",
+    "adminStatusFailed": "تعذّر تعديل الحالة",
+    "archiveOk": "تمت إزالة الطلب من القائمة التشغيلية — السجل محفوظ في قاعدة البيانات.",
+    "archiveFailed": "تعذّر أرشفة الطلب",
+    "orderCreatedWithDist": "تم إنشاء الطلب {{number}} وبدء التوزيع التلقائي.",
+    "orderCreatedNoDist": "تم إنشاء الطلب {{number}}.",
+    "autoDistFailed": "تعذر بدء التوزيع التلقائي تلقائياً — افتح قائمة الطلبات واضغط «توزيع تلقائي» لهذا الطلب.",
+    "incubatorCreateFailed": "تعذر إنشاء الطلب",
+    "cancelCaptainSuccess": "تم إلغاء الطلب للكابتن",
+    "cancelCaptainFailed": "تعذر إلغاء الطلب للكابتن",
+    "customerProfileSaved": "تم حفظ بيانات العميل",
+    "customerProfileFailed": "تعذر حفظ بيانات العميل",
+    "captainDeleted": "تم حذف الكابتن وحسابه",
+    "captainDeleteFailed": "تعذر حذف الكابتن",
+    "captainUpdated": "تم تحديث بيانات الكابتن",
+    "captainUpdateFailed": "تعذر تحديث الكابتن",
+    "quickAlertSent": "تم إرسال تنبيه: {{label}}",
+    "quickAlertFailed": "تعذر إرسال التنبيه السريع",
+    "userCreated": "تم إنشاء المستخدم",
+    "userCreateFailed": "تعذر إنشاء المستخدم",
+    "captainToggledOn": "تم التفعيل",
+    "captainToggledOff": "تم التعطيل",
+    "captainToggleFailed": "تعذر تحديث حالة الكابتن",
+    "autoDistStarted": "تم بدء التوزيع التلقائي",
+    "autoDistStartFailed": "تعذر بدء التوزيع",
+    "orderCreatedToast": "تم إنشاء الطلب",
+    "orderCreateFailed": "تعذر إنشاء الطلب",
+    "userToggledOn": "تم تفعيل المستخدم",
+    "userToggledOff": "تم تعطيل المستخدم",
+    "userToggleFailed": "تعذر تحديث المستخدم"
+  },
+  "dashboard": {
+    "footerNote": "عميل API موحّد مع React Query — جاهز لربط تطبيق الجوال لاحقاً عبر نفس الـ hooks أو createApiClient.",
+    "page": {
+      "welcome": "مرحبًا",
+      "welcomeWithName": "مرحبًا، {{name}}",
+      "description": "نظرة تشغيلية سريعة على الطلبات والتنبيهات.",
+      "requestLinkTitle": "رابط الطلبات الخاص بك",
+      "ownerCode": "كود المدير",
+      "copyLink": "نسخ الرابط",
+      "openRequestPage": "فتح صفحة الطلب"
+    },
+    "stats": {
+      "ordersTotal": "إجمالي الطلبات (نطاقك)",
+      "ordersUnavailable": "—",
+      "ordersHintNoAccess": "غير متاح لدورك",
+      "captainsActive": "كباتن نشطون",
+      "captainsActiveHint": "حسب صلاحية الإدارة",
+      "role": "الصلاحية",
+      "roleHint": "عرض الطلبات حسب دورك",
+      "lastAlert": "آخر تنبيه",
+      "read": "مقروء",
+      "newBadge": "جديد",
+      "noNotifications": "لا توجد إشعارات",
+      "pendingDistribution": "بانتظار التوزيع",
+      "confirmedPreparing": "طلبات التجهيز"
+    },
+    "quickWorkStatus": {
+      "title": "تنبيه سريع عن حالة الشغل"
+    },
+    "quickStatus": {
+      "PRESSURE": "ضغط",
+      "LOW_ACTIVITY": "حركة ضعيفة",
+      "RAISE_READINESS": "ارفع الجاهزية",
+      "ON_FIRE": "الوضع نار"
+    },
+    "widgets": {
+      "latestNotification": {
+        "title": "آخر تنبيه",
+        "description": "أحدث إشعار في صندوقك",
+        "unread": "غير مقروء",
+        "empty": "لا توجد إشعارات بعد."
+      },
+      "activity": {
+        "title": "ملخص النشاط",
+        "description": "آخر الأحداث التشغيلية (للمشغّل/المدير)",
+        "dispatchOnly": "يتوفر ملخص النشاط لحسابات الإدارة والتشغيل."
+      }
+    },
+    "mapSettings": {
+      "title": "إعدادات الخريطة",
+      "description": "الإحداثيات والتكبير يُحفظان في الخادم. الدولة والمدينة تُستخدمان للبحث الجغرافي (Nominatim) لتحريك الخريطة — ويمكنك أيضاً ضبط الموقع يدوياً على الخريطة.",
+      "country": "الدولة",
+      "countryPlaceholder": "مثال: السعودية",
+      "cityRegion": "المدينة / المنطقة",
+      "cityPlaceholder": "مثال: الرياض",
+      "searching": "جاري البحث…",
+      "searchAndMove": "بحث وتحريك الخريطة",
+      "searchHint": "يدعم: دولة فقط، مدينة فقط، أو دولة + مدينة. البحث عبر",
+      "pickOnMapTitle": "اختيار على الخريطة",
+      "pickOnMapBody": "حرّك الخريطة، كبّر/صغّر، أو انقر لتحديد المركز. تُحدَّث الإحداثيات والتكبير تلقائياً.",
+      "useCurrentCenter": "استخدم مركز الخريطة الحالي",
+      "latitude": "خط العرض",
+      "longitude": "خط الطول",
+      "zoom": "التكبير (1–19)",
+      "suggestionSaudi": "السعودية",
+      "suggestionEgypt": "مصر",
+      "suggestionUae": "الإمارات",
+      "errors": {
+        "enterCountryOrCity": "أدخل دولة أو مدينة أو كليهما ثم اضغط بحث.",
+        "incompleteGeocodeResponse": "استجابة غير كاملة من الخادم — حاول مجدداً أو حرّك الخريطة يدوياً.",
+        "searchFailed": "تعذر البحث عن الموقع.",
+        "saveFailed": "تعذّر الحفظ"
+      },
+      "hints": {
+        "positioned": "تم التموضع: {{label}}",
+        "coordinatesUpdated": "تم تحديث الإحداثيات والتكبير."
+      },
+      "prepaid": {
+        "title": "نظام رصيد الكباتن المدفوع مسبقًا",
+        "description": "يتم الخصم من رسوم التوصيل فقط بعد تسليم الطلب.",
+        "enable": "تفعيل نظام الرصيد",
+        "defaultCommission": "نسبة العمولة الافتراضية",
+        "minBalance": "الحد الأدنى لاستقبال طلبات",
+        "allowCustomCommission": "السماح بنسبة عمولة خاصة لكل كابتن",
+        "allowManualOverride": "السماح بتجاوز التعيين اليدوي عند انخفاض الرصيد"
+      },
+      "save": "حفظ إعدادات الخريطة"
+    }
+  },
+  "roles": {
+    "SUPER_ADMIN": "مدير المنصة",
+    "COMPANY_ADMIN": "مدير الشركة",
+    "BRANCH_MANAGER": "مدير فرع (مُعطّل)",
+    "CAPTAIN_SUPERVISOR": "مشرف كباتن (مُعطّل)",
+    "STORE_ADMIN": "موظف متجر (مُعطّل)",
+    "STORE_USER": "موظف متجر (مُعطّل)",
+    "DISPATCHER": "موظف توزيع (مُعطّل)",
+    "CAPTAIN": "كابتن",
+    "CUSTOMER": "عميل (مُعطّل)"
+  },
+  "captains": {
+    "page": {
+      "title": "الكباتن",
+      "description": "إدارة الحسابات، التفعيل، التعديل، التقرير (طلبات مع فلترة)، وحذف نهائي للمدير عند عدم وجود طلبات نشطة."
+    },
+    "guidance": {
+      "title": "إرشاد",
+      "description": "التفعيل يتحكم في دخول الكابتن للنظام؛ التوفر يُحدَّث من تطبيق الكابتن أو من لوحة التشغيل."
+    },
+    "stats": {
+      "deliveredOrders": "طلبات مسلّمة",
+      "activeOrders": "طلبات نشطة",
+      "lastLocation": "آخر موقع مسجّل",
+      "noLocation": "لا يوجد موقع مسجّل."
+    },
+    "balanceAdjustment": {
+      "title": "تعديل رصيد الكابتن",
+      "captainLabel": "الكابتن: {{name}}",
+      "operationType": "نوع العملية",
+      "increase": "زيادة (+)",
+      "decrease": "خصم (-)",
+      "amount": "المبلغ",
+      "note": "سبب التعديل",
+      "notePlaceholder": "اكتب سبباً واضحاً للتدقيق لاحقاً",
+      "confirm": "تأكيد التعديل",
+      "errors": {
+        "invalidAmount": "أدخل مبلغاً صحيحاً أكبر من صفر.",
+        "noteRequired": "سبب التعديل مطلوب."
+      }
+    },
+    "edit": {
+      "title": "تعديل الكابتن",
+      "description": "تحديث بيانات الحساب والمركبة والمنطقة",
+      "branchManagerSupervisorHint": "كمشرف منطقة، ربط الكابتن بالمشرف يبقى على حسابك."
+    },
+    "fields": {
+      "captainName": "اسم الكابتن",
+      "vehicleType": "نوع المركبة",
+      "area": "المنطقة",
+      "areaCity": "المنطقة / المدينة",
+      "branch": "الفرع",
+      "supervisor": "المشرف"
+    },
+    "add": {
+      "title": "إضافة كابتن",
+      "descriptionBranchManager": "يُنشئ كابتنًا مرتبطًا بنطاق فرعك. يُربَط تلقائياً بمشرف المنطقة.",
+      "descriptionSuperAdmin": "مشرف عام: اختر الشركة ثم الفرع والمنطقة (ضمن نفس الشركة فقط).",
+      "descriptionDefault": "يُنشئ مستخدماً بدور كابتن وكلمة مرور أولية لشركتك.",
+      "selectCompany": "— اختر الشركة —",
+      "selectBranch": "— اختر الفرع —",
+      "loadingBranches": "جارٍ تحميل الفروع…",
+      "creating": "جارٍ الإنشاء…",
+      "saveCaptain": "حفظ الكابتن",
+      "currentAccount": "حسابك الحالي",
+      "supervisorAutoBind": "سيتم ربط الكابتن بمشرف المنطقة: {{name}}.",
+      "errors": {
+        "chooseCompany": "اختر الشركة أولًا (مشرف عام).",
+        "chooseBranch": "اختر الفرع الذي سيتبع له الكابتن.",
+        "noActiveBranch": "لا يوجد فرع فعال لهذه الشركة. يجب إنشاء فرع أولًا قبل إضافة كابتن."
+      }
+    },
+    "report": {
+      "title": "تقرير الكابتن",
+      "titleWithName": "تقرير — {{name}}",
+      "description": "الطلبات المرتبطة بهذا الكابتن (تعيين حالي أو سجل تعيينات). فلترة بالتاريخ والبحث والمنطقة.",
+      "quickSummary": "ملخص سريع",
+      "activeWithCaptain": "طلبات نشطة مع الكابتن",
+      "filtersTitle": "تصفية الطلبات",
+      "areaLabel": "المنطقة (موقع الطلب)",
+      "areaPlaceholder": "مثال: الرياض",
+      "searchLabel": "بحث (رقم طلب، عميل، هاتف، عنوان…)",
+      "loadingOrders": "جارٍ تحميل الطلبات…",
+      "emptyTitle": "لا توجد طلبات مطابقة",
+      "emptyDescription": "جرّب توسيع الفترة الزمنية أو إزالة بعض المرشحات.",
+      "paginationSummary": "إجمالي {{total}} — صفحة {{page}} من {{pages}}"
+    },
+    "roster": {
+      "listTitle": "القائمة",
+      "count": "{{count}} كابتن",
+      "loading": "جارٍ تحميل قائمة الكباتن…",
+      "emptyTitle": "لا يوجد كباتن بعد",
+      "emptyDescription": "ابدأ بإضافة كابتن جديد ليظهر في هذه القائمة.",
+      "supervisorLabel": "مشرف الكابتن",
+      "remainingBalance": "الرصيد المتبقي ({{currency}})",
+      "commissionRate": "نسبة العمولة",
+      "defaultCommission": "افتراضي",
+      "totalDeducted": "إجمالي الخصم ({{currency}})",
+      "chargeBalance": "شحن الرصيد",
+      "ledger": "سجل الحركات",
+      "report": "تقرير",
+      "chargeSuccess": "تم شحن الرصيد بنجاح",
+      "chargeError": "تعذر شحن رصيد الكابتن",
+      "adjustSuccess": "تم تسجيل تعديل الرصيد",
+      "adjustError": "تعذر تعديل الرصيد",
+      "enterValidAmount": "أدخل مبلغًا صحيحًا",
+      "chargePrompt": "شحن رصيد {{name}}",
+      "optionalNote": "ملاحظة اختيارية",
+      "noLedgerTransactions": "لا توجد حركات رصيد بعد",
+      "ledgerLoadError": "تعذر تحميل سجل الحركات",
+      "afterTransaction": "بعد الحركة",
+      "deleteConfirm": "حذف الكابتن «{{name}}» وحساب الدخول نهائياً؟\nسيتم إزالة ربط الطلبات المسلّمة أو الملغاة بهذا الكابتن، وحذف سجل التعيينات والمواقع. لا يمكن الحذف إن وُجدت طلبات قيد التنفيذ."
+    }
+  },
+  "users": {
+    "page": {
+      "title": "المستخدمون",
+      "description": "حسابات الدخول للمنصة (مدير، مشغّل، كابتن، متجر، عميل تطبيق، …).",
+      "refreshList": "تحديث القائمة",
+      "superAdminOnly": "إنشاء المستخدمين العام متاح فقط لدور SUPER_ADMIN. الدور الحالي: {{role}}.",
+      "unknownRole": "غير معروف",
+      "filterTitle": "تصفية حسب الدور",
+      "filterDescription": "صفِّ حسب الدور. حساب «عميل» يعرض قسم بيانات توصيل اختيارية للمرجع.",
+      "roleLabel": "الدور"
+    },
+    "company": "الشركة",
+    "card": {
+      "accountBadge": "حساب مستخدم",
+      "accountPhoneCaption": "هاتف الحساب (للدخول / الاتصال)",
+      "emailCaption": "البريد",
+      "toggleDisable": "تعطيل الحساب",
+      "toggleEnable": "تفعيل الحساب",
+      "toggleHint": "تعديل حالة التفعيل متاح للمدير فقط."
+    },
+    "addUser": {
+      "title": "إضافة مستخدم",
+      "description": "لإنشاء حساب منصة ضمن النموذج المبسّط الحالي (مدير منصة/مدير شركة). إنشاء الكباتن يتم من صفحة الكباتن.",
+      "fullName": "الاسم الكامل",
+      "phone": "الهاتف",
+      "role": "الدور",
+      "choose": "اختر…",
+      "pickCompany": "اختر الشركة",
+      "createCompany": "إنشاء شركة جديدة",
+      "noCompanies": "لا توجد شركات بعد. اضغط \"إنشاء شركة جديدة\" لإضافة شركة ثم اخترها هنا.",
+      "emailOptional": "البريد (اختياري)",
+      "password": "كلمة المرور",
+      "createdCompanyAdminTitle": "تم إنشاء مدير الشركة: {{name}}",
+      "createdCompanyAdminBody": "كود المدير: {{code}} — رابط الطلبات:",
+      "creating": "جارٍ إنشاء المستخدم…",
+      "submit": "إنشاء المستخدم",
+      "errors": {
+        "fullName": "الاسم مطلوب.",
+        "phone": "الهاتف مطلوب.",
+        "password": "كلمة المرور 8 أحرف على الأقل.",
+        "role": "اختر الدور.",
+        "companyPick": "يرجى اختيار الشركة",
+        "companyMissing": "الشركة المختارة غير موجودة. حدّث القائمة أو اختر شركة أخرى."
+      }
+    },
+    "createCompany": {
+      "success": "تم إنشاء الشركة",
+      "error": "تعذّر إنشاء الشركة",
+      "title": "إنشاء شركة جديدة",
+      "description": "يُنشئ معرف الشركة تلقائياً. يمكنك بعدها اختيارها لمدير الشركة من القائمة.",
+      "nameLabel": "اسم الشركة",
+      "nameRequired": "يرجى إدخال اسم الشركة",
+      "cancel": "إلغاء",
+      "submit": "حفظ الشركة",
+      "creating": "جارٍ الإنشاء…"
+    },
+    "archiveSection": {
+      "title": "الشركات — أرشفة آمنة (مدير أعلى فقط)",
+      "description": "معاينة الاعتمادات ثم أرشفة الشركة (تعطيل فقط). لا حذف نهائي للمستخدمين أو الطلبات أو السجلات.",
+      "loading": "جارٍ التحميل…",
+      "empty": "لا توجد شركات في القائمة النشطة.",
+      "archive": "أرشفة"
+    },
+    "archiveModal": {
+      "errors": {
+        "activeOrders": "لا يمكن أرشفة الشركة لأنها تحتوي على طلبات غير منتهية.",
+        "invalidPhrase": "عبارة التأكيد غير صحيحة. يجب إدخال العبارة بالحروف الكبيرة: ARCHIVE COMPANY"
+      },
+      "genericError": "تعذّر إكمال الأرشفة",
+      "alreadyArchived": "الشركة مؤرشفة مسبقاً.",
+      "success": "تم أرشفة الشركة (تعطيل الظهور في القائمة النشطة) دون حذف أي بيانات.",
+      "titleWithName": "أرشفة الشركة: {{name}}",
+      "title": "أرشفة الشركة",
+      "description": "هذه عملية أرشفة (تعطيل الشركة) وليست حذفاً نهائياً. لا تُحذف مستخدمون أو طلبات أو محافظ.",
+      "loadingPreview": "جارٍ جلب تفاصيل الاعتماد…",
+      "previewError": "تعذّر تحميل المعاينة",
+      "alreadyDisabledInfo": "هذه الشركة معطّلة مسبقاً (مؤرشفة) وستظهر تفاصيلها للمعلومات فقط.",
+      "counts": {
+        "users": "المستخدمون",
+        "activeUsers": "مستخدمون نشطون",
+        "captains": "الكباتن",
+        "activeCaptains": "كباتن نشطون",
+        "stores": "المتاجر",
+        "ordersTotal": "الطلبات (الكل)",
+        "ordersUnfinished": "طلبات غير منتهية",
+        "walletAccounts": "حسابات المحفظة",
+        "ledgerEntries": "قيود دفتر الأستاذ",
+        "activityLogs": "سجلات النشاط (مستخدمو الشركة)",
+        "companyWalletBalance": "رصيد محفظة الشركة"
+      },
+      "riskNotesTitle": "ملاحظات المخاطر",
+      "confirmInstruction": "للمتابعة اكتب بالضبط:",
+      "cancel": "إلغاء",
+      "confirm": "تأكيد أرشفة الشركة",
+      "archiving": "جارٍ الأرشفة…"
+    },
+    "customerProfile": {
+      "sectionTitle": "بيانات المستخدم العميل",
+      "sectionBody": "نفس حقول «طلب جديد»: عناوين، رابط موقع، منطقة، أسعار تفضيلية، وخيار تثبيت موقع على الخريطة. يمكن حفظها كمرجع لحساب العميل.",
+      "rows": {
+        "pickup": "عنوان الاستلام",
+        "dropoff": "عنوان التسليم",
+        "link": "رابط الموقع",
+        "area": "المنطقة",
+        "amount": "سعر الطلب (تفضيلي)",
+        "delivery": "تكلفة التوصيل (تفضيلي)"
+      },
+      "coordsSaved": "إحداثيات محفوظة: {{lat}}, {{lng}}",
+      "coordsNone": "لا توجد إحداثيات خريطة محفوظة — يمكن للكابتن ضبط الموقع من التطبيق لاحقًا.",
+      "edit": "تعديل البيانات",
+      "pickupLabel": "عنوان الاستلام",
+      "dropoffLabel": "عنوان التسليم",
+      "linkLabel": "لصق رابط الموقع (اختياري)",
+      "linkHelp": "الصق رابط المشاركة من خرائط جوجل أو أي رابط https يوضح موقع التسليم؛ يُحفظ للكابتن مع الطلب عند الاستخدام.",
+      "areaLabel": "المنطقة",
+      "amountLabel": "سعر الطلب (تفضيلي)",
+      "deliveryLabel": "تكلفة التوصيل (تفضيلي)",
+      "mapNoneTitle": "لم يُحدَّد موقع على الخريطة",
+      "mapNoneBody": "يمكن للكابتن تأكيد أو ضبط موقع التسليم من تطبيق الكابتن عند الحاجة. لتثبيت موقع الآن، فعّل الخيار أدناه.",
+      "mapToggleTitle": "إضافة موقع التسليم على الخريطة (اختياري)",
+      "mapToggleBody": "عند التفعيل، اضغط على الخريطة لتثبيت نقطة التسليم وحفظ الإحداثيات مع بيانات العميل.",
+      "mapLabel": "خريطة تثبيت موقع التسليم",
+      "mapHint": "اضغط على الخريطة لتثبيت موقع التسليم.",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "errors": {
+        "linkScheme": "الرابط يجب أن يبدأ بـ http أو https.",
+        "linkInvalid": "صيغة الرابط غير صحيحة — الصق الرابط كاملاً.",
+        "amount": "سعر الطلب يجب أن يكون رقمًا موجبًا.",
+        "delivery": "تكلفة التوصيل يجب أن تكون رقمًا موجبًا.",
+        "mapRequired": "فعّلت خيار الخريطة — اضغط على الخريطة لتحديد موقع التسليم."
+      }
+    }
+  },
+  "stores": {
+    "page": {
+      "title": "المتاجر",
+      "description": "عرض اشتراك المتجر، المشرف المرتبط، والمنطقة الأساسية كما في الخادم.",
+      "listTitle": "القائمة",
+      "count": "{{count}} متجر",
+      "loading": "جارٍ تحميل المتاجر…",
+      "emptyTitle": "لا توجد متاجر لعرضها",
+      "emptyDescription": "يمكنك إعادة التحميل أو تعديل الصلاحيات/النطاق إن لزم.",
+      "noSupervisor": "لا يوجد مشرف",
+      "adjustSubscription": "ضبط الاشتراك/المشرف",
+      "viewOnly": "عرض فقط"
+    },
+    "table": {
+      "store": "المتجر",
+      "phone": "الهاتف",
+      "area": "المنطقة",
+      "subscription": "الاشتراك",
+      "supervisor": "المشرف",
+      "primaryRegion": "المنطقة الأساسية",
+      "actions": "إجراءات"
+    },
+    "modal": {
+      "title": "تحديث اشتراك المتجر",
+      "storeLabel": "المتجر: {{name}}",
+      "subscriptionType": "نوع الاشتراك",
+      "publicOption": "PUBLIC — عام",
+      "supervisorLinkedOption": "SUPERVISOR_LINKED — مرتبط بمشرف",
+      "supervisor": "المشرف",
+      "branchManagerAutoLinkHint": "كمشرف منطقة، سيتم ربط المتجر بحسابك تلقائياً عند اختيار SUPERVISOR_LINKED.",
+      "supervisorRequired": "اشتراك SUPERVISOR_LINKED يتطلب اختيار مشرف."
+    },
+    "subscription": {
+      "PUBLIC": "عام",
+      "SUPERVISOR_LINKED": "مرتبط بمشرف"
+    }
+  },
+  "nav": {
+    "home": "الرئيسية",
+    "newOrder": "طلب جديد",
+    "distribution": "التوزيع",
+    "incubator": "الأم الحاضنة",
+    "orders": "الطلبات",
+    "captains": "الكباتن",
+    "stores": "المتاجر",
+    "users": "المستخدمون",
+    "finance": "المالية",
+    "reports": "التقارير"
+  },
+  "statuses": {
+    "captain": {
+      "OFFLINE": "غير متصل",
+      "AVAILABLE": "متاح",
+      "BUSY": "مشغول",
+      "ON_DELIVERY": "في التوصيل"
+    },
+    "store": {
+      "ACTIVE": "نشط",
+      "INACTIVE": "موقوف"
+    }
+  },
+  "distribution": {
+    "page": {
+      "title": "لوحة توزيع الطلبات",
+      "description": "إدارة مباشرة للكباتن والطلبات على الخريطة"
+    },
+    "stats": {
+      "newOrders": "الطلبات الجديدة",
+      "available": "المتاحون",
+      "waiting": "بانتظار الرد",
+      "busy": "المشغولون",
+      "delayed": "الطلبات المتأخرة"
+    },
+    "rail": {
+      "distribution": "التوزيع",
+      "captains": "الكباتن",
+      "orders": "الطلبات",
+      "map": "الخريطة",
+      "reports": "التقارير",
+      "settings": "الإعدادات"
+    },
+    "filters": {
+      "available": "المتاحون",
+      "waiting": "بانتظار الرد",
+      "busy": "مشغول",
+      "far": "بعيد"
+    },
+    "manualAssign": {
+      "noCompatibleCaptains": "لا يوجد في الصفحة الحالية كباتن متوافقون مع مشرف المتجر."
+    },
+    "guard": {
+      "companyAdminOutOfScope": "هذا الكابتن خارج نطاق التوزيع المسموح لهذا الطلب.",
+      "supervisorOutOfScope": "هذا الكابتن خارج نطاق مشرف المتجر لهذا الطلب.",
+      "reassignOutOfScope": "هذا الكابتن خارج نطاق التوزيع المسموح لهذا الطلب (أو اختر من القائمة المتوافقة)."
+    },
+    "common": {
+      "selectedCaptain": "كابتن محدد"
+    },
+    "auto": {
+      "button": "توزيع تلقائي",
+      "pending": "جاري التوزيع...",
+      "hint": "يوزّع كل الطلبات المعروضة على الكباتن المناسبين",
+      "successTitle": "تم التوزيع التلقائي",
+      "successDetail": "تم توزيع {{assigned}} طلب، وتخطي {{skipped}} طلب.",
+      "error": "تعذر تنفيذ التوزيع التلقائي"
+    },
+    "ordersPanel": {
+      "newOrdersCount": "الطلبات الجديدة ({{count}})",
+      "manualAssign": "تعيين يدوي",
+      "redistribute": "إعادة توزيع",
+      "empty": "لا توجد طلبات قيد العرض."
+    },
+    "urgency": {
+      "urgent": "عاجل",
+      "delayed": "متأخر",
+      "normal": "عادي"
+    },
+    "captainCard": {
+      "busy": "مشغول",
+      "waiting": "بانتظار الرد",
+      "available": "متاح",
+      "far": "بعيد",
+      "near": "قريب"
+    },
+    "mapVisual": {
+      "WAITING_ACCEPT": "بانتظار قبول الكابتن",
+      "ACTIVE_DELIVERY": "قُبِل الطلب / قيد التوصيل",
+      "RECENT_REJECT": "رفض مؤخراً",
+      "AVAILABLE": "متاح"
+    },
+    "map": {
+      "markerCountdown": "⏱ {{sec}} ث"
+    },
+    "quickDrop": {
+      "legendIntro": "ألوان البطاقات = حالة الكابتن على الخريطة. أسفل الاسم:",
+      "legendWaitingNote": "(عرض يحتاج قبولاً) و",
+      "legendActiveNote": "(قيد التوصيل).",
+      "receivingAssignment": "استقبال تعيين...",
+      "activeOrders": "طلبات نشطة",
+      "boxWaitingTitle": "طلبات بحالة ASSIGNED — بانتظار قبول أو رفض الكابتن",
+      "boxActiveTitle": "طلبات مقبولة أو قيد التوصيل (نشطة)"
+    },
+    "vehicle": {
+      "BICYCLE": "بسكليت",
+      "MOTORCYCLE": "دراجة نارية",
+      "CAR": "سيارة",
+      "CARGO": "شحن / بضائع"
+    },
+    "popup": {
+      "ordersLine": "<span style=\"font-weight:700\">نشطة:</span> {{active}} · <span style=\"font-weight:700\">بانتظار رد:</span> {{waiting}}",
+      "location": "الموقع: {{at}}",
+      "acceptDeadline": "مهلة القبول: {{sec}} ث",
+      "contact": "تواصل",
+      "openContactMenu": "فتح خيارات التواصل",
+      "callCaptain": "اتصال بالكابتن",
+      "quickAlertMenuTitle": "تنبيه سريع للكابتن",
+      "presets": {
+        "review_order": "مراجعة الطلب المسند",
+        "contact_customer": "التواصل مع العميل",
+        "speed_delivery": "تسريع التوصيل",
+        "contact_dispatch": "التواصل مع غرفة التحكم"
+      }
+    },
+    "quickAlert": {
+      "fetchCaptainFailed": "تعذّر جلب بيانات الكابتن لإرسال التنبيه",
+      "missingCaptainAccount": "لا يمكن تحديد حساب الكابتن لإرسال التنبيه. تأكد أن الخادم محدّث وأن الطلب GET /api/v1/captains يعمل.",
+      "sent": "تم إرسال التنبيه — سيظهر في إشعارات تطبيق الكابتن",
+      "sendFailed": "تعذّر إرسال التنبيه"
+    },
+    "mapUi": {
+      "title": "خريطة الكباتن",
+      "hintWhileDragging": "أفلت الطلب على أيقونة الكابتن للتعيين (سحب وإفلات)",
+      "hintIdle": "الإطار الأصفر النابض = الكابتن الذي يعرض عليه الطلب الآن؛ ينتقل تلقائياً بعد الرفض أو انتهاء المهلة. اسحب بطاقة الطلب للتعيين اليدوي.",
+      "autoFollow": "تتبع تلقائي (تحديث الكاميرا مع البيانات)",
+      "recenter": "إعادة التمركز",
+      "legendWaiting": "بانتظار قبول",
+      "legendActive": "مقبول / توصيل",
+      "legendRecentReject": "رفض حديث",
+      "legendAvailable": "متاح"
+    },
+    "offerCountdown": {
+      "title": "ثوانٍ متبقية لمهلة قبول/رفض العرض — من الخادم (متزامنة مع الكابتن والخريطة)",
+      "label": "مهلة",
+      "sec": "ث"
+    },
+    "google": {
+      "disabledTitle": "خريطة Google غير مفعّلة",
+      "disabledBody": "أضف مفتاح Google Maps في VITE_GOOGLE_MAPS_API_KEY لتفعيل التتبع الحقيقي. عند التفعيل تُقيَّد الخريطة لعرض إسرائيل فقط.",
+      "requiredFile": "الملف المطلوب:",
+      "format": "الصيغة:",
+      "restart": "ثم أعد تشغيل السيرفر:",
+      "envFilePath": "apps/web/.env.local",
+      "envLineExample": "VITE_GOOGLE_MAPS_API_KEY=AIza...",
+      "devCommand": "npm run dev -w @captain/web",
+      "scriptLoadFailed": "تعذّر تحميل سكربت Google Maps.",
+      "authFailed": "فشلت مصادقة واجهة جافا سكربت لـ Google Maps.",
+      "loadFailedTitle": "تعذّر تحميل Google Maps",
+      "loadFailedBody": "تحقق من صلاحية المفتاح وتفعيل Maps JavaScript API والفوترة وقيود referrer."
+    },
+    "draggable": {
+      "titleDragToMap": "سحب للتعيين على الخريطة",
+      "titleAssigning": "التعيين جارٍ",
+      "queueTitle": "ترتيب في قائمة التوزيع — المرجع: {{number}}",
+      "queueLabel": "ترتيب",
+      "assigning": "جارٍ التعيين...",
+      "refPrefix": "مرجع:",
+      "currentCaptain": "الكابتن الحالي",
+      "awaitingCaptainResponseSuffix": " (بانتظار القبول/الرفض)",
+      "autoReassignNote": "التوزيع التلقائي: عند الرفض أو انتهاء المهلة ينتقل الطلب تلقائياً إلى كابتن آخر متاح.",
+      "pendingToDragDrop": "إلى {{name}} (سحب وإفلات)",
+      "pendingToManual": "إلى {{name}} (تعيين يدوي)"
+    }
+  },
+  "finance": {
+    "page": {
+      "title": "المالية",
+      "descriptionSuperAdmin": "عرض أرصدة المحافظ وسجل العمليات. شحن متجر أو مشرف من الأعلى، أو شحن محفظة الشركة من تبويب «محفظة الشركة».",
+      "descriptionCompanyAdmin": "عرض رصيد محفظة الشركة (للقراءة فقط) ومحفظة الكابتن وشحن باقة الكابتن عند الحاجة — دون إدارة المتاجر من هنا.",
+      "descriptionDefault": "عرض أرصدة المحافظ وسجل العمليات.",
+      "refresh": "تحديث"
+    },
+    "tools": {
+      "superAdminTitle": "أدوات مدير النظام",
+      "superAdminDescription": "شحن محفظة متجر أو شحن أو خصم رصيد المشرف (مشرف فرع/موزع) — POST مع Idempotency-Key.",
+      "storeTopUp": "شحن محفظة متجر",
+      "supervisorAdjust": "تعديل الرصيد",
+      "companyAdminTitle": "أدوات مدير الشركة",
+      "companyAdminDescription": "شحن رصيد باقة كابتن داخل شركتك فقط. يُطلب مبلغ وسبب، ويُولَّد idempotency تلقائياً. لا يوجد شحن لمحفظة الشركة من هنا.",
+      "captainPrepaidTopUp": "شحن رصيد باقة كابتن"
+    },
+    "tabs": {
+      "ariaLabel": "نوع المحفظة",
+      "supervisor": "محفظة المشرف",
+      "store": "محفظة المتجر",
+      "captain": "محفظة الكابتن",
+      "company": "محفظة الشركة"
+    },
+    "balance": {
+      "title": "الرصيد",
+      "subtitleSupervisor": "حساب المشرف المرتبط بحسابك في الشركة.",
+      "subtitleStore": "رصيد المتجر المختار.",
+      "subtitleCaptain": "رصيد الكابتن المختار.",
+      "subtitleCompany": "رصيد محفظة الشركة (طلبات/تشغيل) — للقراءة فقط.",
+      "companyPickerLabel": "الشركة (مدير النظام)",
+      "topUpCompanyWallet": "شحن محفظة الشركة",
+      "companyAdminScopeNote": "تُعرض محفظة شركتك المرتبطة بحسابك فقط. لا يمكن اختيار شركة أخرى من هنا.",
+      "storeLabel": "المتجر",
+      "captainLabel": "الكابتن",
+      "captainPrepaidCta": "شحن باقة الكابتن",
+      "loadingCompany": "جارٍ تحميل رصيد الشركة…",
+      "errors": {
+        "tenantScope": "لا يتوفر نطاق شركة على حسابك (TENANT_SCOPE_REQUIRED). تواصل مع الإدارة.",
+        "forbidden": "غير مسموح بعرض رصيد المحفظة."
+      },
+      "readOnly": "قراءة فقط",
+      "ledgerLastUpdated": "آخر تحديث للسجل:",
+      "walletId": "معرّف المحفظة:",
+      "recentMovementsTitle": "آخر الحركات (حتى 5)",
+      "noRecentMovements": "لا حركات مسجّلة بعد في آخر الدفعة المعروضة.",
+      "noData": "لا بيانات",
+      "balanceCard": {
+        "loading": "جارٍ تحميل الرصيد…",
+        "activeWallet": "محفظة نشطة",
+        "noWalletYet": "لا سجل محفظة بعد",
+        "existsNote": "يظهر الرصيد المخزَّن كما في الخادم.",
+        "missingNote": "لم تُنشأ محفظة بعد — يُعرض صفر حتى أول حركة."
+      }
+    },
+    "transfer": {
+      "cardTitle": "تحويل للكابتن",
+      "cardDescription": "تحويل من محفظة مشرفك إلى محفظة كابتن تشرف عليه. متاح لمشرف الفرع والموزع فقط.",
+      "open": "تحويل لكابتن"
+    },
+    "ledger": {
+      "title": "سجل العمليات",
+      "companyNote": "لمحفظة الشركة تُعرض أحدث الحركات مع بطاقة الرصيد أعلاه. التصفح الكامل يتطلب دعمًا إضافيًا من الخادم لاحقًا.",
+      "genericTitle": "سجل العمليات",
+      "genericDescriptionEnabled": "الأحدث أولاً. التحميل الإضافي يجلب الدفعة التالية.",
+      "genericDescriptionDisabled": "لا يوجد أرقام محفظة بعد — لا يُطلب سجل الحركات.",
+      "emptyStateTitle": "لا يوجد سجل محفظة",
+      "emptyStateDescription": "بعد إنشاء المحفظة وظهور أرقامها يمكن عرض الحركات هنا.",
+      "loadErrorFallback": "تعذّر التحميل",
+      "emptyMovements": "لا حركات بعد."
+    },
+    "ledgerReport": {
+      "title": "تقرير حركات المحفظة (بالفترة)",
+      "descriptionServerUtc": "حركات الدفتر ضمن فترة زمنية. يُرسل النطاق إلى الخادم كـ UTC (ISO-8601).",
+      "titleNoWallet": "لا يوجد رقم محفظة",
+      "descriptionNoWallet": "أنشئ أول حركة أو انتظر إنشاء المحفظة ليتاح التقرير.",
+      "titleAlt": "تقرير حركات المحفظة (بالفترة)",
+      "descriptionAlt": "حركات الدفتر ضمن النطاق على الخادم (UTC). الافتراضي: آخر 7 أيام. عرض الوقت في الحقول حسب وضع التصفح المحلي.",
+      "fromLocal": "من (محلي)",
+      "toLocal": "إلى (محلي)",
+      "apply": "تطبيق",
+      "exportCsv": "تنزيل CSV",
+      "exporting": "جارٍ التصدير…",
+      "inRange": "في النطاق: {{total}} حركة (معروض: {{shown}})",
+      "inRangeDetail": "في النطاق: {{total}} حركة (معروض: {{shown}}){{utcSuffix}}",
+      "emptyRange": "لا حركات في هذه الفترة.",
+      "errors": {
+        "invalidDate": "التاريخ/الوقت غير صالح.",
+        "order": "يجب أن يكون «من» قبل «إلى»، ولا تزيد الفترة عن 90 يوماً."
+      },
+      "exportError": "تعذّر التصدير",
+      "loadError": "تعذّر التحميل"
+    },
+    "ledgerTable": {
+      "loading": "جارٍ تحميل سجل العمليات…",
+      "loadMore": "تحميل المزيد",
+      "colTime": "الوقت",
+      "colType": "النوع",
+      "colAmount": "المبلغ",
+      "colOrder": "الطلب",
+      "colMetadata": "بيانات إضافية",
+      "orderIdTitle": "معرّف الطلب في النظام"
+    },
+    "transactionTypes": {
+      "SUPER_ADMIN_TOP_UP": "شحن (مدير النظام)",
+      "WALLET_TRANSFER": "تحويل",
+      "ORDER_DELIVERED_STORE_DEBIT": "خصم طلب (متجر)",
+      "ORDER_DELIVERED_CAPTAIN_DEDUCTION": "خصم تسليم (كابتن)",
+      "ADJUSTMENT": "تسوية",
+      "CAPTAIN_PREPAID_CHARGE": "شحن باقة كابتن",
+      "CAPTAIN_PREPAID_ADJUSTMENT": "تسوية باقة كابتن"
+    },
+    "csv": {
+      "SUPER_ADMIN_TOP_UP": "شحن (مدير)",
+      "WALLET_TRANSFER": "تحويل",
+      "ORDER_DELIVERED_STORE_DEBIT": "خصم طلب (متجر)",
+      "ORDER_DELIVERED_CAPTAIN_DEDUCTION": "خصم تسليم (كابتن)",
+      "ADJUSTMENT": "تسوية",
+      "CAPTAIN_PREPAID_CHARGE": "شحن باقة كابتن",
+      "CAPTAIN_PREPAID_ADJUSTMENT": "تسوية باقة كابتن"
+    },
+    "modals": {
+      "common": {
+        "idempotencyNotReady": "مفتاح idempotency غير جاهز. أغلق النافذة وافتحها مرة أخرى.",
+        "positiveAmount": "أدخل مبلغاً موجباً (حتى رقمين عشريين).",
+        "reasonRequired": "السبب مطلوب.",
+        "genericCompleteError": "تعذّر إكمال الطلب",
+        "forbidden403": "غير مسموح بهذه العملية (403).",
+        "close": "إغلاق",
+        "cancel": "إلغاء",
+        "amount": "المبلغ",
+        "amountIls": "المبلغ (ILS)",
+        "reason": "السبب",
+        "decimalsHint": "لا يتجاوز رقمان عشريان.",
+        "sending": "جارٍ الإرسال…",
+        "confirmTopUp": "تأكيد الشحن",
+        "confirmAdjust": "تأكيد التعديل",
+        "confirmTransfer": "تأكيد التحويل",
+        "transferring": "جارٍ التحويل…"
+      },
+      "companyAdminCaptainPrepaid": {
+        "errors": {
+          "tenantScope": "لا يتوفر نطاق شركة على حسابك (TENANT_SCOPE_REQUIRED). تواصل مع الإدارة لربط الحساب بشركة.",
+          "captainOutOfCompany": "غير مسموح: الكابتن ليس ضمن شركتك.",
+          "reasonRequired": "السبب مطلوب."
+        },
+        "pickCaptain": "اختر كابتناً.",
+        "title": "شحن رصيد باقة الكابتن (مدير الشركة)",
+        "description": "مسار `POST /finance/captains/.../prepaid-charge` — idempotency يُولَّد عند فتح النافذة. نطاق الشركة من جلسة الدخول فقط.",
+        "successNoop": "لا تغيير جديد (طلب مكرر بنفس idempotency).",
+        "success": "تم تسجيل الشحن وتحديث رصيد الباقة.",
+        "balanceLine": "رصيد الباقة: {{value}}",
+        "captain": "الكابتن",
+        "reasonPlaceholder": "يظهر في سجل حركات الرصيد",
+        "confirm": "تأكيد الشحن"
+      },
+      "companyAdminStoreTopup": {
+        "errors": {
+          "tenantScope": "لا يتوفر نطاق شركة على حسابك (TENANT_SCOPE_REQUIRED). تواصل مع الإدارة لربط الحساب بشركة.",
+          "storeNotAllowed": "غير مسموح: المتجر ليس ضمن شركتك أو ليس لديك صلاحية."
+        },
+        "pickStore": "اختر متجراً.",
+        "title": "شحن محفظة متجر (مدير الشركة)",
+        "description": "يُرسل تلقائياً: مفتاح idempotency عند فتح النافذة. نطاق الشركة مأخوذ من جلسة تسجيل الدخول — لا يُرسل معرف الشركة في الطلب.",
+        "successNoop": "تمت العملية (تسجيل مكرر بأمان — نفس مفتاح idempotency).",
+        "success": "تم شحن رصيد محفظة المتجر.",
+        "balanceLine": "الرصيد: {{value}}",
+        "store": "المتجر",
+        "amountPlaceholder": "مثال: 100 أو 10.50",
+        "reasonPlaceholder": "وصف قصير يظهر في السجلات",
+        "confirm": "تأكيد الشحن"
+      },
+      "superAdminCompanyTopup": {
+        "pickCompany": "اختر شركة أولاً من التبويب.",
+        "chargeReasonRequired": "سبب الشحن مطلوب.",
+        "title": "شحن محفظة الشركة",
+        "description": "لمدير النظام فقط. يُولَّد مفتاح idempotency تلقائياً عند فتح النافذة ويُرسل في جسم الطلب.",
+        "successNoop": "تمت العملية (تسجيل مكرر بأمان — نفس مفتاح idempotency في الجسم).",
+        "success": "تم شحن رصيد محفظة الشركة.",
+        "balanceDelta": "قبل: {{before}} ← بعد: {{after}}",
+        "companyLine": "الشركة: {{name}}",
+        "companyIdLine": "معرّف الشركة:",
+        "noCompanySelected": "لم تُختر شركة — أغلق واختر شركة من التبويب أولاً.",
+        "currencyOptional": "العملة (اختياري، 3 أحرف)",
+        "currencyPlaceholder": "SAR (افتراضي الخادم إن وُجد)",
+        "reasonPlaceholder": "مثال: تمويل رصيد طلبات",
+        "ledgerEntryLine": "ledger: {{id}}",
+        "confirm": "تأكيد الشحن"
+      },
+      "superAdminStoreTopup": {
+        "pickStore": "اختر متجراً.",
+        "title": "شحن محفظة متجر",
+        "description": "لمدير النظام فقط. يُرسل مفتاح idempotency تلقائياً عند فتح النافذة.",
+        "successNoop": "تمت العملية (تسجيل مكرر بأمان — نفس مفتاح idempotency).",
+        "success": "تم شحن رصيد المحفظة.",
+        "newBalance": "الرصيد الجديد: {{value}}",
+        "store": "المتجر",
+        "amountPlaceholder": "مثال: 100 أو 10.50",
+        "confirm": "تأكيد الشحن"
+      },
+      "superAdminSupervisorTopup": {
+        "roles": {
+          "BRANCH_MANAGER": "مشرف فرع",
+          "DISPATCHER": "موزع"
+        },
+        "pickUser": "اختر مستخدماً (مشرف فرع أو موزع).",
+        "title": "تعديل رصيد المشرف",
+        "description": "لمدير النظام — تعديل رصيد مشرف فرع/موزع بزيادة أو خصم مع سبب إلزامي.",
+        "successNoop": "تمت العملية (تسجيل مكرر بأمان — نفس مفتاح idempotency).",
+        "success": "تم تعديل رصيد المحفظة.",
+        "newBalance": "الرصيد الجديد: {{value}}",
+        "userLabel": "المستخدم (مشرف فرع / موزع)",
+        "noUsersHint": "لا يوجد مستخدمون بهذين الدورين في الصفحة الحالية (زد حجم الصفحة لاحقاً إن لزم).",
+        "operationType": "نوع العملية",
+        "add": "إضافة رصيد",
+        "deduct": "خصم رصيد",
+        "amountPlaceholder": "مثال: 100 أو 10.50",
+        "decimalsServerCurrencyHint": "لا يتجاوز رقمان عشريان. بدون اختيار عملة — الافتراضي من الخادم.",
+        "reasonPlaceholder": "سبب التعديل",
+        "confirm": "تأكيد التعديل"
+      },
+      "supervisorCaptainTransfer": {
+        "pickCaptain": "اختر كابتناً مرتبطاً بك كمشرف.",
+        "title": "تحويل لكابتن",
+        "description": "للمشرف فقط. الكباتن الظاهرون هم المرتبطون بك في النظام. مفتاح idempotency يُولَّد عند فتح النافذة.",
+        "successNoop": "تمت العملية (تسجيل مكرر بأمان — نفس مفتاح idempotency).",
+        "success": "تم التحويل.",
+        "balancesLine": "رصيد محفظتك: {{from}} — رصيد كابتن: {{to}}",
+        "captainLabel": "الكابتن (مرتبط بك فقط)",
+        "noCaptainsHint": "لا كباتن مرتبطون بحسابك كمشرف — أو غيّر نطاق القائمة لاحقاً.",
+        "amountPlaceholder": "مثال: 50 أو 10.00",
+        "currencyHint": "بدون اختيار عملة. يتطلب نطاق شركتك ووجود رصيد كافٍ.",
+        "confirm": "تأكيد التحويل"
+      }
+    }
+  },
+  "login": {
+    "subtitle": "تسجيل الدخول إلى لوحة التشغيل",
+    "identifierLabel": "البريد أو الهاتف",
+    "identifierPlaceholder": "05xxxxxxxx أو name@domain.com",
+    "passwordLabel": "كلمة المرور",
+    "submit": "دخول",
+    "submitting": "جارٍ الدخول…",
+    "error": "تعذر تسجيل الدخول"
+  },
+  "orderStatus": {
+    "PENDING": "بانتظار التوزيع",
+    "CONFIRMED": "تجهيز",
+    "ASSIGNED": "مُعيَّن",
+    "ACCEPTED": "مقبول",
+    "PICKED_UP": "تم الاستلام",
+    "IN_TRANSIT": "قيد التوصيل",
+    "DELIVERED": "تم التسليم",
+    "CANCELLED": "ملغى"
+  },
+  "storeSubscription": {
+    "PUBLIC": "عام",
+    "SUPERVISOR_LINKED": "مرتبط بمشرف"
+  },
+  "financial": {
+    "orderAmount": "مبلغ الطلب",
+    "storeAmount": "مبلغ المتجر",
+    "deliveryFee": "رسوم التوصيل",
+    "deliveryFeeInferred": "رسوم التوصيل (مُستنتجة)",
+    "customerCollection": "مبلغ التحصيل من العميل",
+    "profitCommission": "الربح / العمولة (تقدير)",
+    "sectionBreakdown": "التفصيل المالي",
+    "paymentCod": "نقد عند التسليم",
+    "paymentNotCod": "ليس نقد عند التسليم (أو إجمالي عميل صفر)"
+  },
+  "timestamps": {
+    "section": "الأوقات",
+    "assigned": "وقت التعيين",
+    "accepted": "وقت القبول",
+    "pickup": "وقت الاستلام",
+    "delivery": "وقت التسليم"
+  },
+  "orders": {
+    "page": {
+      "title": "الطلبات",
+      "description": "بحث وتصفية، تعيين يدوي، وإعادة التوزيع للصلاحيات المخولة."
+    },
+    "filter": {
+      "byPhone": "يبحث في هاتف العميل.",
+      "byOrderNumber": "يبحث في رقم الطلب (نص جزئي)."
+    },
+    "list": {
+      "filterTitle": "تصفية",
+      "filterDesc": "رقم الطلب أو هاتف العميل، وحسب الحالة",
+      "searchLabel": "بحث",
+      "searchPlaceholder": "رقم الطلب أو الهاتف",
+      "statusLabel": "الحالة",
+      "statusAll": "كل الحالات",
+      "loading": "جارٍ تحميل الطلبات…",
+      "emptyTitle": "لا توجد طلبات مطابقة",
+      "emptyDesc": "جرّب تغيير البحث أو الحالة لإظهار نتائج.",
+      "colOrder": "الطلب",
+      "colFinancials": "المالية",
+      "colStatus": "الحالة",
+      "colCustomer": "العميل",
+      "colStore": "المتجر",
+      "colArea": "المنطقة",
+      "colDate": "تاريخ",
+      "colActions": "إجراءات",
+      "supervisor": "مشرف المتجر",
+      "noSupervisor": "لا يوجد",
+      "region": "المنطقة",
+      "detail": "تفاصيل",
+      "autoDist": "توزيع تلقائي",
+      "manualAssign": "تعيين يدوي",
+      "redistribute": "إعادة توزيع",
+      "reassign": "إعادة تعيين",
+      "cancelForCaptain": "إلغاء الطلب للكابتن",
+      "adminOverride": "تعديل الحالة (إشراف)",
+      "removeFromList": "إزالة من القائمة",
+      "adminModalTitle": "تعديل الحالة — إجراء إشرافي",
+      "adminModalDesc": "يغيّر حالة الطلب مباشرة (للمشرفين فقط). عند اختيار «بانتظار التوزيع» أو «تجهيز» أو «ملغى» يُلغى تعيين الكابتن الحالي وتُلغى عروض التوزيع المعلّقة. لا يُستخدم بديلاً عن مسارات التوزيع العادية.",
+      "adminOrderLine": "الطلب {{number}} — الحالة الحالية: {{status}}",
+      "adminCurrentStatus": "الحالة الحالية",
+      "adminTargetLabel": "الحالة المستهدفة",
+      "adminConfirm": "تأكيد التعديل الإشرافي",
+      "archiveTitle": "إزالة الطلب من القائمة التشغيلية؟",
+      "archiveDesc": "لن يُحذف الصف من قاعدة البيانات — يُخفى من قوائم التشغيل والإحصاءات الافتراضية (بما فيها بعد التسليم). الطلبات المرتبطة بحساب عميل تبقى في سجل العميل. يمكن استرجاع العرض لاحقاً عبر واجهة الإدارة (إلغاء الأرشفة).",
+      "archiveConfirm": "تأكيد الإزالة"
+    },
+    "detailModal": {
+      "title": "تفاصيل الطلب",
+      "description": "لقطة من الخادم.",
+      "orderLabel": "الطلب",
+      "customerAddresses": "العميل والعناوين",
+      "pickup": "الاستلام",
+      "dropoff": "التسليم",
+      "subscriptionType": "نوع الاشتراك",
+      "supervisor": "مشرف المتجر",
+      "noSupervisor": "لا يوجد مشرف",
+      "primaryRegion": "المنطقة الأساسية",
+      "regionUnset": "غير محددة",
+      "empty": "لا تتوفر بيانات للطلب",
+      "emptyDesc": "قد يكون الطلب غير متاح الآن أو تم تحديث القائمة.",
+      "paymentLabel": "طريقة الدفع:",
+      "notesTitle": "ملاحظات / تعليمات"
+    }
+  },
+  "newOrder": {
+    "page": {
+      "title": "طلب جديد",
+      "titleCompany": "طلب شركة جديد",
+      "description": "إدخال بيانات العميل والعناوين. موقع الخريطة اختياري؛ إن لم يُحدَّد يُعرَّف الموقع لاحقاً من تطبيق الكابتن.",
+      "descriptionCompany": "بيانات العميل ونقطة الاستلام وتفاصيل التسليم والمبالغ. الخريطة اختياريّة؛ وإن لم تُثبّت الموقع هنا فقد يتأكد الكابتن لاحقاً."
+    },
+    "form": {
+      "customerName": "اسم العميل",
+      "customerPhone": "هاتف العميل",
+      "pickupAddress": "عنوان الاستلام",
+      "pickupAddressCompany": "نقطة الاستلام",
+      "pickupPlaceholderCompany": "مثال: المستودع / المحل / عنوان الجمع",
+      "dropoffAddress": "عنوان التسليم",
+      "dropoffAddressCompany": "تفاصيل التسليم",
+      "locationLink": "لصق رابط الموقع (اختياري)",
+      "locationLinkHelp": "الصق رابط المشاركة من خرائط جوجل أو أي رابط https يوضح موقع التسليم؛ يُحفظ مع الملاحظات للكابتن.",
+      "area": "المنطقة",
+      "amount": "مبلغ المتجر",
+      "amountCompany": "مبلغ الطلب",
+      "deliveryFee": "رسوم التوصيل",
+      "deliveryFeeHelp": "اترك 0 للتوصيل المجاني. إجمالي التحصيل من العميل يُحسب على الخادم ({{amountLabel}} + الرسوم).",
+      "mapNoneTitle": "لم يُحدَّد موقع على الخريطة",
+      "mapNoneBody": "يمكن للكابتن تأكيد أو ضبط موقع التسليم من تطبيق الكابتن عند استلام الطلب. لتثبيت موقع الآن، فعّل الخيار أدناه.",
+      "mapToggleTitle": "إضافة موقع التسليم على الخريطة (اختياري)",
+      "mapToggleBody": "عند التفعيل، اضغط على الخريطة لتثبيت نقطة التسليم وإرسال الإحداثيات مع الطلب.",
+      "mapLabel": "خريطة تثبيت موقع التسليم",
+      "mapHint": "اضغط على الخريطة لتثبيت موقع التسليم (دقة 6 منازل عشرية).",
+      "notes": "ملاحظات",
+      "back": "رجوع",
+      "creating": "جارٍ الإنشاء…",
+      "submit": "إنشاء الطلب",
+      "errors": {
+        "customerName": "اسم العميل مطلوب.",
+        "customerPhone": "هاتف العميل مطلوب.",
+        "phoneFormat": "صيغة رقم الهاتف غير صحيحة.",
+        "pickup": "عنوان الاستلام مطلوب.",
+        "pickupCompany": "نقطة الاستلام مطلوبة.",
+        "dropoff": "عنوان التسليم مطلوب.",
+        "dropoffCompany": "تفاصيل التسليم مطلوبة.",
+        "area": "المنطقة مطلوبة.",
+        "amount": "مبلغ المتجر يجب أن يكون أكبر من صفر.",
+        "amountCompany": "مبلغ الطلب يجب أن يكون أكبر من صفر.",
+        "deliveryFee": "رسوم التوصيل يجب أن تكون رقمًا موجبًا أو صفر.",
+        "mapRequired": "فعّلت خيار الخريطة — اضغط على الخريطة لتحديد موقع التسليم.",
+        "linkScheme": "الرابط يجب أن يبدأ بـ http أو https.",
+        "linkInvalid": "صيغة الرابط غير صحيحة — الصق الرابط كاملاً."
+      },
+      "notesLine": {
+        "locationLink": "[رابط موقع] {{link}}",
+        "noMap": "[بدون إحداثيات خريطة — يؤكد الكابتن موقع التسليم من التطبيق عند الحاجة]"
+      }
+    }
+  },
+  "incubator": {
+    "page": {
+      "title": "الأم الحاضنة",
+      "description": "الصق النص ثم تحليل — راجع المعاينة، ثم أنشئ الطلب. يُنشأ كطلب عادي (AUTO) ويُستدعى التوزيع التلقائي كما من قائمة الطلبات."
+    },
+    "raw": {
+      "label": "النص الخام",
+      "placeholder": "الصق معلومات الطلب هنا…",
+      "aria": "نص الطلب الخام"
+    },
+    "actions": {
+      "parse": "تحليل وملء المعاينة",
+      "clearPreview": "مسح المعاينة",
+      "cancel": "إلغاء",
+      "create": "إنشاء الطلب",
+      "creating": "جارٍ الإنشاء…"
+    },
+    "warningsTitle": "تنبيهات التحليل",
+    "preview": {
+      "title": "معاينة الطلب قبل الإنشاء",
+      "description": "الحقول الإلزامية: اسم العميل، الهاتف، عنوان الاستلام والتسليم، المنطقة، السعر. بعد الإنشاء يُجرى «توزيع تلقائي» تلقائياً ليدخل الطلب نفس مسار الكباتن المعتاد."
+    },
+    "missing": {
+      "label": "ناقص أو غير صالح: "
+    },
+    "allRequiredOk": "الحقول الإلزامية مكتملة — يمكن الإنشاء.",
+    "parseLog": "سجل التحليل (للمشرف)",
+    "fieldLabels": {
+      "customerName": "اسم العميل",
+      "customerPhone": "هاتف العميل",
+      "pickupAddress": "عنوان الاستلام",
+      "dropoffAddress": "عنوان التسليم",
+      "area": "المنطقة",
+      "amount": "سعر الطلب",
+      "notes": "ملاحظات (اختياري)"
+    },
+    "validation": {
+      "required": "مطلوب.",
+      "phoneFormat": "صيغة غير صحيحة.",
+      "amountPositive": "يجب أن يكون رقماً أكبر من صفر."
+    },
+    "draft": {
+      "pickupFrom": "استلام من: {{name}}",
+      "notesOrderRef": "رقم الطلبية (مرجع): {{value}}",
+      "notesStatusRef": "حالة (مرجع): {{value}}"
+    },
+    "notes": {
+      "rawBlockHeader": "--- نص لصق الأصل (الأم الحاضنة) ---",
+      "truncated": "…(مختصر)"
+    },
+    "parser": {
+      "sourceFieldLabels": {
+        "orderNumber": "رقم الطلب",
+        "customerName": "اسم العميل",
+        "restaurantName": "اسم المطعم",
+        "orderStatus": "حالة الطلب",
+        "area": "المنطقة",
+        "nearLocation": "بالقرب من",
+        "phone": "رقم الهاتف",
+        "total": "المجموع"
+      },
+      "fieldListSeparator": "، ",
+      "log": {
+        "emptyInput": "المدخل فارغ — لا يوجد ما يُحلَّل.",
+        "lineEmpty": "سطر {{line}}: فارغ — يُتخطى.",
+        "fieldRecognized": "سطر {{line}}: عُرِف الحقل «{{field}}» من التسمية «{{rawLabel}}».",
+        "unknownLabel": "سطر {{line}}: تسمية غير معروفة «{{rawLabel}}» — لم يُعثر على حقل مطابق.",
+        "appendedUnknown": "→ أُلحق قيمة السطر بالحقل الحالي «{{field}}» (تسمية غير معروفة).",
+        "lineMalformedLabeled": "سطر {{line}}: يبدو كحقل لكن لم يُستخرج تسمية/قيمة بشكل صالح: {{snippet}}",
+        "lineContinuation": "سطر {{line}}: تابع — أُلحق بـ «{{field}}».",
+        "lineUnlabeled": "سطر {{line}}: نص بدون تسمية ولا حقل سابق — يُتخطى: {{snippet}}",
+        "phoneNormalizeFailed": "فشل توحيد رقم الهاتف — راجع القيمة المستخرجة.",
+        "totalParseFailed": "فشل استخراج المبلغ من «{{field}}» — راجع القيمة المستخرجة.",
+        "summaryMissing": "ملخص: لم تُستخرج قيم للحقول: {{fields}}.",
+        "summaryAllFilled": "ملخص: جميع الحقول المعروفة لها قيم."
+      }
+    }
+  },
+  "reports": {
+    "pageTitle": "التقارير",
+    "pageDesc": "تسويات دفتر المحفظة مقابل باقة الكابتن، دفتر الباقة، وعمولات التسليم من سجلات الدفتر.",
+    "rangeCardTitle": "نطاق التواريخ",
+    "rangeCardDesc": "يُطبَّق على الأقسام الثلاثة. يُرسل للخادم كـ UTC. الافتراضي آخر 7 أيام.",
+    "fromLocal": "من (محلي)",
+    "toLocal": "إلى (محلي)",
+    "applyRange": "تطبيق النطاق",
+    "rangeInvalid": "التاريخ/الوقت غير صالح.",
+    "rangeOrder": "«من» يجب أن يكون قبل «إلى».",
+    "rangeMax": "الفترة لا تزيد عن 90 يوماً.",
+    "rangeError": {
+      "INVALID": "التاريخ/الوقت غير صالح.",
+      "ORDER": "«من» يجب أن يكون قبل «إلى».",
+      "MAX": "الفترة لا تزيد عن 90 يوماً."
+    },
+    "reconTitle": "1 — ملخّص التسوية (دفتر ↔ باقة)",
+    "reconDesc": "مقارنة سطور خصم التسليم في المحفظة مع خصم الباقة، وشحن/تسوية الباقة مع سطور الدفتر.",
+    "reconStatDeliverLedger": "سطور خصم تسليم (محفظة)",
+    "reconStatMissingPrepaid": "بدون مرآة باقة",
+    "reconStatDeliverMismatch": "اختلاف مبلغ (تسليم)",
+    "reconStatChargeRows": "حركات شحن/تسوية (باقة)",
+    "reconStatMissingLedger": "بدون سطر دفتر مطابق",
+    "reconStatChargeMismatch": "اختلاف مبلغ (شحن/تسوية)",
+    "reconStatOrphanLedger": "سطور دفتر شحن/تسوية بلا CBT (ضمن النطاق)",
+    "loadingSummary": "جارٍ تحميل الملخّص…",
+    "prepaidTitle": "2 — دفتر باقة الكابتن (حركات)",
+    "prepaidDesc": "سجل captain_balance_transactions في النطاق.",
+    "captain": "الكابتن",
+    "loadingPrepaid": "جارٍ تحميل دفتر الباقة…",
+    "noCaptains": "لا كباتن لعرضها أو صلاحية القائمة غير كافية.",
+    "prepaidEmpty": "لا حركات في النطاق",
+    "colTime": "الوقت",
+    "colType": "النوع",
+    "colAmount": "المبلغ (₪ ILS)",
+    "colBalanceAfter": "الرصيد بعد (₪ ILS)",
+    "colOrder": "طلب",
+    "prev": "السابق",
+    "next": "التالي",
+    "pageOf": "صفحة {{page}} — إجمالي {{total}}",
+    "deliveredTitle": "3 — تسليم وعمولة (من دفتر المحفظة)",
+    "deliveredDesc": "سطور ORDER_DELIVERED_CAPTAIN_DEDUCTION للطلبات المسلّمة ضمن النطاق. عمود «رسوم التوصيل» يعرض الرسوم الفعلية (أو المشتقة للسجلات القديمة). مبلغ «العمولة» هو ما نُثبّت في الدفتر وقت التسليم.",
+    "loadingDelivered": "جارٍ تحميل العمولات…",
+    "deliveredEmpty": "لا بيانات في النطاق",
+    "colLineTime": "وقت السطر",
+    "colOrderNum": "طلب",
+    "colStore": "متجر",
+    "colCaptain": "كابتن",
+    "colDeliveryFee": "رسوم التوصيل",
+    "colCommission": "عمولة",
+    "historyTitle": "4 — تاريخ الطلبات (كابتن/متجر)",
+    "historyBadge": "تقرير جديد",
+    "historyDesc": "تصفية الطلبات حسب وقت الإنشاء ضمن النطاق UTC — وليس وقت التسليم. الجدول والإجماليات وCSV يستخدمان نفس الفلاتر.",
+    "filterCaptain": "الكابتن",
+    "filterStore": "المتجر",
+    "filterStatus": "الحالة",
+    "filterAll": "الكل",
+    "exportCsv": "تصدير CSV",
+    "exporting": "جارٍ التصدير…",
+    "exportSuccess": "تم تصدير CSV بنجاح.",
+    "exportFail": "تعذّر تصدير CSV",
+    "loadingHistory": "جارٍ تحميل تاريخ الطلبات…",
+    "totStore": "إجمالي مبلغ المتجر (ضمن الفلاتر)",
+    "totDelivery": "إجمالي رسوم التوصيل",
+    "totCustomer": "إجمالي التحصيل من العملاء",
+    "totProfit": "إجمالي العمولة (تقدير)",
+    "historyEmpty": "لا بيانات في النطاق",
+    "thOrderNumber": "رقم الطلب",
+    "thStore": "المتجر",
+    "thCaptain": "الكابتن",
+    "thCaptainPhone": "هاتف الكابتن",
+    "thCustomer": "العميل",
+    "thStatus": "الحالة",
+    "thAssigned": "وقت التعيين",
+    "thAccepted": "وقت القبول",
+    "thPickup": "وقت الاستلام",
+    "thDelivery": "وقت التسليم",
+    "thStoreAmount": "مبلغ المتجر",
+    "thDeliveryFee": "رسوم التوصيل",
+    "thCustomerCollection": "التحصيل من العميل",
+    "thProfit": "العمولة / الربح"
+  },
+  "csv": {
+    "orderNumber": "رقم الطلب",
+    "storeName": "المتجر",
+    "captainName": "الكابتن",
+    "captainPhone": "هاتف الكابتن",
+    "customerName": "العميل",
+    "status": "الحالة",
+    "assignedAt": "وقت التعيين",
+    "acceptedAt": "وقت القبول",
+    "pickupAt": "وقت الاستلام",
+    "deliveredAt": "وقت التسليم",
+    "storeAmount": "مبلغ المتجر",
+    "deliveryFee": "رسوم التوصيل",
+    "customerCollectionAmount": "مبلغ التحصيل من العميل",
+    "profitOrCommission": "الربح / العمولة",
+    "pickupNotRecordedCell": "غير مسجّل"
+  },
+  "public": {
+    "loading": "جارٍ التحميل…",
+    "invalidLink": "رابط غير صالح.",
+    "loadError": "تعذر تحميل صفحة الطلب.",
+    "unavailableTitle": "الصفحة غير متاحة",
+    "successTitle": "تم استلام الطلب",
+    "successDesc": "شكرًا لك. سيُتابع المدير طلبك.",
+    "newRequest": "طلب جديد",
+    "cardTitle": "طلب توصيل",
+    "yourName": "اسمك",
+    "phone": "رقم الهاتف",
+    "pickupAddress": "عنوان الاستلام",
+    "dropoffAddress": "عنوان التسليم",
+    "area": "المنطقة",
+    "zoneOptional": "المنطقة (اختياري)",
+    "zoneNone": "— بدون اختيار محدد —",
+    "storeAmount": "مبلغ المتجر (₪)",
+    "summaryCollectLabel": "مبلغ التحصيل من العميل",
+    "deliveryFee": "رسوم التوصيل (₪)",
+    "previewCollect": "مبلغ التحصيل من العميل (معاينة): {{amount}} ₪ (= مبلغ المتجر + رسوم التوصيل). الخادم يحسب الإجمالي النهائي؛ لا تُدخل إجماليًا منفصلًا للعميل هنا.",
+    "notes": "ملاحظات",
+    "submit": "إرسال الطلب",
+    "submitting": "جارٍ الإرسال…",
+    "submitError": "تعذر إرسال الطلب.",
+    "summaryTitle": "ملخص الطلب",
+    "summaryNote": "يُحسب الإجمالي أيضًا على الخادم كـ cash_collection = مبلغ المتجر + رسوم التوصيل."
+  },
+  "manualAssign": {
+    "title": "تعيين يدوي",
+    "description": "اختر الكابتن للطلب {{order}}",
+    "captain": "الكابتن",
+    "choose": "— اختر —",
+    "sending": "جارٍ الإرسال…",
+    "confirm": "تأكيد التعيين",
+    "reassignTitle": "إعادة تعيين الطلب",
+    "reassignDescription": "نقل الطلب {{order}} إلى كابتن آخر مع تسجيل الإجراء كإعادة تعيين.",
+    "supervisorPrefix": "مشرف",
+    "noSupervisorShort": "بدون مشرف"
+  }
+}
+

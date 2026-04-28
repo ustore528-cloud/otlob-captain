@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import i18n from "@/i18n/i18n";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { UpdateCaptainPayload } from "@/lib/api/services/captains";
 import { api } from "@/lib/api/singleton";
@@ -9,11 +10,11 @@ export function useUpdateCaptain() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdateCaptainPayload }) => api.captains.update(id, body),
     onSuccess: async () => {
-      toastSuccess("تم تحديث بيانات الكابتن");
+      toastSuccess(String(i18n.t("mutationToasts.captainUpdated")));
       await qc.invalidateQueries({ queryKey: queryKeys.captains.root });
       await qc.invalidateQueries({ queryKey: queryKeys.users.root });
       await qc.invalidateQueries({ queryKey: queryKeys.tracking.root });
     },
-    onError: (e) => toastApiError(e, "تعذر تحديث الكابتن"),
+    onError: (e) => toastApiError(e, String(i18n.t("mutationToasts.captainUpdateFailed"))),
   });
 }

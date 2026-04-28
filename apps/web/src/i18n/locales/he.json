@@ -1,0 +1,1250 @@
+{
+  "common": {
+    "language": "שפה",
+    "brand": "2in",
+    "logout": "התנתקות",
+    "refresh": "רענון",
+    "close": "סגירה",
+    "cancel": "ביטול",
+    "confirm": "אישור",
+    "save": "שמירה",
+    "saving": "שומר…",
+    "delete": "מחיקה",
+    "edit": "עריכה",
+    "enable": "הפעלה",
+    "disable": "השבתה",
+    "previous": "הקודם",
+    "next": "הבא",
+    "search": "חיפוש",
+    "optional": "אופציונלי",
+    "fromDate": "מתאריך",
+    "toDate": "עד תאריך",
+    "lastUpdated": "עודכן לאחרונה",
+    "fullName": "שם מלא",
+    "phone": "טלפון",
+    "password": "סיסמה",
+    "emailOptional": "אימייל (אופציונלי)",
+    "all": "הכל",
+    "loading": "טוען…",
+    "toastErrorFallback": "משהו השתבש",
+    "none": "—",
+    "notRecorded": "לא נרשם",
+    "status": {
+      "active": "פעיל",
+      "inactive": "לא פעיל"
+    }
+  },
+  "apiErrors": {
+    "loginRequired": "נדרש להתחבר",
+    "geocodePath404": "לא נמצאה נתיב geocoding (404). ודא שכתובת ה-API היא רק שורש האתר (ללא ‎/api)‎, והשרת כולל ‎/api/v1/geocode/place.",
+    "geocodeBadShape": "תשובה לא חוקית משרת geocoding.",
+    "geocodeBadFields": "נתוני קואורדינטות חסרים מהשרת."
+  },
+  "mutationToasts": {
+    "captainCreated": "השליח נוצר",
+    "captainCreateFailed": "לא ניתן ליצור שליח",
+    "storeUpdated": "פרטי החנות עודכנו",
+    "storeUpdateFailed": "לא ניתן לעדכן את פרטי החנות",
+    "orderReassigned": "ההזמנה הועברה מחדש",
+    "orderReassignFailed": "לא ניתן להעביר מחדש",
+    "redistributeSuccess": "חולק מחדש",
+    "redistributeFailed": "לא ניתן לחלק מחדש",
+    "assignDragDrop": "שויך (גרירה ושחרור)",
+    "assignManual": "שויך ידנית",
+    "assignCaptainFailed": "לא ניתן לשייך שליח",
+    "adminStatusOk": "סטטוס הזמנה עודכן (מנהל).",
+    "adminStatusFailed": "לא ניתן לעדכן סטטוס",
+    "archiveOk": "ההזמנה הוסרה מהרשימה התפעולית — רשומה שמורה בבסיס.",
+    "archiveFailed": "לא ניתן לארכב הזמנה",
+    "orderCreatedWithDist": "ההזמנה {{number}} נוצרה — חלוקה אוטומטית התחילה.",
+    "orderCreatedNoDist": "ההזמנה {{number}} נוצרה.",
+    "autoDistFailed": "לא ניתן להפעיל חלוקה אוטומטית — פתחו את רשימת ההזמנות והפעילו «חלוקה אוטומטית» להזמנה הזו.",
+    "incubatorCreateFailed": "לא ניתן ליצור הזמנה",
+    "cancelCaptainSuccess": "ההזמנה בוטלה אצל השליח",
+    "cancelCaptainFailed": "לא ניתן לבטל אצל השליח",
+    "customerProfileSaved": "נתוני הלקוח נשמרו",
+    "customerProfileFailed": "לא ניתן לשמור נתוני לקוח",
+    "captainDeleted": "השליח והחשבון הוסרו",
+    "captainDeleteFailed": "לא ניתן למחוק שליח",
+    "captainUpdated": "פרטי השליח עודכנו",
+    "captainUpdateFailed": "לא ניתן לעדכן שליח",
+    "quickAlertSent": "נשלחה התראה: {{label}}",
+    "quickAlertFailed": "לא ניתן לשלוח התראת מצב מהירה",
+    "userCreated": "המשתמש נוצר",
+    "userCreateFailed": "לא ניתן ליצור משתמש",
+    "captainToggledOn": "הופעל",
+    "captainToggledOff": "הושבת",
+    "captainToggleFailed": "לא ניתן לעדכן מצב שליח",
+    "autoDistStarted": "חלוקה אוטומטית הופעלה",
+    "autoDistStartFailed": "לא ניתן להתחיל חלוקה אוטומטית",
+    "orderCreatedToast": "ההזמנה נוצרה",
+    "orderCreateFailed": "לא ניתן ליצור הזמנה",
+    "userToggledOn": "המשתמש הופעל",
+    "userToggledOff": "המשתמש הושבת",
+    "userToggleFailed": "לא ניתן לעדכן משתמש"
+  },
+  "dashboard": {
+    "footerNote": "לקוח API מאוחד עם React Query — מוכן לחיבור אפליקציית מובייל בהמשך.",
+    "page": {
+      "welcome": "ברוך הבא",
+      "welcomeWithName": "ברוך הבא, {{name}}",
+      "description": "תמונת מצב תפעולית מהירה להזמנות והתראות.",
+      "requestLinkTitle": "קישור ההזמנות שלך",
+      "ownerCode": "קוד מנהל",
+      "copyLink": "העתקת קישור",
+      "openRequestPage": "פתיחת דף בקשה"
+    },
+    "stats": {
+      "ordersTotal": "סה״כ הזמנות (בהיקף שלך)",
+      "ordersUnavailable": "—",
+      "ordersHintNoAccess": "לא זמין לתפקיד שלך",
+      "captainsActive": "שליחים פעילים",
+      "captainsActiveHint": "לפי היקף ניהול",
+      "role": "תפקיד",
+      "roleHint": "ניראות הזמנות לפי תפקיד",
+      "lastAlert": "התראה אחרונה",
+      "read": "נקרא",
+      "newBadge": "חדש",
+      "noNotifications": "אין התראות",
+      "pendingDistribution": "ממתינים לחלוקה",
+      "confirmedPreparing": "הזמנות בהכנה"
+    },
+    "quickWorkStatus": {
+      "title": "התראת מצב תפעולי מהירה"
+    },
+    "quickStatus": {
+      "PRESSURE": "לחץ",
+      "LOW_ACTIVITY": "פעילות חלשה",
+      "RAISE_READINESS": "העלה מוכנות",
+      "ON_FIRE": "מצב בוער"
+    },
+    "widgets": {
+      "latestNotification": {
+        "title": "התראה אחרונה",
+        "description": "ההתראה החדשה ביותר בתיבה שלך",
+        "unread": "לא נקרא",
+        "empty": "אין התראות עדיין."
+      },
+      "activity": {
+        "title": "סיכום פעילות",
+        "description": "אירועי תפעול אחרונים (מוקד/ניהול)",
+        "dispatchOnly": "סיכום הפעילות זמין לחשבונות ניהול ותפעול בלבד."
+      }
+    },
+    "mapSettings": {
+      "title": "הגדרות מפה",
+      "description": "קואורדינטות וזום נשמרים בשרת. מדינה ועיר משמשים לגיאוקוד (Nominatim) כדי להזיז את המפה — אפשר גם לכוון ידנית על המפה.",
+      "country": "מדינה",
+      "countryPlaceholder": "דוגמה: Saudi Arabia",
+      "cityRegion": "עיר / אזור",
+      "cityPlaceholder": "דוגמה: Riyadh",
+      "searching": "מחפש…",
+      "searchAndMove": "חיפוש והזזת מפה",
+      "searchHint": "תומך: מדינה בלבד, עיר בלבד, או מדינה + עיר. חיפוש דרך",
+      "pickOnMapTitle": "בחירה על המפה",
+      "pickOnMapBody": "הזז/זום את המפה או לחץ כדי לקבוע מרכז. הקואורדינטות והזום מתעדכנים אוטומטית.",
+      "useCurrentCenter": "השתמש במרכז המפה הנוכחי",
+      "latitude": "קו רוחב",
+      "longitude": "קו אורך",
+      "zoom": "זום (1–19)",
+      "suggestionSaudi": "ערב הסעודית",
+      "suggestionEgypt": "מצרים",
+      "suggestionUae": "איחוד האמירויות",
+      "errors": {
+        "enterCountryOrCity": "הזן מדינה ו/או עיר ואז לחץ חיפוש.",
+        "incompleteGeocodeResponse": "תשובת שרת לא מלאה — נסה שוב או הזז את המפה ידנית.",
+        "searchFailed": "לא ניתן לחפש את המיקום.",
+        "saveFailed": "לא ניתן לשמור"
+      },
+      "hints": {
+        "positioned": "מיקום: {{label}}",
+        "coordinatesUpdated": "קואורדינטות וזום עודכנו."
+      },
+      "prepaid": {
+        "title": "מערכת יתרה מראש לשליחים",
+        "description": "ניכוי מתבצע מדמי משלוח בלבד לאחר מסירת ההזמנה.",
+        "enable": "הפעלת מערכת יתרה מראש",
+        "defaultCommission": "אחוז עמלה ברירת מחדל",
+        "minBalance": "יתרה מינימלית לקבלת הזמנות",
+        "allowCustomCommission": "לאפשר עמלה מותאמת לכל שליח",
+        "allowManualOverride": "לאפשר עקיפת שיוך ידני כשהיתרה נמוכה"
+      },
+      "save": "שמירת הגדרות מפה"
+    }
+  },
+  "roles": {
+    "SUPER_ADMIN": "מנהל פלטפורמה",
+    "COMPANY_ADMIN": "מנהל חברה",
+    "BRANCH_MANAGER": "מנהל סניף (מושבת)",
+    "CAPTAIN_SUPERVISOR": "מפקח שליחים (מושבת)",
+    "STORE_ADMIN": "עובד חנות (מושבת)",
+    "STORE_USER": "עובד חנות (מושבת)",
+    "DISPATCHER": "משווק/מוקד (מושבת)",
+    "CAPTAIN": "שליח",
+    "CUSTOMER": "לקוח (מושבת)"
+  },
+  "captains": {
+    "page": {
+      "title": "שליחים",
+      "description": "ניהול חשבונות, הפעלה, עריכה ודוחות הזמנות של שליחים."
+    },
+    "guidance": {
+      "title": "הנחיה",
+      "description": "הפעלה קובעת אם לשליח יש גישה למערכת; זמינות מתעדכנת מאפליקציית השליח או מלוח הבקרה."
+    },
+    "stats": {
+      "deliveredOrders": "הזמנות שנמסרו",
+      "activeOrders": "הזמנות פעילות",
+      "lastLocation": "מיקום אחרון שנרשם",
+      "noLocation": "אין מיקום שנרשם."
+    },
+    "balanceAdjustment": {
+      "title": "התאמת יתרת שליח",
+      "captainLabel": "שליח: {{name}}",
+      "operationType": "סוג פעולה",
+      "increase": "הוספה (+)",
+      "decrease": "ניכוי (-)",
+      "amount": "סכום",
+      "note": "סיבת ההתאמה",
+      "notePlaceholder": "כתוב סיבה ברורה לביקורת מאוחרת",
+      "confirm": "אישור ההתאמה",
+      "errors": {
+        "invalidAmount": "הזן סכום תקין גדול מאפס.",
+        "noteRequired": "סיבת ההתאמה נדרשת."
+      }
+    },
+    "edit": {
+      "title": "עריכת שליח",
+      "description": "עדכון פרטי חשבון, רכב ואזור",
+      "branchManagerSupervisorHint": "כמפקח סניף, השיוך למפקח נשאר לחשבון שלך."
+    },
+    "fields": {
+      "captainName": "שם השליח",
+      "vehicleType": "סוג רכב",
+      "area": "אזור",
+      "areaCity": "אזור / עיר",
+      "branch": "סניף",
+      "supervisor": "מפקח"
+    },
+    "add": {
+      "title": "הוספת שליח",
+      "descriptionBranchManager": "יוצר שליח בטווח הסניף שלך ומקשר אוטומטית למפקח הסניף.",
+      "descriptionSuperAdmin": "מנהל-על: בחר חברה ואז סניף ואזור (באותה חברה בלבד).",
+      "descriptionDefault": "יוצר משתמש פלטפורמה עם תפקיד שליח וסיסמה ראשונית לחברה שלך.",
+      "selectCompany": "— בחר חברה —",
+      "selectBranch": "— בחר סניף —",
+      "loadingBranches": "טוען סניפים…",
+      "creating": "יוצר…",
+      "saveCaptain": "שמירת שליח",
+      "currentAccount": "החשבון הנוכחי שלך",
+      "supervisorAutoBind": "השליח יקושר למפקח הסניף: {{name}}.",
+      "errors": {
+        "chooseCompany": "בחר חברה תחילה (מנהל-על).",
+        "chooseBranch": "בחר את הסניף אליו השליך השליח.",
+        "noActiveBranch": "אין סניף פעיל לחברה זו. צור סניף לפני הוספת שליח."
+      }
+    },
+    "report": {
+      "title": "דוח שליח",
+      "titleWithName": "דוח — {{name}}",
+      "description": "הזמנות המקושרות לשליח זה (שיוך נוכחי או היסטוריית שיוכים). סינון לפי תאריך, חיפוש ואזור.",
+      "quickSummary": "סיכום מהיר",
+      "activeWithCaptain": "הזמנות פעילות עם השליח",
+      "filtersTitle": "סינון הזמנות",
+      "areaLabel": "אזור (מיקום הזמנה)",
+      "areaPlaceholder": "דוגמה: Riyadh",
+      "searchLabel": "חיפוש (מספר הזמנה, לקוח, טלפון, כתובת…)",
+      "loadingOrders": "טוען הזמנות…",
+      "emptyTitle": "אין הזמנות תואמות",
+      "emptyDescription": "נסה להרחיב את טווח התאריכים או להסיר מסננים.",
+      "paginationSummary": "סה\"כ {{total}} — עמוד {{page}} מתוך {{pages}}"
+    },
+    "roster": {
+      "listTitle": "רשימה",
+      "count": "{{count}} שליחים",
+      "loading": "טוען רשימת שליחים…",
+      "emptyTitle": "אין שליחים עדיין",
+      "emptyDescription": "התחל בהוספת שליח חדש כדי שיופיע כאן.",
+      "supervisorLabel": "מפקח השליח",
+      "remainingBalance": "יתרה נותרת ({{currency}})",
+      "commissionRate": "אחוז עמלה",
+      "defaultCommission": "ברירת מחדל",
+      "totalDeducted": "סה\"כ ניכויים ({{currency}})",
+      "chargeBalance": "טעינת יתרה",
+      "ledger": "היסטוריית תנועות",
+      "report": "דוח",
+      "chargeSuccess": "היתרה נטענה בהצלחה",
+      "chargeError": "לא ניתן לטעון יתרת שליח",
+      "adjustSuccess": "נרשמה התאמת יתרה",
+      "adjustError": "לא ניתן לבצע התאמת יתרה",
+      "enterValidAmount": "הזן סכום תקין",
+      "chargePrompt": "טעינת יתרה עבור {{name}}",
+      "optionalNote": "הערה אופציונלית",
+      "noLedgerTransactions": "אין תנועות יתרה עדיין",
+      "ledgerLoadError": "לא ניתן לטעון היסטוריית תנועות",
+      "afterTransaction": "אחרי תנועה",
+      "deleteConfirm": "למחוק את השליח \"{{name}}\" ואת חשבון ההתחברות שלו לצמיתות?\nהזמנות שנמסרו/בוטלו ינותקו מהשליח, ויימחקו היסטוריית שיוכים ומיקומים. לא ניתן למחוק אם יש הזמנות בתהליך."
+    }
+  },
+  "users": {
+    "page": {
+      "title": "משתמשים",
+      "description": "חשבונות גישה לפלטפורמה לפי תפקיד.",
+      "refreshList": "רענון רשימה",
+      "superAdminOnly": "יצירת משתמשים כללית זמינה רק ל-SUPER_ADMIN. תפקיד נוכחי: {{role}}.",
+      "unknownRole": "לא ידוע",
+      "filterTitle": "סינון לפי תפקיד",
+      "filterDescription": "סנן משתמשים לפי תפקיד. חשבונות לקוח כוללים שדות פרופיל משלוח אופציונליים.",
+      "roleLabel": "תפקיד"
+    },
+    "company": "חברה",
+    "card": {
+      "accountBadge": "חשבון משתמש",
+      "accountPhoneCaption": "טלפון חשבון (התחברות / יצירת קשר)",
+      "emailCaption": "אימייל",
+      "toggleDisable": "השבתת חשבון",
+      "toggleEnable": "הפעלת חשבון",
+      "toggleHint": "שינוי מצב הפעלה זמין למנהלים בלבד."
+    },
+    "addUser": {
+      "title": "הוספת משתמש",
+      "description": "יצירת חשבון פלטפורמה בטופס המפושט (מנהל פלטפורמה/מנהל חברה). שליחים נוצרים מדף השליחים.",
+      "fullName": "שם מלא",
+      "phone": "טלפון",
+      "role": "תפקיד",
+      "choose": "בחר…",
+      "pickCompany": "בחר חברה",
+      "createCompany": "יצירת חברה חדשה",
+      "noCompanies": "אין חברות עדיין. לחץ \"יצירת חברה חדשה\" כדי להוסיף, ואז בחר כאן.",
+      "emailOptional": "אימייל (אופציונלי)",
+      "password": "סיסמה",
+      "createdCompanyAdminTitle": "נוצר מנהל חברה: {{name}}",
+      "createdCompanyAdminBody": "קוד מנהל: {{code}} — קישור בקשות:",
+      "creating": "יוצר משתמש…",
+      "submit": "יצירת משתמש",
+      "errors": {
+        "fullName": "שם נדרש.",
+        "phone": "טלפון נדרש.",
+        "password": "סיסמה חייבת להיות לפחות 8 תווים.",
+        "role": "בחר תפקיד.",
+        "companyPick": "נא לבחור חברה",
+        "companyMissing": "החברה שנבחרה לא נמצאה. רענן את הרשימה או בחר חברה אחרת."
+      }
+    },
+    "createCompany": {
+      "success": "החברה נוצרה",
+      "error": "לא ניתן ליצור חברה",
+      "title": "יצירת חברה חדשה",
+      "description": "יוצר מזהה חברה אוטומטית. לאחר מכן אפשר לבחור אותה למנהל חברה מהרשימה.",
+      "nameLabel": "שם החברה",
+      "nameRequired": "נא להזין שם חברה",
+      "cancel": "ביטול",
+      "submit": "שמירת חברה",
+      "creating": "יוצר…"
+    },
+    "archiveSection": {
+      "title": "חברות — ארכיון בטוח (מנהל-על בלבד)",
+      "description": "תצוגה מקדימה של נתונים, ואז ארכיון החברה (השבה בלבד). ללא מחיקה קשה של משתמשים/הזמנות/ספרים.",
+      "loading": "טוען…",
+      "empty": "אין חברות ברשימה הפעילה.",
+      "archive": "ארכיון"
+    },
+    "archiveModal": {
+      "errors": {
+        "activeOrders": "לא ניתן לארכב את החברה כי יש הזמנות שלא הושלמו.",
+        "invalidPhrase": "ביטוי האישור שגוי. יש להקליד בדיוק: ARCHIVE COMPANY"
+      },
+      "genericError": "לא ניתן להשלים ארכיון",
+      "alreadyArchived": "החברה כבר בארכיון.",
+      "success": "החברה הועברה לארכיון (מוסתרת מהרשימה הפעילה) ללא מחיקת נתונים.",
+      "titleWithName": "ארכיון חברה: {{name}}",
+      "title": "ארכיון חברה",
+      "description": "זה ארכיון (השבתת חברה) — לא מחיקה קשה. משתמשים, הזמנות וארנקים לא נמחקים.",
+      "loadingPreview": "טוען תצוגה מקדימה…",
+      "previewError": "לא ניתן לטעון תצוגה מקדימה",
+      "alreadyDisabledInfo": "חברה זו כבר מושבתת (בארכיון); הפרטים מוצגים למידע בלבד.",
+      "counts": {
+        "users": "משתמשים",
+        "activeUsers": "משתמשים פעילים",
+        "captains": "שליחים",
+        "activeCaptains": "שליחים פעילים",
+        "stores": "חנויות",
+        "ordersTotal": "הזמנות (הכל)",
+        "ordersUnfinished": "הזמנות שלא הושלמו",
+        "walletAccounts": "חשבונות ארנק",
+        "ledgerEntries": "רשומות ספר",
+        "activityLogs": "יומני פעילות (משתמשי החברה)",
+        "companyWalletBalance": "יתרת ארנק החברה"
+      },
+      "riskNotesTitle": "הערות סיכון",
+      "confirmInstruction": "כדי להמשיך, הקלד בדיוק:",
+      "cancel": "ביטול",
+      "confirm": "אישור ארכיון",
+      "archiving": "מבצע ארכיון…"
+    },
+    "customerProfile": {
+      "sectionTitle": "נתוני לקוח",
+      "sectionBody": "אותם שדות כמו \"הזמנה חדשה\": כתובות, קישור מפה, אזור, תמחור מועדף, ואפשרות לנעוץ מפה. נשמר כהפניה לחשבון הלקוח.",
+      "rows": {
+        "pickup": "כתובת איסוף",
+        "dropoff": "כתובת מסירה",
+        "link": "קישור מיקום",
+        "area": "אזור",
+        "amount": "מחיר הזמנה (אופציונלי)",
+        "delivery": "דמי משלוח (אופציונלי)"
+      },
+      "coordsSaved": "קואורדינטות שנשמרו: {{lat}}, {{lng}}",
+      "coordsNone": "אין קואורדינטות מפה שנשמרו — השליח יכול לכוון מיקום מהאפליקציה מאוחר יותר.",
+      "edit": "עריכת נתונים",
+      "pickupLabel": "כתובת איסוף",
+      "dropoffLabel": "כתובת מסירה",
+      "linkLabel": "הדבקת קישור מיקום (אופציונלי)",
+      "linkHelp": "הדבק קישור שיתוף מגוגל מפות או כל קישור https שמציג את המסירה; נשמר לשליח עם ההזמנה בשימוש.",
+      "areaLabel": "אזור",
+      "amountLabel": "מחיר הזמנה (אופציונלי)",
+      "deliveryLabel": "דמי משלוח (אופציונלי)",
+      "mapNoneTitle": "לא נבחר מיקום במפה",
+      "mapNoneBody": "השליח יכול לאשר/לכוון מסירה באפליקציה לפי הצורך. כדי לנעוץ עכשיו, הפעל את האפשרות למטה.",
+      "mapToggleTitle": "הוספת מיקום מסירה במפה (אופציונלי)",
+      "mapToggleBody": "כשמופעל, לחץ על המפה כדי לנעוץ נקודת מסירה ולשמור קואורדינטות עם פרופיל הלקוח.",
+      "mapLabel": "מפת נעיצת מסירה",
+      "mapHint": "לחץ על המפה כדי לנעוץ מסירה.",
+      "cancel": "ביטול",
+      "save": "שמירה",
+      "errors": {
+        "linkScheme": "הקישור חייב להתחיל ב-http או https.",
+        "linkInvalid": "פורמט קישור לא תקין — הדבק קישור מלא.",
+        "amount": "מחיר הזמנה חייב להיות מספר חיובי.",
+        "delivery": "דמי משלוח חייבים להיות מספר חיובי.",
+        "mapRequired": "אפשרות המפה מופעלת — לחץ על המפה כדי לבחור קואורדינטות מסירה."
+      }
+    }
+  },
+  "stores": {
+    "page": {
+      "title": "חנויות",
+      "description": "מנוי חנות, מפקח משויך ואזור ראשי מהשרת.",
+      "listTitle": "רשימה",
+      "count": "{{count}} חנויות",
+      "loading": "טוען חנויות…",
+      "emptyTitle": "אין חנויות להצגה",
+      "emptyDescription": "נסה לרענן או לבדוק הרשאות/טווח.",
+      "noSupervisor": "אין מפקח",
+      "adjustSubscription": "התאמת מנוי/מפקח",
+      "viewOnly": "צפייה בלבד"
+    },
+    "table": {
+      "store": "חנות",
+      "phone": "טלפון",
+      "area": "אזור",
+      "subscription": "מנוי",
+      "supervisor": "מפקח",
+      "primaryRegion": "אזור ראשי",
+      "actions": "פעולות"
+    },
+    "modal": {
+      "title": "עדכון מנוי חנות",
+      "storeLabel": "חנות: {{name}}",
+      "subscriptionType": "סוג מנוי",
+      "publicOption": "PUBLIC — ציבורי",
+      "supervisorLinkedOption": "SUPERVISOR_LINKED — משויך למפקח",
+      "supervisor": "מפקח",
+      "branchManagerAutoLinkHint": "כמפקח סניף, החנות תקושר אוטומטית לחשבון שלך כאשר נבחר SUPERVISOR_LINKED.",
+      "supervisorRequired": "SUPERVISOR_LINKED דורש בחירת מפקח."
+    },
+    "subscription": {
+      "PUBLIC": "ציבורי",
+      "SUPERVISOR_LINKED": "משויך למפקח"
+    }
+  },
+  "nav": {
+    "home": "בית",
+    "newOrder": "הזמנה חדשה",
+    "distribution": "חלוקה",
+    "incubator": "מארח אינקובטור",
+    "orders": "הזמנות",
+    "captains": "שליחים",
+    "stores": "חנויות",
+    "users": "משתמשים",
+    "finance": "כספים",
+    "reports": "דוחות"
+  },
+  "statuses": {
+    "captain": {
+      "OFFLINE": "לא מקוון",
+      "AVAILABLE": "פנוי",
+      "BUSY": "תפוס",
+      "ON_DELIVERY": "במשלוח"
+    },
+    "store": {
+      "ACTIVE": "פעיל",
+      "INACTIVE": "מושבת"
+    }
+  },
+  "distribution": {
+    "page": {
+      "title": "לוח חלוקת הזמנות",
+      "description": "ניהול בזמן אמת של שליחים והזמנות על המפה."
+    },
+    "stats": {
+      "newOrders": "הזמנות חדשות",
+      "available": "פנויים",
+      "waiting": "ממתינים לתשובה",
+      "busy": "תפוסים",
+      "delayed": "הזמנות באיחור"
+    },
+    "rail": {
+      "distribution": "חלוקה",
+      "captains": "שליחים",
+      "orders": "הזמנות",
+      "map": "מפה",
+      "reports": "דוחות",
+      "settings": "הגדרות"
+    },
+    "filters": {
+      "available": "פנויים",
+      "waiting": "ממתינים לתשובה",
+      "busy": "תפוס",
+      "far": "רחוק"
+    },
+    "manualAssign": {
+      "noCompatibleCaptains": "אין בעמוד הנוכחי שליחים תואמים למפקח החנות עבור הזמנה זו."
+    },
+    "guard": {
+      "companyAdminOutOfScope": "השליח מחוץ לטווח החלוקה המותר להזמנה זו.",
+      "supervisorOutOfScope": "השליח מחוץ לטווח מפקח החנות להזמנה זו.",
+      "reassignOutOfScope": "השליח מחוץ לטווח המותר להזמנה (או בחר שליח תואם מהרשימה)."
+    },
+    "common": {
+      "selectedCaptain": "שליח נבחר"
+    },
+    "auto": {
+      "button": "חלוקה אוטומטית",
+      "pending": "מבצע חלוקה…",
+      "hint": "משייך את כל ההזמנות המוצגות לשליחים המתאימים",
+      "successTitle": "החלוקה האוטומטית הושלמה",
+      "successDetail": "שויכו {{assigned}} הזמנות, דולגו {{skipped}}.",
+      "error": "לא ניתן להריץ חלוקה אוטומטית"
+    },
+    "ordersPanel": {
+      "newOrdersCount": "הזמנות חדשות ({{count}})",
+      "manualAssign": "שיוך ידני",
+      "redistribute": "חלוקה מחדש",
+      "empty": "אין הזמנות להצגה."
+    },
+    "urgency": {
+      "urgent": "דחוף",
+      "delayed": "באיחור",
+      "normal": "רגיל"
+    },
+    "captainCard": {
+      "busy": "תפוס",
+      "waiting": "ממתין לתשובה",
+      "available": "פנוי",
+      "far": "רחוק",
+      "near": "בקרבת מקום"
+    },
+    "mapVisual": {
+      "WAITING_ACCEPT": "ממתין לקבלת השליח",
+      "ACTIVE_DELIVERY": "אושר / במשלוח",
+      "RECENT_REJECT": "דחייה אחרונה",
+      "AVAILABLE": "פנוי"
+    },
+    "map": {
+      "markerCountdown": "⏱ {{sec}}ש׳"
+    },
+    "quickDrop": {
+      "legendIntro": "צבעי הכרטיסים משקפים את מצב השליח במפה. מתחת לשם:",
+      "legendWaitingNote": "— הצעה שמחכה לתשובה, ו-",
+      "legendActiveNote": "— פעיל במשלוח.",
+      "receivingAssignment": "מקבל שיוך…",
+      "activeOrders": "הזמנות פעילות",
+      "boxWaitingTitle": "הזמנות ASSIGNED — ממתינות לקבלה/דחייה",
+      "boxActiveTitle": "מאושרות או במשלוח (פעילות)"
+    },
+    "vehicle": {
+      "BICYCLE": "אופניים",
+      "MOTORCYCLE": "אופנוע",
+      "CAR": "רכב",
+      "CARGO": "רכב מסירה / מוון"
+    },
+    "popup": {
+      "ordersLine": "<span style=\"font-weight:700\">פעילות:</span> {{active}} · <span style=\"font-weight:700\">ממתינות לתשובה:</span> {{waiting}}",
+      "location": "מיקום: {{at}}",
+      "acceptDeadline": "מועד אחרון לקבלה: {{sec}}ש׳",
+      "contact": "יצירת קשר",
+      "openContactMenu": "פתיחת אפשרויות יצירת קשר",
+      "callCaptain": "התקשרות לשליח",
+      "quickAlertMenuTitle": "התראה מהירה לשליח",
+      "presets": {
+        "review_order": "בדיקת הזמנה משויכת",
+        "contact_customer": "יצירת קשר עם הלקוח",
+        "speed_delivery": "זירוז משלוח",
+        "contact_dispatch": "יצירת קשר עם חמ״ל"
+      }
+    },
+    "quickAlert": {
+      "fetchCaptainFailed": "לא ניתן לטעון נתוני שליח לשליחת ההתראה",
+      "missingCaptainAccount": "לא ניתן לזהות חשבון שליח לשליחת ההתראה. ודא שהשרת מעודכן וש־GET ‎/api/v1/captains‎ עובד.",
+      "sent": "ההתראה נשלחה — היא תופיע בהתראות אפליקציית השליח",
+      "sendFailed": "שליחת ההתראה נכשלה"
+    },
+    "mapUi": {
+      "title": "מפת שליחים",
+      "hintWhileDragging": "שחררו את ההזמנה על סמל שליח לשיוך (גרירה ושחרור).",
+      "hintIdle": "המסגרת הצהובה המהבהבת = השליח שקיבל כרגע הצעה; היא עוברת אוטומטית אחרי דחייה או סיום מועד. גררו כרטיס הזמנה לשיוך ידני.",
+      "autoFollow": "מעקב אחרי (מעדכן מצלמה לפי נתונים חיים)",
+      "recenter": "מירכוז מחדש",
+      "legendWaiting": "ממתין לקבלה",
+      "legendActive": "אושר / במשלוח",
+      "legendRecentReject": "דחייה אחרונה",
+      "legendAvailable": "פנוי"
+    },
+    "offerCountdown": {
+      "title": "שניות נותרות עד מועד אחרון לקבלה/דחייה (מסונכרן מהשרת; תואם לאפליקציית השליח/מפה)",
+      "label": "הצעה",
+      "sec": "ש׳"
+    },
+    "google": {
+      "disabledTitle": "מפת Google אינה מופעלת",
+      "disabledBody": "הוסיפו מפתח Google Maps ב־VITE_GOOGLE_MAPS_API_KEY כדי לאפשר מעקב אמיתי. כשהמפה מופעלת, היא מוגבלת לישראל בלבד.",
+      "requiredFile": "קובץ נדרש:",
+      "format": "פורמט:",
+      "restart": "ואז הפעילו מחדש את שרת הפיתוח:",
+      "envFilePath": "apps/web/.env.local",
+      "envLineExample": "VITE_GOOGLE_MAPS_API_KEY=AIza...",
+      "devCommand": "npm run dev -w @captain/web",
+      "scriptLoadFailed": "טעינת סקריפט Google Maps נכשלה.",
+      "authFailed": "האימות ל-Google Maps JavaScript API נכשל.",
+      "loadFailedTitle": "לא ניתן לטעון Google Maps",
+      "loadFailedBody": "בדקו מפתח, הפעלת Maps JavaScript API, חיוב והגבלות referrer."
+    },
+    "draggable": {
+      "titleDragToMap": "גרור לשיוך במפה",
+      "titleAssigning": "שיוך בתהליך",
+      "queueTitle": "מיקום בתור ברשימת החלוקה — אסמכתא: {{number}}",
+      "queueLabel": "תור",
+      "assigning": "מבצע שיוך…",
+      "refPrefix": "אסמכתא:",
+      "currentCaptain": "שליח נוכחי",
+      "awaitingCaptainResponseSuffix": " (ממתין לאישור/דחייה)",
+      "autoReassignNote": "חלוקה אוטומטית: בדחייה או בסיום מועד ההצעה, ההזמנה עוברת אוטומטית לשליח אחר הזמין.",
+      "pendingToDragDrop": "אל {{name}} (גרירה ושחרור)",
+      "pendingToManual": "אל {{name}} (שיוך ידני)"
+    }
+  },
+  "finance": {
+    "page": {
+      "title": "כספים",
+      "descriptionSuperAdmin": "צפייה ביתרות ארנק ופעילות ספר. טעינת חנות או מפקח למעלה, או טעינת ארנק חברה בלשונית \"ארנק חברה\".",
+      "descriptionCompanyAdmin": "צפייה ביתרת ארנק החברה (קריאה בלבד), ארנק שליח, וטעינת מראש לשליח לפי הצורך — לא ניהול חנויות כאן.",
+      "descriptionDefault": "צפייה ביתרות ארנק ופעילות ספר.",
+      "refresh": "רענון"
+    },
+    "tools": {
+      "superAdminTitle": "כלים למנהל-על",
+      "superAdminDescription": "טעינת ארנק חנות או הוספה/ניכוי לארנק מפקח (מנהל סניף/מוקד) — POST עם Idempotency-Key.",
+      "storeTopUp": "טעינת ארנק חנות",
+      "supervisorAdjust": "התאמת יתרה",
+      "companyAdminTitle": "כלים למנהל חברה",
+      "companyAdminDescription": "טעינת יתרה מראש לשליח בתוך החברה שלך בלבד. נדרשים סכום וסיבה; idempotency נוצר אוטומטית. אין כאן טעינת ארנק חברה.",
+      "captainPrepaidTopUp": "טעינת יתרה מראש לשליח"
+    },
+    "tabs": {
+      "ariaLabel": "סוג ארנק",
+      "supervisor": "ארנק מפקח",
+      "store": "ארנק חנות",
+      "captain": "ארנק שליח",
+      "company": "ארנק חברה"
+    },
+    "balance": {
+      "title": "יתרה",
+      "subtitleSupervisor": "חשבון המפקח המקושר למשתמש החברה שלך.",
+      "subtitleStore": "יתרה של החנות שנבחרה.",
+      "subtitleCaptain": "יתרה של השליח שנבחר.",
+      "subtitleCompany": "ארנק תפעולי של החברה (הזמנות/תפעול) — קריאה בלבד.",
+      "companyPickerLabel": "חברה (מנהל-על)",
+      "topUpCompanyWallet": "טעינת ארנק חברה",
+      "companyAdminScopeNote": "מוצג רק ארנק החברה המקושר לחשבון שלך. לא ניתן לבחור חברה אחרת כאן.",
+      "storeLabel": "חנות",
+      "captainLabel": "שליח",
+      "captainPrepaidCta": "טעינת מראש לשליח",
+      "loadingCompany": "טוען יתרת חברה…",
+      "errors": {
+        "tenantScope": "אין טווח חברה בחשבון שלך (TENANT_SCOPE_REQUIRED). פנה להנהלה.",
+        "forbidden": "אין הרשאה לצפות ביתרת הארנק."
+      },
+      "readOnly": "קריאה בלבד",
+      "ledgerLastUpdated": "עדכון אחרון של הספר:",
+      "walletId": "מזהה ארנק:",
+      "recentMovementsTitle": "תנועות אחרונות (עד 5)",
+      "noRecentMovements": "אין תנועות שנרשמו עדיין בקבוצה האחרונה המוצגת.",
+      "noData": "אין נתונים",
+      "balanceCard": {
+        "loading": "טוען יתרה…",
+        "activeWallet": "ארנק פעיל",
+        "noWalletYet": "אין רשומת ארנק עדיין",
+        "existsNote": "מציג את היתרה המאוחסנת כפי שמופיעה בשרת.",
+        "missingNote": "ארנק עדיין לא נוצר — מוצג אפס עד לתנועה הראשונה."
+      }
+    },
+    "transfer": {
+      "cardTitle": "העברה לשליח",
+      "cardDescription": "העברה מארנק המפקח שלך לארנק שליח שאתה מפקח עליו. זמין למנהלי סניף ומוקד בלבד.",
+      "open": "העברה לשליח"
+    },
+    "ledger": {
+      "title": "פעילות ספר",
+      "companyNote": "לארנק החברה מוצגות התנועות האחרונות יחד עם כרטיס היתרה למעלה. דפדוף מלא עשוי לדרוש תמיכה נוספת מהשרת בהמשך.",
+      "genericTitle": "פעילות ספר",
+      "genericDescriptionEnabled": "החדש ביותר ראשון. טעינה נוספת מביאה את הקבוצה הבאה.",
+      "genericDescriptionDisabled": "אין מזהה ארנק עדיין — לא מתבצעת בקשה לספר.",
+      "emptyStateTitle": "אין ספר ארנק",
+      "emptyStateDescription": "לאחר יצירת הארנק והופעת המזהים, ניתן להציג כאן תנועות.",
+      "loadErrorFallback": "לא ניתן לטעון",
+      "emptyMovements": "אין תנועות עדיין."
+    },
+    "ledgerReport": {
+      "title": "דוח תנועות ארנק (לפי טווח)",
+      "descriptionServerUtc": "תנועות ספר בטווח זמן. הטווח נשלח לשרת כ-UTC (ISO-8601).",
+      "titleNoWallet": "אין מזהה ארנק",
+      "descriptionNoWallet": "צור תנועה ראשונה או המתן ליצירת ארנק כדי לאפשר דוח.",
+      "titleAlt": "דוח תנועות ארנק (לפי טווח)",
+      "descriptionAlt": "תנועות ספר בטווח בשרת (UTC). ברירת מחדל: 7 ימים אחרונים. זמנים בשדות לפי לוקאל הדפדפן.",
+      "fromLocal": "מ- (מקומי)",
+      "toLocal": "עד (מקומי)",
+      "apply": "החלה",
+      "exportCsv": "הורדת CSV",
+      "exporting": "מייצא…",
+      "inRange": "בטווח: {{total}} תנועות (מוצג: {{shown}})",
+      "inRangeDetail": "בטווח: {{total}} תנועות (מוצג: {{shown}}){{utcSuffix}}",
+      "emptyRange": "אין תנועות בטווח זה.",
+      "errors": {
+        "invalidDate": "תאריך/שעה לא תקינים.",
+        "order": "\"מ-\" חייב להיות לפני \"עד\", והטווח לא יעלה על 90 ימים."
+      },
+      "exportError": "לא ניתן לייצא",
+      "loadError": "לא ניתן לטעון"
+    },
+    "ledgerTable": {
+      "loading": "טוען ספר…",
+      "loadMore": "טען עוד",
+      "colTime": "זמן",
+      "colType": "סוג",
+      "colAmount": "סכום",
+      "colOrder": "הזמנה",
+      "colMetadata": "מטא-דאטה נוסף",
+      "orderIdTitle": "מזהה הזמנה במערכת"
+    },
+    "transactionTypes": {
+      "SUPER_ADMIN_TOP_UP": "טעינה (מנהל-על)",
+      "WALLET_TRANSFER": "העברה",
+      "ORDER_DELIVERED_STORE_DEBIT": "חיוב הזמנה (חנות)",
+      "ORDER_DELIVERED_CAPTAIN_DEDUCTION": "ניכוי מסירה (שליח)",
+      "ADJUSTMENT": "התאמה",
+      "CAPTAIN_PREPAID_CHARGE": "טעינת מראש לשליח",
+      "CAPTAIN_PREPAID_ADJUSTMENT": "התאמת מראש לשליח"
+    },
+    "csv": {
+      "SUPER_ADMIN_TOP_UP": "טעינה (מנהל)",
+      "WALLET_TRANSFER": "העברה",
+      "ORDER_DELIVERED_STORE_DEBIT": "חיוב הזמנה (חנות)",
+      "ORDER_DELIVERED_CAPTAIN_DEDUCTION": "ניכוי מסירה (שליח)",
+      "ADJUSTMENT": "התאמה",
+      "CAPTAIN_PREPAID_CHARGE": "טעינת מראש לשליח",
+      "CAPTAIN_PREPAID_ADJUSTMENT": "התאמת מראש לשליח"
+    },
+    "modals": {
+      "common": {
+        "idempotencyNotReady": "מפתח idempotency לא מוכן. סגור את החלון ופתח שוב.",
+        "positiveAmount": "הזן סכום חיובי (עד 2 ספרות אחרי הנקודה).",
+        "reasonRequired": "סיבה נדרשת.",
+        "genericCompleteError": "לא ניתן להשלים את הבקשה",
+        "forbidden403": "הפעולה אסורה (403).",
+        "close": "סגירה",
+        "cancel": "ביטול",
+        "amount": "סכום",
+        "amountIls": "סכום (ILS)",
+        "reason": "סיבה",
+        "decimalsHint": "עד 2 ספרות אחרי הנקודה.",
+        "sending": "שולח…",
+        "confirmTopUp": "אישור טעינה",
+        "confirmAdjust": "אישור התאמה",
+        "confirmTransfer": "אישור העברה",
+        "transferring": "מבצע העברה…"
+      },
+      "companyAdminCaptainPrepaid": {
+        "errors": {
+          "tenantScope": "אין טווח חברה בחשבון שלך (TENANT_SCOPE_REQUIRED). פנה להנהלה לקישור החשבון לחברה.",
+          "captainOutOfCompany": "אסור: השליח לא בחברה שלך.",
+          "reasonRequired": "סיבה נדרשת."
+        },
+        "pickCaptain": "בחר שליח.",
+        "title": "טעינת מראש לשליח (מנהל חברה)",
+        "description": "משתמש ב-`POST /finance/captains/.../prepaid-charge` — idempotency נוצר בפתיחת החלון. טווח החברה מגיע מהסשן בלבד.",
+        "successNoop": "אין שינוי חדש (בקשה כפולה עם אותו idempotency).",
+        "success": "הטעינה נרשמה ויתרת המראש עודכנה.",
+        "balanceLine": "יתרת מראש: {{value}}",
+        "captain": "שליח",
+        "reasonPlaceholder": "מוצג ביומן תנועות המראש",
+        "confirm": "אישור טעינה"
+      },
+      "companyAdminStoreTopup": {
+        "errors": {
+          "tenantScope": "אין טווח חברה בחשבון שלך (TENANT_SCOPE_REQUIRED). פנה להנהלה לקישור החשבון לחברה.",
+          "storeNotAllowed": "אסור: החנות לא בחברה שלך או שאין הרשאה."
+        },
+        "pickStore": "בחר חנות.",
+        "title": "טעינת ארנק חנות (מנהל חברה)",
+        "description": "נשלח אוטומטית מפתח idempotency בפתיחת החלון. טווח החברה מגיע מסשן ההתחברות — מזהה חברה לא נשלח בגוף הבקשה.",
+        "successNoop": "בוצע (כפילות בטוחה — אותו מפתח idempotency).",
+        "success": "ארנק החנות נטען.",
+        "balanceLine": "יתרה: {{value}}",
+        "store": "חנות",
+        "amountPlaceholder": "דוגמה: 100 או 10.50",
+        "reasonPlaceholder": "תיאור קצר שמופיע ברשומות",
+        "confirm": "אישור טעינה"
+      },
+      "superAdminCompanyTopup": {
+        "pickCompany": "בחר חברה מהלשונית תחילה.",
+        "chargeReasonRequired": "סיבת טעינה נדרשת.",
+        "title": "טעינת ארנק חברה",
+        "description": "למנהל-על בלבד. מפתח idempotency נוצר אוטומטית בפתיחת החלון ונשלח בגוף הבקשה.",
+        "successNoop": "בוצע (כפילות בטוחה — אותו מפתח idempotency בגוף).",
+        "success": "ארנק החברה נטען.",
+        "balanceDelta": "לפני: {{before}} ← אחרי: {{after}}",
+        "companyLine": "חברה: {{name}}",
+        "companyIdLine": "מזהה חברה:",
+        "noCompanySelected": "לא נבחרה חברה — סגור ובחר חברה מהלשונית תחילה.",
+        "currencyOptional": "מטבע (אופציונלי, 3 אותיות)",
+        "currencyPlaceholder": "SAR (ברירת מחדל של השרת אם ריק)",
+        "reasonPlaceholder": "למשל: מימון יתרת הזמנות",
+        "ledgerEntryLine": "ledger: {{id}}",
+        "confirm": "אישור טעינה"
+      },
+      "superAdminStoreTopup": {
+        "pickStore": "בחר חנות.",
+        "title": "טעינת ארנק חנות",
+        "description": "למנהל-על בלבד. נשלח מפתח idempotency אוטומטית בפתיחת החלון.",
+        "successNoop": "בוצע (כפילות בטוחה — אותו מפתח idempotency).",
+        "success": "יתרת הארנק נטענה.",
+        "newBalance": "יתרה חדשה: {{value}}",
+        "store": "חנות",
+        "amountPlaceholder": "למשל: 100 או 10.50",
+        "confirm": "אישור טעינה"
+      },
+      "superAdminSupervisorTopup": {
+        "roles": {
+          "BRANCH_MANAGER": "מנהל סניף",
+          "DISPATCHER": "מוקד"
+        },
+        "pickUser": "בחר משתמש (מנהל סניף או מוקד).",
+        "title": "התאמת יתרת מפקח",
+        "description": "למנהל-על — הוספה או ניכוי לארנק מפקח עם סיבה חובה.",
+        "successNoop": "בוצע (כפילות בטוחה — אותו מפתח idempotency).",
+        "success": "יתרת הארנק הותאמה.",
+        "newBalance": "יתרה חדשה: {{value}}",
+        "userLabel": "משתמש (מנהל סניף / מוקד)",
+        "noUsersHint": "אין משתמשים עם התפקידים האלה בעמוד הנוכחי (הגדל page size בהמשך אם צריך).",
+        "operationType": "סוג פעולה",
+        "add": "הוספת יתרה",
+        "deduct": "ניכוי יתרה",
+        "amountPlaceholder": "דוגמה: 100 או 10.50",
+        "decimalsServerCurrencyHint": "עד 2 ספרות אחרי הנקודה. בלי בחירת מטבע — ברירת מחדל מהשרת.",
+        "reasonPlaceholder": "סיבת התאמה",
+        "confirm": "אישור התאמה"
+      },
+      "supervisorCaptainTransfer": {
+        "pickCaptain": "בחר שליח המקושר אליך כמפקח.",
+        "title": "העברה לשליח",
+        "description": "למפקח בלבד. השליחים המוצגים הם אלה המקושרים אליך במערכת. מפתח idempotency נוצר בפתיחת החלון.",
+        "successNoop": "בוצע (כפילות בטוחה — אותו מפתח idempotency).",
+        "success": "ההעברה הושלמה.",
+        "balancesLine": "ארנק שלך: {{from}} — ארנק שליח: {{to}}",
+        "captainLabel": "שליח (מקושר אליך בלבד)",
+        "noCaptainsHint": "אין שליחים מקושרים לחשבון המפקח שלך — או שנה טווח רשימה מאוחר יותר.",
+        "amountPlaceholder": "דוגמה: 50 או 10.00",
+        "currencyHint": "בלי בחירת מטבע. דורש טווח חברה ויתרה מספקת.",
+        "confirm": "אישור העברה"
+      }
+    }
+  },
+  "login": {
+    "subtitle": "התחברות ללוח התפעול",
+    "identifierLabel": "אימייל או טלפון",
+    "identifierPlaceholder": "05xxxxxxxx או name@domain.com",
+    "passwordLabel": "סיסמה",
+    "submit": "התחברות",
+    "submitting": "מתחבר…",
+    "error": "לא ניתן להתחבר"
+  },
+  "orderStatus": {
+    "PENDING": "ממתין לחלוקה",
+    "CONFIRMED": "בהכנה",
+    "ASSIGNED": "שויך",
+    "ACCEPTED": "אושר",
+    "PICKED_UP": "נאסף",
+    "IN_TRANSIT": "במשלוח",
+    "DELIVERED": "נמסר",
+    "CANCELLED": "בוטל"
+  },
+  "storeSubscription": {
+    "PUBLIC": "ציבורי",
+    "SUPERVISOR_LINKED": "מקושר למפקח"
+  },
+  "financial": {
+    "orderAmount": "סכום ההזמנה",
+    "storeAmount": "סכום לחנות",
+    "deliveryFee": "דמי משלוח",
+    "deliveryFeeInferred": "דמי משלוח (מסיקים)",
+    "customerCollection": "סכום גבייה מהלקוח",
+    "profitCommission": "רווח / עמלה (הערכה)",
+    "sectionBreakdown": "פירוק כספי",
+    "paymentCod": "תשלום במזומן במסירה",
+    "paymentNotCod": "לא תשלום במזומן (או אפס ללקוח)"
+  },
+  "timestamps": {
+    "section": "חותמות זמן",
+    "assigned": "זמן שיוך",
+    "accepted": "זמן קבלה",
+    "pickup": "זמן איסוף",
+    "delivery": "זמן מסירה"
+  },
+  "orders": {
+    "page": {
+      "title": "הזמנות",
+      "description": "חיפוש וסינון, שיוך ידני והפצה מחדש לפי הרשאות."
+    },
+    "filter": {
+      "byPhone": "מחפש לפי טלפון לקוח.",
+      "byOrderNumber": "מחפש לפי מספר הזמנה (טקסט חלקי)."
+    },
+    "list": {
+      "filterTitle": "מסננים",
+      "filterDesc": "מספר הזמנה או טלפון לקוח, ולפי סטטוס",
+      "searchLabel": "חיפוש",
+      "searchPlaceholder": "מס׳ הזמנה או טלפון",
+      "statusLabel": "סטטוס",
+      "statusAll": "כל הסטטוסים",
+      "loading": "טוען הזמנות…",
+      "emptyTitle": "אין הזמנות תואמות",
+      "emptyDesc": "נסה לשנות חיפוש או סטטוס.",
+      "colOrder": "הזמנה",
+      "colFinancials": "כספים",
+      "colStatus": "סטטוס",
+      "colCustomer": "לקוח",
+      "colStore": "חנות",
+      "colArea": "אזור",
+      "colDate": "תאריך",
+      "colActions": "פעולות",
+      "supervisor": "מפקח חנות",
+      "noSupervisor": "אין",
+      "region": "אזור",
+      "detail": "פרטים",
+      "autoDist": "חלוקה אוטומטית",
+      "manualAssign": "שיוך ידני",
+      "redistribute": "חלוקה מחדש",
+      "reassign": "שיוך מחדש",
+      "cancelForCaptain": "ביטול עבור השליח",
+      "adminOverride": "עריכת סטטוס (מנהל)",
+      "removeFromList": "הסרה מהרשימה",
+      "adminModalTitle": "עריכת סטטוס — פעולת מנהל",
+      "adminModalDesc": "משנה סטטוס ישירות. בחירה בממתין/בהכנה/בוטל מבטלת שליח ומבטלת הצעות חלוקה תלויות.",
+      "adminOrderLine": "הזמנה {{number}} — סטטוס נוכחי: {{status}}",
+      "adminCurrentStatus": "סטטוס נוכחי",
+      "adminTargetLabel": "סטטוס יעד",
+      "adminConfirm": "אישור שינוי מנהל",
+      "archiveTitle": "להסיר הזמנה מהרשימה התפעולית?",
+      "archiveDesc": "השורה לא נמחקת מהמסד — מוסתרת מרשימות תפעול וסטטיסטיקות ברירת מחדל.",
+      "archiveConfirm": "אישור הסרה"
+    },
+    "detailModal": {
+      "title": "פרטי הזמנה",
+      "description": "תמונת מצב מהשרת.",
+      "orderLabel": "הזמנה",
+      "customerAddresses": "לקוח וכתובות",
+      "pickup": "איסוף",
+      "dropoff": "מסירה",
+      "subscriptionType": "סוג מנוי",
+      "supervisor": "מפקח חנות",
+      "noSupervisor": "אין מפקח",
+      "primaryRegion": "אזור ראשי",
+      "regionUnset": "לא מוגדר",
+      "empty": "אין נתוני הזמנה",
+      "emptyDesc": "ייתכן שההזמנה אינה זמינה או שהרשימה התעדכנה.",
+      "paymentLabel": "תשלום:",
+      "notesTitle": "הערות / הוראות"
+    }
+  },
+  "newOrder": {
+    "page": {
+      "title": "הזמנה חדשה",
+      "titleCompany": "הזמנת חברה חדשה",
+      "description": "הזנת פרטי הלקוח והכתובות. נעיצת מפה אופציונלית; אם לא הוגדרה, השליח יכול לאשר מיקום באפליקציה מאוחר יותר.",
+      "descriptionCompany": "נתוני הלקוח, נקודת איסוף, פרטי מסירה וסכומים. המפה אופציונלית; אם המיקום לא מנוצב כאן, השליח יאשרו מאוחר יותר."
+    },
+    "form": {
+      "customerName": "שם הלקוח",
+      "customerPhone": "טלפון הלקוח",
+      "pickupAddress": "כתובת איסוף",
+      "pickupAddressCompany": "נקודת איסוף",
+      "pickupPlaceholderCompany": "למשל: מחסן / חנות / כתובת איסוף",
+      "dropoffAddress": "כתובת מסירה",
+      "dropoffAddressCompany": "פרטי מסירה",
+      "locationLink": "הדבקת קישור מפה (אופציונלי)",
+      "locationLinkHelp": "הדבקו קישור שיתוף ממפות גוגל או קישור https אחר; נשמר בהערות לשליח.",
+      "area": "אזור",
+      "amount": "סכום לחנות",
+      "amountCompany": "סכום הזמנה",
+      "deliveryFee": "דמי משלוח",
+      "deliveryFeeHelp": "השאירו 0 ללא עלות. גביית הלקוח מחושבת בשרת ({{amountLabel}} + דמי משלוח).",
+      "mapNoneTitle": "לא נבחר מיקום על המפה",
+      "mapNoneBody": "השליח יכול לאשר או לכוון מסירה באפליקציה בעת קליטת ההזמנה. לנעיצה עכשיו — אפשרו את האפשרות למטה.",
+      "mapToggleTitle": "הוספת מסירה על המפה (אופציונלי)",
+      "mapToggleBody": "במצב מופעל, לחצו על המפה לנעיצה ולשליחת קואורדינטות.",
+      "mapLabel": "מפה לנעיצת מסירה",
+      "mapHint": "לחצו על המפה (דיוק 6 ספרות אחרי הנקודה).",
+      "notes": "הערות",
+      "back": "חזרה",
+      "creating": "יוצר…",
+      "submit": "יצירת הזמנה",
+      "errors": {
+        "customerName": "נדרש שם לקוח.",
+        "customerPhone": "נדרש טלפון לקוח.",
+        "phoneFormat": "פורמט טלפון לא תקין.",
+        "pickup": "נדרשת כתובת איסוף.",
+        "pickupCompany": "נדרשת נקודת איסוף.",
+        "dropoff": "נדרשת כתובת מסירה.",
+        "dropoffCompany": "נדרשים פרטי מסירה.",
+        "area": "האזור נדרש.",
+        "amount": "סכום לחנות חייב להיות גדול מאפס.",
+        "amountCompany": "סכום ההזמנה חייב להיות גדול מאפס.",
+        "deliveryFee": "דמי משלוח חייבים להיות 0 או מספר חיובי.",
+        "mapRequired": "הופעלה מפה — לחצו עליה לבחירת קואורדינטות מסירה.",
+        "linkScheme": "הקישור חייב להתחיל ב-http או https.",
+        "linkInvalid": "כתובת URL לא תקינה — הדבקו קישור מלא."
+      },
+      "notesLine": {
+        "locationLink": "[קישור מפה] {{link}}",
+        "noMap": "[ללא קואורדינטות — השליח יאשר מסירה באפליקציה לפי הצורך]"
+      }
+    }
+  },
+  "incubator": {
+    "page": {
+      "title": "אינקובטור (מארח)",
+      "description": "הדביקו טקשט, נתחו, בדקו את התצוגה המקדימה, ואז צרו הזמנה. מנורמל (AUTO) עם אותו חלוקה אוטומטית כמו ברשימת ההזמנות."
+    },
+    "raw": {
+      "label": "טקסט גולמי",
+      "placeholder": "הדביקו מידע על הזמנה…",
+      "aria": "טקסט הזמנה גולמי"
+    },
+    "actions": {
+      "parse": "ניתוח ומילוי תצוגה מקדימה",
+      "clearPreview": "נקות תצוגה מקדימה",
+      "cancel": "ביטול",
+      "create": "יצירת הזמנה",
+      "creating": "יוצר…"
+    },
+    "warningsTitle": "אזהרות ניתוח",
+    "preview": {
+      "title": "תצוגה מקדימה לפני היצירה",
+      "description": "נדרשים: שם, טלפון, איסוף, מסירה, אזור, מחיר. אחרי היצירה תבוצע חלוקה אוטומטית — מסלול השליחים הרגיל."
+    },
+    "missing": {
+      "label": "חסר/לא חוקי: "
+    },
+    "allRequiredOk": "שדות חובה מלאים — אפשר ליצור הזמנה.",
+    "parseLog": "יומן ניתוח (למפקח)",
+    "fieldLabels": {
+      "customerName": "שם הלקוח",
+      "customerPhone": "טלפון הלקוח",
+      "pickupAddress": "כתובת איסוף",
+      "dropoffAddress": "כתובת מסירה",
+      "area": "אזור",
+      "amount": "מחיר הזמנה",
+      "notes": "הערות (אופציונלי)"
+    },
+    "validation": {
+      "required": "נדרש.",
+      "phoneFormat": "פורמט שגוי.",
+      "amountPositive": "חייב להיות מספר חיובי."
+    },
+    "draft": {
+      "pickupFrom": "איסוף מ: {{name}}",
+      "notesOrderRef": "הזמנה (מעקב): {{value}}",
+      "notesStatusRef": "סטטוס (מעקב): {{value}}"
+    },
+    "notes": {
+      "rawBlockHeader": "--- אינקובטור: הדבקה מקורית ---",
+      "truncated": "…(קוצר)"
+    },
+    "parser": {
+      "sourceFieldLabels": {
+        "orderNumber": "מספר הזמנה",
+        "customerName": "שם לקוח",
+        "restaurantName": "מסעדה",
+        "orderStatus": "סטטוס הזמנה",
+        "area": "אזור",
+        "nearLocation": "ליד",
+        "phone": "טלפון",
+        "total": "סה״כ"
+      },
+      "fieldListSeparator": ", ",
+      "log": {
+        "emptyInput": "הקלט ריק — אין מה לנתח.",
+        "lineEmpty": "שורה {{line}}: ריק — דולג.",
+        "fieldRecognized": "שורה {{line}}: הושג שדה «{{field}}» מ«{{rawLabel}}».",
+        "unknownLabel": "שורה {{line}}: כותרת לא מוכרת «{{rawLabel}}» — לא נמצא שדה.",
+        "appendedUnknown": "→ ערך השורה צורף לשדה «{{field}}» (כותרת לא מוכרת).",
+        "lineMalformedLabeled": "שורה {{line}}: נראה כשדה אבל לא ניתח — {{snippet}}",
+        "lineContinuation": "שורה {{line}}: המשך — צורף ל«{{field}}».",
+        "lineUnlabeled": "שורה {{line}}: טקסט ללא כותרת וללא שדה קודם — דולג: {{snippet}}",
+        "phoneNormalizeFailed": "איחוד הטלפון נכשל — בדקו ערך.",
+        "totalParseFailed": "ניתוח הסכום מ«{{field}}» נכשל — בדקו ערך.",
+        "summaryMissing": "סיכום: אין ערכים: {{fields}}.",
+        "summaryAllFilled": "סיכום: בכל שדות המקור יש ערכים."
+      }
+    }
+  },
+  "reports": {
+    "pageTitle": "דוחות",
+    "pageDesc": "התאמות ספר חשבונות ארנק מול ספר prepaid, תנועות prepaid ועמלות מסירה.",
+    "rangeCardTitle": "טווח תאריכים",
+    "rangeCardDesc": "חל על כל הסעיפים. נשלח לשרת כ-UTC. ברירת מחדל 7 ימים אחרונים.",
+    "fromLocal": "מ- (מקומי)",
+    "toLocal": "עד (מקומי)",
+    "applyRange": "החלת טווח",
+    "rangeInvalid": "תאריך/שעה לא תקינים.",
+    "rangeOrder": "«מ-» חייב להיות לפני «עד».",
+    "rangeMax": "הטווח לא יעלה על 90 יום.",
+    "rangeError": {
+      "INVALID": "תאריך/שעה לא תקינים.",
+      "ORDER": "«מ-» חייב להיות לפני «עד».",
+      "MAX": "הטווח לא יעלה על 90 יום."
+    },
+    "reconTitle": "1 — סיכום התאמה (ספר ↔ prepaid)",
+    "reconDesc": "השוואת שורות ניכוי מסירה בארנק מול prepaid ותנועות חיוב/התאמה.",
+    "reconStatDeliverLedger": "שורות ניכוי מסירה (ארנק)",
+    "reconStatMissingPrepaid": "ללא משקפת prepaid",
+    "reconStatDeliverMismatch": "אי-התאמת סכום (מסירה)",
+    "reconStatChargeRows": "תנועות חיוב/התאמה (prepaid)",
+    "reconStatMissingLedger": "ללא שורת ספר תואמת",
+    "reconStatChargeMismatch": "אי-התאמת סכום (חיוב/התאמה)",
+    "reconStatOrphanLedger": "שורות ספר ללא CBT (בטווח)",
+    "loadingSummary": "טוען סיכום…",
+    "prepaidTitle": "2 — ספר prepaid של השליח",
+    "prepaidDesc": "רשומות captain_balance_transactions בטווח.",
+    "captain": "שליח",
+    "loadingPrepaid": "טוען ספר prepaid…",
+    "noCaptains": "אין שליחים להצגה או הרשאה חסרה.",
+    "prepaidEmpty": "אין תנועות בטווח",
+    "colTime": "זמן",
+    "colType": "סוג",
+    "colAmount": "סכום (₪ ILS)",
+    "colBalanceAfter": "יתרה אחרי (₪ ILS)",
+    "colOrder": "הזמנה",
+    "prev": "הקודם",
+    "next": "הבא",
+    "pageOf": "עמוד {{page}} — סה״כ {{total}}",
+    "deliveredTitle": "3 — מסירה ועמלה (מספר הארנק)",
+    "deliveredDesc": "שורות ORDER_DELIVERED_CAPTAIN_DEDUCTION להזמנות שנמסרו בטווח.",
+    "loadingDelivered": "טוען עמלות…",
+    "deliveredEmpty": "אין נתונים בטווח",
+    "colLineTime": "זמן שורה",
+    "colOrderNum": "הזמנה",
+    "colStore": "חנות",
+    "colCaptain": "שליח",
+    "colDeliveryFee": "דמי משלוח",
+    "colCommission": "עמלה",
+    "historyTitle": "4 — היסטוריית הזמנות (שליח/חנות)",
+    "historyBadge": "דוח חדש",
+    "historyDesc": "סינון לפי זמן יצירה בטווח UTC — לא זמן מסירה. טבלה, סיכומים ו-CSV משתמשים באותם מסננים.",
+    "filterCaptain": "שליח",
+    "filterStore": "חנות",
+    "filterStatus": "סטטוס",
+    "filterAll": "הכל",
+    "exportCsv": "ייצוא CSV",
+    "exporting": "מייצא…",
+    "exportSuccess": "ייצוא CSV הצליח.",
+    "exportFail": "ייצוא CSV נכשל",
+    "loadingHistory": "טוען היסטוריה…",
+    "totStore": "סה״כ סכום חנות (מסונן)",
+    "totDelivery": "סה״כ דמי משלוח",
+    "totCustomer": "סה״כ גבייה מלקוחות",
+    "totProfit": "סה״כ עמלה (הערכה)",
+    "historyEmpty": "אין נתונים בטווח",
+    "thOrderNumber": "מספר הזמנה",
+    "thStore": "חנות",
+    "thCaptain": "שליח",
+    "thCaptainPhone": "טלפון שליח",
+    "thCustomer": "לקוח",
+    "thStatus": "סטטוס",
+    "thAssigned": "זמן שיוך",
+    "thAccepted": "זמן קבלה",
+    "thPickup": "זמן איסוף",
+    "thDelivery": "זמן מסירה",
+    "thStoreAmount": "סכום חנות",
+    "thDeliveryFee": "דמי משלוח",
+    "thCustomerCollection": "גבייה מהלקוח",
+    "thProfit": "רווח / עמלה"
+  },
+  "csv": {
+    "orderNumber": "מספר הזמנה",
+    "storeName": "חנות",
+    "captainName": "שליח",
+    "captainPhone": "טלפון שליח",
+    "customerName": "לקוח",
+    "status": "סטטוס",
+    "assignedAt": "זמן שיוך",
+    "acceptedAt": "זמן קבלה",
+    "pickupAt": "זמן איסוף",
+    "deliveredAt": "זמן מסירה",
+    "storeAmount": "סכום חנות",
+    "deliveryFee": "דמי משלוח",
+    "customerCollectionAmount": "סכום גבייה מהלקוח",
+    "profitOrCommission": "רווח / עמלה",
+    "pickupNotRecordedCell": "לא נרשם"
+  },
+  "public": {
+    "loading": "טוען…",
+    "invalidLink": "קישור לא תקין.",
+    "loadError": "לא ניתן לטעון את עמוד הבקשה.",
+    "unavailableTitle": "העמוד אינו זמין",
+    "successTitle": "הבקשה התקבלה",
+    "successDesc": "תודה. מנהל ימשיך לטפל בבקשה.",
+    "newRequest": "בקשה חדשה",
+    "cardTitle": "בקשת משלוח",
+    "yourName": "שמך",
+    "phone": "מספר טלפון",
+    "pickupAddress": "כתובת איסוף",
+    "dropoffAddress": "כתובת מסירה",
+    "area": "אזור",
+    "zoneOptional": "אזור (אופציונלי)",
+    "zoneNone": "— ללא אזור ספציפי —",
+    "storeAmount": "סכום חנות (₪)",
+    "summaryCollectLabel": "סכום גבייה מהלקוח",
+    "deliveryFee": "דמי משלוח (₪)",
+    "previewCollect": "סכום גבייה מהלקוח (תצוגה מקדימה): {{amount}} ₪ (= סכום חנות + דמי משלוח). השרת מחשב את הסופי.",
+    "notes": "הערות",
+    "submit": "שליחת בקשה",
+    "submitting": "שולח…",
+    "submitError": "שליחת הבקשה נכשלה.",
+    "summaryTitle": "סיכום הזמנה",
+    "summaryNote": "הסכומים מחושבים גם בשרת כ-cash_collection = סכום חנות + דמי משלוח."
+  },
+  "manualAssign": {
+    "title": "שיוך ידני",
+    "description": "בחר שליח להזמנה {{order}}",
+    "captain": "שליח",
+    "choose": "— בחר —",
+    "sending": "שולח…",
+    "confirm": "אישור שיוך",
+    "reassignTitle": "שיוך מחדש",
+    "reassignDescription": "העברת הזמנה {{order}} לשליח אחר עם רישום.",
+    "supervisorPrefix": "מפקח",
+    "noSupervisorShort": "ללא מפקח"
+  }
+}
+

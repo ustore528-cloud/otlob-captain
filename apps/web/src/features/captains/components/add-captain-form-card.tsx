@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { UserPlus } from "lucide-react";
 import { useCreateCaptain, useBranches, useZones, useCompaniesForSuperAdmin } from "@/hooks";
 import { Button } from "@/components/ui/button";
@@ -7,15 +8,15 @@ import { FORM_CONTROL_CLASS } from "@/components/ui/form-field-classes";
 import { Input } from "@/components/ui/input";
 import { InlineAlert } from "@/components/ui/inline-alert";
 import { Label } from "@/components/ui/label";
+import {
+  CAPTAIN_VEHICLE_OPTIONS,
+  DEFAULT_CAPTAIN_VEHICLE_VALUE,
+} from "@/features/captains/lib/captain-vehicle-options";
 import { isBranchManagerRole, isSuperAdminRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 
-const VEHICLE_TYPES = ["بسكليت", "دراجه ناريه", "سيارة", "شحن نقل"] as const;
-const NO_BRANCHES_MSG = "لا يوجد فرع فعال لهذه الشركة. يجب إنشاء فرع أولًا قبل إضافة كابتن.";
-const CHOOSE_BRANCH_MSG = "اختر الفرع الذي سيتبع له الكابتن";
-const CHOOSE_COMPANY_MSG = "اختر الشركة أولًا (مشرف عام)";
-
 export function AddCaptainFormCard() {
+  const { t } = useTranslation();
   const create = useCreateCaptain();
   const role = useAuthStore((s) => s.user?.role);
   const me = useAuthStore((s) => s.user);
@@ -67,7 +68,7 @@ export function AddCaptainFormCard() {
   function onCreateCaptain(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (isSuper && !superCompanyId) {
-      setBranchError(CHOOSE_COMPANY_MSG);
+      setBranchError(t("captains.add.errors.chooseCompany"));
       return;
     }
     if (!isRegionSupervisor) {
@@ -75,7 +76,7 @@ export function AddCaptainFormCard() {
         return;
       }
       if (needBranchPicker && !branchId) {
-        setBranchError(CHOOSE_BRANCH_MSG);
+        setBranchError(t("captains.add.errors.chooseBranch"));
         return;
       }
       setBranchError("");
@@ -117,13 +118,13 @@ export function AddCaptainFormCard() {
       <CardHeader className="flex flex-row items-center gap-2 space-y-0">
         <UserPlus className="size-5 text-primary" />
         <div>
-          <CardTitle className="text-base">إضافة كابتن</CardTitle>
+          <CardTitle className="text-base">{t("captains.add.title")}</CardTitle>
           <CardDescription>
             {isRegionSupervisor
-              ? "يُنشئ كابتنًا مرتبطًا بنطاق فرعك. يُربَط تلقائياً بمشرف المنطقة."
+              ? t("captains.add.descriptionBranchManager")
               : isSuper
-                ? "مشرف عام: اختر الشركة ثم الفرع والمنطقة (ضمن نفس الشركة فقط)."
-                : "يُنشئ مستخدماً بدور كابتن وكلمة مرور أولية لشركتك."}
+                ? t("captains.add.descriptionSuperAdmin")
+                : t("captains.add.descriptionDefault")}
           </CardDescription>
         </div>
       </CardHeader>
@@ -131,9 +132,9 @@ export function AddCaptainFormCard() {
         <form className="grid gap-3 sm:grid-cols-2" onSubmit={onCreateCaptain}>
           {isSuper ? (
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="superCompanyId">الشركة</Label>
+              <Label htmlFor="superCompanyId">{t("users.company")}</Label>
               {companiesQ.isLoading ? (
-                <InlineAlert variant="info">جارٍ تحميل الشركات…</InlineAlert>
+                <InlineAlert variant="info">{t("common.loading")}</InlineAlert>
               ) : companiesQ.isError ? (
                 <InlineAlert variant="error">{(companiesQ.error as Error).message}</InlineAlert>
               ) : (
@@ -150,7 +151,7 @@ export function AddCaptainFormCard() {
                     setBranchError("");
                   }}
                 >
-                  <option value="">— اختر الشركة —</option>
+                  <option value="">{t("captains.add.selectCompany")}</option>
                   {(companiesQ.data ?? []).map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -161,19 +162,19 @@ export function AddCaptainFormCard() {
             </div>
           ) : null}
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="fullName">اسم الكابتن</Label>
+            <Label htmlFor="fullName">{t("captains.fields.captainName")}</Label>
             <Input id="fullName" name="fullName" required autoComplete="name" />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="phone">رقم الهاتف</Label>
+            <Label htmlFor="phone">{t("common.phone")}</Label>
             <Input id="phone" name="phone" required dir="ltr" className="text-left" autoComplete="tel" />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="email">البريد الإلكتروني (اختياري)</Label>
+            <Label htmlFor="email">{t("common.emailOptional")}</Label>
             <Input id="email" name="email" type="email" dir="ltr" className="text-left" autoComplete="email" />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="password">كلمة المرور</Label>
+            <Label htmlFor="password">{t("common.password")}</Label>
             <Input
               id="password"
               name="password"
@@ -185,7 +186,7 @@ export function AddCaptainFormCard() {
           </div>
           {showBranchField && branchesQ.isLoading ? (
             <InlineAlert variant="info" className="sm:col-span-2">
-              جارٍ تحميل الفروع…
+              {t("captains.add.loadingBranches")}
             </InlineAlert>
           ) : null}
           {showBranchField && branchesQ.isError ? (
@@ -195,14 +196,14 @@ export function AddCaptainFormCard() {
           ) : null}
           {showBranchField && !branchesQ.isLoading && branchesEnabled && activeBranchCount === 0 ? (
             <InlineAlert variant="warning" className="sm:col-span-2">
-              {NO_BRANCHES_MSG}
+              {t("captains.add.errors.noActiveBranch")}
             </InlineAlert>
           ) : null}
           {!isRegionSupervisor && zonesQ.data && zonesQ.data.length > 0 ? (
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="zoneId">المنطقة</Label>
+              <Label htmlFor="zoneId">{t("captains.fields.area")}</Label>
               <select id="zoneId" name="zoneId" className={FORM_CONTROL_CLASS} defaultValue="">
-                <option value="">— اختياري —</option>
+                <option value="">{t("common.optional")}</option>
                 {zonesQ.data.map((z) => (
                   <option key={z.id} value={z.id}>
                     {z.cityName} — {z.name}
@@ -213,7 +214,7 @@ export function AddCaptainFormCard() {
           ) : null}
           {showBranchField && !branchesQ.isLoading && needBranchPicker ? (
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="branchId">الفرع</Label>
+              <Label htmlFor="branchId">{t("captains.fields.branch")}</Label>
               <select
                 id="branchId"
                 name="branchId"
@@ -225,7 +226,7 @@ export function AddCaptainFormCard() {
                   if (ev.target.value) setBranchError("");
                 }}
               >
-                <option value="">— اختر الفرع —</option>
+                <option value="">{t("captains.add.selectBranch")}</option>
                 {branches.map((b) => (
                   <option key={b.id} value={b.id}>
                     {isSuper && branches.some((o) => o.companyId !== b.companyId)
@@ -238,22 +239,22 @@ export function AddCaptainFormCard() {
             </div>
           ) : null}
           <div className="grid gap-2">
-            <Label htmlFor="vehicleType">نوع المركبة</Label>
-            <select id="vehicleType" name="vehicleType" required className={FORM_CONTROL_CLASS} defaultValue="دراجه ناريه">
-              {VEHICLE_TYPES.map((v) => (
-                <option key={v} value={v}>
-                  {v}
+            <Label htmlFor="vehicleType">{t("captains.fields.vehicleType")}</Label>
+            <select id="vehicleType" name="vehicleType" required className={FORM_CONTROL_CLASS} defaultValue={DEFAULT_CAPTAIN_VEHICLE_VALUE}>
+              {CAPTAIN_VEHICLE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {t(o.labelKey)}
                 </option>
               ))}
             </select>
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="area">المنطقة / المدينة</Label>
+            <Label htmlFor="area">{t("captains.fields.areaCity")}</Label>
             <Input id="area" name="area" required autoComplete="address-level2" />
           </div>
           {isRegionSupervisor ? (
             <InlineAlert variant="info" className="sm:col-span-2">
-              سيتم ربط الكابتن بمشرف المنطقة: {me?.fullName ?? "حسابك الحالي"}.
+              {t("captains.add.supervisorAutoBind", { name: me?.fullName ?? t("captains.add.currentAccount") })}
             </InlineAlert>
           ) : null}
           {create.isError ? (
@@ -263,7 +264,7 @@ export function AddCaptainFormCard() {
           ) : null}
           <div className="sm:col-span-2">
             <Button type="submit" disabled={create.isPending || !canSubmitByBranch}>
-              {create.isPending ? "جارٍ الإنشاء…" : "حفظ الكابتن"}
+              {create.isPending ? t("captains.add.creating") : t("captains.add.saveCaptain")}
             </Button>
           </div>
         </form>

@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api/http";
+import i18n from "@/i18n/i18n";
 import * as activity from "@/lib/api/services/activity";
 import * as dashboardSettings from "@/lib/api/services/dashboard-settings";
 import * as finance from "@/lib/api/services/finance";
@@ -20,12 +21,12 @@ export type GetToken = () => string | null;
 
 function requireToken(getToken: GetToken): string {
   const t = getToken();
-  if (!t) throw new ApiError("يجب تسجيل الدخول", 401, "NO_TOKEN");
+  if (!t) throw new ApiError(String(i18n.t("apiErrors.loginRequired")), 401, "NO_TOKEN");
   return t;
 }
 
 /**
- * عميل REST مركزي — يقرأ التوكن ديناميكياً (جاهز لإعادة الاستخدام من تطبيق جوال لاحقاً).
+ * Central REST client — reads the token dynamically (reusable for a future mobile app).
  */
 export function createApiClient(getToken: GetToken) {
   const t = () => requireToken(getToken);
@@ -70,7 +71,31 @@ export function createApiClient(getToken: GetToken) {
     },
     companies: {
       list: () => companies.listCompanies(t()),
-      create: (body: { name: string }) => companies.createCompany(t(), body),
+      create: (body: {
+        name: string;
+        incubatorMotherName?: string;
+        deliveryPricing: {
+          deliveryPricingMode: "FIXED" | "DISTANCE_BASED";
+          fixedDeliveryFee?: number;
+          baseDeliveryFee?: number;
+          pricePerKm?: number;
+          deliveryFeeRoundingMode?: "CEIL" | "ROUND" | "NONE";
+        };
+      }) => companies.createCompany(t(), body),
+      update: (
+        companyId: string,
+        body: {
+          name?: string;
+          incubatorMotherName?: string | null;
+          deliveryPricing?: {
+            deliveryPricingMode: "FIXED" | "DISTANCE_BASED";
+            fixedDeliveryFee?: number;
+            baseDeliveryFee?: number;
+            pricePerKm?: number;
+            deliveryFeeRoundingMode?: "CEIL" | "ROUND" | "NONE";
+          };
+        },
+      ) => companies.updateCompany(t(), companyId, body),
       getDeletePreview: (companyId: string) => companies.getCompanyDeletePreview(t(), companyId),
       archive: (companyId: string, body: { confirmPhrase: string }) =>
         companies.archiveCompany(t(), companyId, body),
@@ -89,7 +114,7 @@ export function createApiClient(getToken: GetToken) {
         users.updateUserCustomerProfile(t(), id, body),
     },
     stores: {
-      list: (page?: number, pageSize?: number) => stores.listStores(t(), page, pageSize),
+      list: (page?: number, pageSize?: number, companyId?: string) => stores.listStores(t(), page, pageSize, companyId),
       update: (id: string, body: stores.UpdateStorePayload) => stores.updateStore(t(), id, body),
     },
     tracking: {

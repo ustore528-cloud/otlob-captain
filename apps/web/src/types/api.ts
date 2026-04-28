@@ -2,6 +2,13 @@ import type { OrderFinancialBreakdownDto } from "@captain/shared";
 
 /** أشكال JSON القادمة من API — مطابقة تقريبية لـ Prisma */
 
+/** Per-locale display copy from API (read-only). Does not replace stored fields on the server. */
+export type ValueTranslations = {
+  en?: string | null;
+  ar?: string | null;
+  he?: string | null;
+};
+
 export type StoreSubscriptionType = "PUBLIC" | "SUPERVISOR_LINKED";
 
 /** مشرف مرتبط بالمتجر أو الكابتن — نفس شكل الـ API */
@@ -13,6 +20,7 @@ export type StoreSupervisorUser = {
   role: string;
   companyId: string | null;
   branchId: string | null;
+  displayI18n?: { fullName?: ValueTranslations };
 } | null;
 
 export type StorePrimaryRegionSummary = {
@@ -20,6 +28,7 @@ export type StorePrimaryRegionSummary = {
   code: string;
   name: string;
   isActive: boolean;
+  displayI18n?: { name?: ValueTranslations };
 } | null;
 
 export type OrderStatus =
@@ -33,6 +42,21 @@ export type OrderStatus =
   | "CANCELLED";
 
 export type DistributionMode = "AUTO" | "MANUAL";
+
+/** Optional display-layer strings for dashboard orders (see `getLocalizedText` in i18n). */
+export type OrderDisplayI18n = {
+  customerName?: ValueTranslations;
+  storeName?: ValueTranslations;
+  storeArea?: ValueTranslations;
+  area?: ValueTranslations;
+  pickupAddress?: ValueTranslations;
+  dropoffAddress?: ValueTranslations;
+  notes?: ValueTranslations;
+  primaryRegionName?: ValueTranslations;
+  supervisorName?: ValueTranslations;
+  /** Overrides nested captain `user.displayI18n` when set. */
+  assignedCaptainName?: ValueTranslations;
+};
 
 export type OrderListItem = {
   id: string;
@@ -60,13 +84,21 @@ export type OrderListItem = {
     subscriptionType: StoreSubscriptionType;
     supervisorUser: StoreSupervisorUser;
     primaryRegion: StorePrimaryRegionSummary;
+    displayI18n?: {
+      name?: ValueTranslations;
+      area?: ValueTranslations;
+      address?: ValueTranslations;
+      primaryRegionName?: ValueTranslations;
+    };
   };
   assignedCaptain: null | {
     id: string;
-    user: { fullName: string; phone: string };
+    user: { fullName: string; phone: string; displayI18n?: { fullName?: ValueTranslations } };
+    displayI18n?: { area?: ValueTranslations };
   };
   /** نهاية مهلة قبول العرض الحالي (ASSIGNED + عرض PENDING) — ISO من الخادم */
   pendingOfferExpiresAt?: string | null;
+  displayI18n?: OrderDisplayI18n;
 };
 
 export type OrderAssignmentLogItem = {
@@ -117,10 +149,17 @@ export type OrderDetail = {
     subscriptionType: StoreSubscriptionType;
     supervisorUser: StoreSupervisorUser;
     primaryRegion: StorePrimaryRegionSummary;
+    displayI18n?: {
+      name?: ValueTranslations;
+      area?: ValueTranslations;
+      address?: ValueTranslations;
+      primaryRegionName?: ValueTranslations;
+    };
   };
   createdAt: string;
   updatedAt: string;
   assignmentLogs: OrderAssignmentLogItem[];
+  displayI18n?: OrderDisplayI18n;
 };
 
 export type Paginated<T> = { total: number; items: T[] };
@@ -139,8 +178,15 @@ export type CaptainListItem = {
   minimumBalanceToReceiveOrders?: string | null;
   lastBalanceUpdatedAt?: string | null;
   lastSeenAt: string | null;
-  user: { id: string; fullName: string; phone: string; isActive: boolean };
+  user: {
+    id: string;
+    fullName: string;
+    phone: string;
+    isActive: boolean;
+    displayI18n?: { fullName?: ValueTranslations };
+  };
   supervisorUser: StoreSupervisorUser;
+  displayI18n?: { area?: ValueTranslations };
 };
 
 export type CaptainPrepaidReadAlignment = {
@@ -215,6 +261,13 @@ export type DeliveredCommissionReportItem = {
   commissionAmount: string;
   currency: string;
   ledgerCreatedAt: string;
+  /** Optional localized labels for dimensions above (additive). */
+  displayI18n?: {
+    storeName?: ValueTranslations;
+    storeArea?: ValueTranslations;
+    captainName?: ValueTranslations;
+    captainArea?: ValueTranslations;
+  };
 };
 
 export type DeliveredCommissionReportPage = {
@@ -243,6 +296,12 @@ export type OrdersHistoryReportRow = {
   customerCollectionAmount: number;
   /** Commission estimate: delivery fee × captain commission % (same basis as list row). */
   profitOrCommission: number;
+  displayI18n?: {
+    storeName?: ValueTranslations;
+    storeArea?: ValueTranslations;
+    captainName?: ValueTranslations;
+    captainArea?: ValueTranslations;
+  };
 };
 
 export type OrdersHistoryReportPage = {
@@ -275,6 +334,12 @@ export type StoreListItem = {
   subscriptionType: StoreSubscriptionType;
   supervisorUser: StoreSupervisorUser;
   primaryRegion: StorePrimaryRegionSummary;
+  displayI18n?: {
+    name?: ValueTranslations;
+    area?: ValueTranslations;
+    address?: ValueTranslations;
+    primaryRegionName?: ValueTranslations;
+  };
 };
 
 export type UserListItem = {
@@ -287,6 +352,7 @@ export type UserListItem = {
   companyId?: string | null;
   branchId?: string | null;
   publicOwnerCode?: string | null;
+  displayI18n?: { fullName?: ValueTranslations };
   createdAt: string;
   updatedAt: string;
   /** حقول حساب عميل التطبيق (CUSTOMER) — مطابقة لحقول «طلب جديد» */
@@ -308,7 +374,8 @@ export type ActiveMapCaptain = {
   availabilityStatus: string;
   vehicleType: string;
   /** `user.id` يطابق `userId` عندما يكون الحقل العلوي غائباً (كاش قديم) */
-  user: { id?: string; fullName: string; phone: string };
+  user: { id?: string; fullName: string; phone: string; displayI18n?: { fullName?: ValueTranslations } };
+  displayI18n?: { area?: ValueTranslations };
   lastLocation: null | {
     captainId: string;
     latitude: number;
@@ -332,6 +399,7 @@ export type NotificationItem = {
   body: string;
   isRead: boolean;
   createdAt: string;
+  displayI18n?: { title?: ValueTranslations; body?: ValueTranslations };
 };
 
 export type ActivityItem = {

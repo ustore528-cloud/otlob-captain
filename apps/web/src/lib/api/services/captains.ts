@@ -68,6 +68,7 @@ export type CaptainOrdersQuery = {
   q?: string;
   area?: string;
   status?: string;
+  currentOnly?: boolean;
 };
 
 export function listCaptainOrders(token: string, captainId: string, q: CaptainOrdersQuery = {}) {
@@ -79,6 +80,7 @@ export function listCaptainOrders(token: string, captainId: string, q: CaptainOr
   if (q.q) p.set("q", q.q);
   if (q.area) p.set("area", q.area);
   if (q.status) p.set("status", q.status);
+  if (q.currentOnly !== undefined) p.set("currentOnly", String(q.currentOnly));
   return apiFetch<Paginated<OrderListItem>>(`${paths.captains.orders(captainId)}?${p.toString()}`, { token });
 }
 

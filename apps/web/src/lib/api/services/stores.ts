@@ -27,8 +27,14 @@ function normalizeStoresListPayload(raw: unknown): Paginated<StoreListItem> {
   return { total: 0, items: [] };
 }
 
-export async function listStores(token: string, page = 1, pageSize = 100): Promise<Paginated<StoreListItem>> {
+export async function listStores(
+  token: string,
+  page = 1,
+  pageSize = 100,
+  companyId?: string,
+): Promise<Paginated<StoreListItem>> {
   const p = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (companyId) p.set("companyId", companyId);
   const raw = await apiFetch<unknown>(`${paths.stores.root}?${p.toString()}`, { token });
   return normalizeStoresListPayload(raw);
 }

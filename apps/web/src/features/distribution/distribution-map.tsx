@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ActiveMapCaptain } from "@/types/api";
 import {
   buildCaptainPopupElement,
   DISPATCH_QUICK_ALERT_TYPE,
-  QUICK_ALERT_PRESET_COPY,
+  QUICK_ALERT_PRESET_API_COPY,
   type QuickAlertPreset,
 } from "@/features/distribution/build-captain-map-popup";
 import { assignmentOfferSecondsLeft, captainMapVisual } from "@/features/distribution/captain-map-visual";
 import { clampLatLng, clampLatLngPair, ISRAEL_LEAFLET_MAX_BOUNDS } from "@/lib/israel-map-bounds";
 import { api } from "@/lib/api/singleton";
+import { isRtlLang } from "@/i18n/i18n";
+import i18n from "@/i18n/i18n";
 import { toast, toastApiError, toastSuccess } from "@/lib/toast";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -129,6 +132,8 @@ export function DistributionMap({
   dropAllow,
   onDropRejectedByGuard,
 }: DistributionMapProps) {
+  const { t } = useTranslation();
+  const rtl = isRtlLang(i18n.resolvedLanguage ?? i18n.language);
   /** User panned/zoomed — block automatic camera from polling/countdown/settings. */
   const [userHasMovedMap, setUserHasMovedMap] = useState(false);
   /** When true, each captains update refits bounds (optional live follow). */
@@ -178,7 +183,7 @@ export function DistributionMap({
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error("[otlob:distribution:quickAlert] GET /captains/:id failed", e);
-        toastApiError(e, "تعذّر جلب بيانات الكابتن لإرسال التنبيه");
+        toastApiError(e, t("distribution.quickAlert.fetchCaptainFailed"));
         return;
       }
     }
@@ -188,13 +193,11 @@ export function DistributionMap({
       console.error("[otlob:distribution:quickAlert] early exit: no target user id after map + fallback", {
         captainId: c.id,
       });
-      toast.error(
-        "لا يمكن تحديد حساب الكابتن لإرسال التنبيه. تأكد أن الخادم محدّث وأن الطلب GET /api/v1/captains يعمل.",
-      );
+      toast.error(t("distribution.quickAlert.missingCaptainAccount"));
       return;
     }
 
-    const copy = QUICK_ALERT_PRESET_COPY[preset];
+    const copy = QUICK_ALERT_PRESET_API_COPY[preset];
     const payload = {
       userId: targetUserId,
       type: DISPATCH_QUICK_ALERT_TYPE,
@@ -208,13 +211,13 @@ export function DistributionMap({
       const created = await api.notifications.create(payload);
       // eslint-disable-next-line no-console
       console.info("[otlob:distribution:quickAlert] notification created", created);
-      toastSuccess("تم إرسال التنبيه — سيظهر في إشعارات تطبيق الكابتن");
+      toastSuccess(t("distribution.quickAlert.sent"));
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error("[otlob:distribution:quickAlert] POST failed", e);
-      toastApiError(e, "تعذّر إرسال التنبيه");
+      toastApiError(e, t("distribution.quickAlert.sendFailed"));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -315,6 +318,7 @@ export function DistributionMap({
       const loc = c.lastLocation;
       if (!loc) continue;
       const vis = captainMapVisual(c);
+      const visLabel = i18n.t(`distribution.mapVisual.${vis.labelKey}`).replace(/"/g, "&quot;");
       const glyph = vehicleGlyph(c.vehicleType);
       const pulseClass = vis.pulse ? "distribution-map-marker--pulse" : "";
       const secLeft =
@@ -323,11 +327,13 @@ export function DistributionMap({
           : null;
       const countdownLine =
         secLeft !== null
-          ? `<div dir="ltr" style="margin-top:3px;font-size:11px;font-weight:700;color:#713f12;letter-spacing:0.02em;white-space:nowrap;text-align:center">⏱ ${secLeft} ث</div>`
+          ? `<div dir="ltr" style="margin-top:3px;font-size:11px;font-weight:700;color:#713f12;letter-spacing:0.02em;white-space:nowrap;text-align:center">${i18n
+              .t("distribution.map.markerCountdown", { sec: secLeft })
+              .replace(/"/g, "&quot;")}</div>`
           : "";
 
       const html = `
-        <div style="display:flex;flex-direction:column;align-items:center;min-width:46px" title="${vis.label.replace(/"/g, "&quot;")}">
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:46px" title="${visLabel}">
         <div class="distribution-map-marker ${pulseClass}" style="
           width:34px;height:34px;border-radius:9999px;
           border:2px solid ${vis.border};background:${vis.bg};
@@ -359,7 +365,7 @@ export function DistributionMap({
       });
       if (cleanup) cleanupsRef.current.push(cleanup);
     }
-  }, [captains, onAssignDrop, dropAllow, onDropRejectedByGuard, draggingOrderId]);
+  }, [captains, onAssignDrop, dropAllow, onDropRejectedByGuard, draggingOrderId, i18n.language]);
 
   /**
    * بطاقة واحدة على الخريطة (ليست على العلامة) — لا تُزال عند `clearLayers`.
@@ -490,14 +496,12 @@ export function DistributionMap({
       `}</style>
       <div className="flex flex-col gap-2 border-b border-card-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold">خريطة الكباتن</p>
+          <p className="text-sm font-semibold">{t("distribution.mapUi.title")}</p>
           <p className="text-xs text-muted">
-            {draggingOrderId
-              ? "أفلت الطلب على أيقونة الكابتن للتعيين (سحب وإفلات)"
-              : "الإطار الأصفر النابض = الكابتن الذي يعرض عليه الطلب الآن؛ ينتقل تلقائياً بعد الرفض أو انتهاء المهلة. اسحب بطاقة الطلب للتعيين اليدوي."}
+            {draggingOrderId ? t("distribution.mapUi.hintWhileDragging") : t("distribution.mapUi.hintIdle")}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 [direction:rtl]">
+        <div className={`flex flex-wrap items-center gap-2 ${rtl ? "[direction:rtl]" : "[direction:ltr]"}`}>
           <label className="flex cursor-pointer items-center gap-2 text-[11px] text-muted">
             <input
               type="checkbox"
@@ -509,29 +513,37 @@ export function DistributionMap({
                 if (on) setUserHasMovedMap(false);
               }}
             />
-            تتبع تلقائي (تحديث الكاميرا مع البيانات)
+            {t("distribution.mapUi.autoFollow")}
           </label>
           <button
             type="button"
             className="rounded-md border border-card-border bg-background px-2.5 py-1.5 text-xs font-semibold text-foreground shadow-sm hover:bg-muted/50"
             onClick={handleRecenter}
           >
-            إعادة التمركز
+            {t("distribution.mapUi.recenter")}
           </button>
         </div>
       </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1 border-b border-card-border bg-card/80 px-4 py-2 text-[11px] text-muted [direction:rtl]">
+      <div
+        className={`flex flex-wrap gap-x-3 gap-y-1 border-b border-card-border bg-card/80 px-4 py-2 text-[11px] text-muted ${
+          rtl ? "[direction:rtl]" : "[direction:ltr]"
+        }`}
+      >
         <span>
-          <span className="inline-block h-2 w-2 rounded-full bg-[#ca8a04] align-middle ltr:mr-1 rtl:ml-1" /> بانتظار قبول
+          <span className="inline-block h-2 w-2 rounded-full bg-[#ca8a04] align-middle ltr:mr-1 rtl:ml-1" />{" "}
+          {t("distribution.mapUi.legendWaiting")}
         </span>
         <span>
-          <span className="inline-block h-2 w-2 rounded-full bg-[#15803d] align-middle ltr:mr-1 rtl:ml-1" /> مقبول / توصيل
+          <span className="inline-block h-2 w-2 rounded-full bg-[#15803d] align-middle ltr:mr-1 rtl:ml-1" />{" "}
+          {t("distribution.mapUi.legendActive")}
         </span>
         <span>
-          <span className="inline-block h-2 w-2 rounded-full bg-[#b91c1c] align-middle ltr:mr-1 rtl:ml-1" /> رفض حديث
+          <span className="inline-block h-2 w-2 rounded-full bg-[#b91c1c] align-middle ltr:mr-1 rtl:ml-1" />{" "}
+          {t("distribution.mapUi.legendRecentReject")}
         </span>
         <span>
-          <span className="inline-block h-2 w-2 rounded-full bg-[#2563eb] align-middle ltr:mr-1 rtl:ml-1" /> متاح
+          <span className="inline-block h-2 w-2 rounded-full bg-[#2563eb] align-middle ltr:mr-1 rtl:ml-1" />{" "}
+          {t("distribution.mapUi.legendAvailable")}
         </span>
       </div>
       <div ref={hostRef} className="h-[calc(100vh-280px)] min-h-[360px] w-full" />

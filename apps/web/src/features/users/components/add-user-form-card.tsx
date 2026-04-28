@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useCreateUser, useCompaniesForSuperAdmin } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { USER_ROLE_CREATE_OPTIONS } from "@/features/users/constants";
 import { CreateCompanyModal } from "./create-company-modal";
 
 export function AddUserFormCard() {
+  const { t } = useTranslation();
   const create = useCreateUser();
   const companiesQ = useCompaniesForSuperAdmin();
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -34,17 +36,17 @@ export function AddUserFormCard() {
     const emailRaw = String(form.get("email") ?? "").trim();
 
     const next: Record<string, string> = {};
-    if (!fullName) next.fullName = "الاسم مطلوب.";
-    if (!phone) next.phone = "الهاتف مطلوب.";
-    if (password.length < 8) next.password = "كلمة المرور 8 أحرف على الأقل.";
-    if (!roleVal) next.role = "اختر الدور.";
+    if (!fullName) next.fullName = t("users.addUser.errors.fullName");
+    if (!phone) next.phone = t("users.addUser.errors.phone");
+    if (password.length < 8) next.password = t("users.addUser.errors.password");
+    if (!roleVal) next.role = t("users.addUser.errors.role");
     if (roleVal === "COMPANY_ADMIN") {
       if (!selectedCompanyId) {
-        next.companyId = "يرجى اختيار الشركة";
+        next.companyId = t("users.addUser.errors.companyPick");
       } else {
         const exists = (companiesQ.data ?? []).some((c) => c.id === selectedCompanyId);
         if (!exists) {
-          next.companyId = "الشركة المختارة غير موجودة. حدّث القائمة أو اختر شركة أخرى.";
+          next.companyId = t("users.addUser.errors.companyMissing");
         }
       }
     }
@@ -82,25 +84,23 @@ export function AddUserFormCard() {
   return (
     <Card className="border-card-border border-dashed shadow-sm">
       <CardHeader>
-        <CardTitle className="text-base">إضافة مستخدم</CardTitle>
-        <CardDescription>
-          لإنشاء حساب منصة ضمن النموذج المبسّط الحالي (مدير منصة/مدير شركة). إنشاء الكباتن يتم من صفحة الكباتن.
-        </CardDescription>
+        <CardTitle className="text-base">{t("users.addUser.title")}</CardTitle>
+        <CardDescription>{t("users.addUser.description")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form className="grid gap-3 sm:grid-cols-2" onSubmit={onSubmit} noValidate>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="add-fullName">الاسم الكامل</Label>
+            <Label htmlFor="add-fullName">{t("users.addUser.fullName")}</Label>
             <Input id="add-fullName" name="fullName" maxLength={200} className={err("fullName")} />
             {errors.fullName ? <p className="text-xs text-red-600">{errors.fullName}</p> : null}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-phone">الهاتف</Label>
+            <Label htmlFor="add-phone">{t("users.addUser.phone")}</Label>
             <Input id="add-phone" name="phone" dir="ltr" className={`text-left ${err("phone")}`} />
             {errors.phone ? <p className="text-xs text-red-600">{errors.phone}</p> : null}
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="add-role">الدور</Label>
+            <Label htmlFor="add-role">{t("users.addUser.role")}</Label>
             <select
               id="add-role"
               name="role"
@@ -109,7 +109,7 @@ export function AddUserFormCard() {
               onChange={(ev) => setRole(ev.target.value)}
             >
               <option value="" disabled>
-                اختر…
+                {t("users.addUser.choose")}
               </option>
               {USER_ROLE_CREATE_OPTIONS.map((r) => (
                 <option key={r} value={r}>
@@ -123,7 +123,7 @@ export function AddUserFormCard() {
             <div className="grid gap-2 sm:col-span-2">
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <Label htmlFor="add-company" className="!mb-0">
-                  الشركة
+                  {t("users.company")}
                 </Label>
                 <Button
                   type="button"
@@ -132,7 +132,7 @@ export function AddUserFormCard() {
                   className="h-8"
                   onClick={() => setCreateCompanyOpen(true)}
                 >
-                  إنشاء شركة جديدة
+                  {t("users.addUser.createCompany")}
                 </Button>
               </div>
               <select
@@ -141,11 +141,11 @@ export function AddUserFormCard() {
                 value={selectedCompanyId}
                 onChange={(ev) => setSelectedCompanyId(ev.target.value)}
                 disabled={companiesQ.isLoading}
-                aria-label="الشركة"
+                aria-label={t("users.addUser.pickCompany")}
                 aria-invalid={Boolean(errors.companyId)}
               >
                 <option value="" disabled>
-                  اختر الشركة
+                  {t("users.addUser.pickCompany")}
                 </option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -158,26 +158,24 @@ export function AddUserFormCard() {
               ) : null}
               {errors.companyId ? <p className="text-xs text-red-600">{errors.companyId}</p> : null}
               {!companiesQ.isLoading && companies.length === 0 && !companiesQ.isError ? (
-                <InlineAlert variant="info">
-                  لا توجد شركات بعد. اضغط &quot;إنشاء شركة جديدة&quot; لإضافة شركة ثم اخترها هنا.
-                </InlineAlert>
+                <InlineAlert variant="info">{t("users.addUser.noCompanies")}</InlineAlert>
               ) : null}
             </div>
           ) : null}
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="add-email">البريد (اختياري)</Label>
+            <Label htmlFor="add-email">{t("users.addUser.emailOptional")}</Label>
             <Input id="add-email" name="email" type="email" dir="ltr" className="text-left" />
           </div>
           <div className="grid gap-2 sm:col-span-2">
-            <Label htmlFor="add-password">كلمة المرور</Label>
+            <Label htmlFor="add-password">{t("users.addUser.password")}</Label>
             <Input id="add-password" name="password" type="password" autoComplete="new-password" className={err("password")} />
             {errors.password ? <p className="text-xs text-red-600">{errors.password}</p> : null}
           </div>
           {lastCreated ? (
             <InlineAlert variant="info" className="sm:col-span-2">
-              <p className="font-medium">تم إنشاء مدير الشركة: {lastCreated.fullName}</p>
+              <p className="font-medium">{t("users.addUser.createdCompanyAdminTitle", { name: lastCreated.fullName })}</p>
               <p className="mt-1 text-sm">
-                كود المدير: <span className="font-mono">{lastCreated.code}</span> — رابط الطلبات:{" "}
+                {t("users.addUser.createdCompanyAdminBody", { code: lastCreated.code })}{" "}
                 <span className="font-mono break-all">
                   {typeof window !== "undefined"
                     ? `${window.location.origin}/request/${encodeURIComponent(lastCreated.code)}`
@@ -188,7 +186,7 @@ export function AddUserFormCard() {
           ) : null}
           <div className="sm:col-span-2">
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? "جارٍ الحفظ…" : "إنشاء المستخدم"}
+              {create.isPending ? t("users.addUser.creating") : t("users.addUser.submit")}
             </Button>
           </div>
         </form>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueries } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,13 +10,14 @@ import { ApiError } from "@/lib/api/http";
 import { queryClient } from "@/lib/query-client";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { UserListItem } from "@/types/api";
+import { userListItemNameDisplay } from "@/i18n/localize-entity-labels";
 
 const AMOUNT_RE = /^\d+(\.\d{1,2})?$/;
 
 function normalizeAmount(s: string): string | null {
-  const t = s.trim();
-  if (!AMOUNT_RE.test(t)) return null;
-  const n = Number(t);
+  const raw = s.trim();
+  if (!AMOUNT_RE.test(raw)) return null;
+  const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return null;
   return n.toFixed(2);
 }
@@ -25,7 +27,7 @@ const USERS_PAGE = { page: 1, pageSize: 200 } as const;
 type Props = {
   open: boolean;
   onClose: () => void;
-  /** يُحدّد المستخدم المختار عند فتح النافذة إن وُجد في القائمة. */
+  /** Default user when opening the modal, if present in the list. */
   defaultUserId: string | null;
 };
 
@@ -44,17 +46,19 @@ function mergeSupervisorCandidates(
     seen.add(u.id);
     out.push(u);
   }
-  out.sort((a, b) => a.fullName.localeCompare(b.fullName, "ar"));
+  out.sort((a, b) => a.fullName.localeCompare(b.fullName, "en"));
   return out;
 }
 
-function roleLabel(role: string): string {
-  if (role === "BRANCH_MANAGER") return "مشرف فرع";
-  if (role === "DISPATCHER") return "موزع";
+function roleLabel(role: string, t: (k: string) => string): string {
+  if (role === "BRANCH_MANAGER") return t("finance.modals.superAdminSupervisorTopup.roles.BRANCH_MANAGER");
+  if (role === "DISPATCHER") return t("finance.modals.superAdminSupervisorTopup.roles.DISPATCHER");
   return role;
 }
 
 export function SuperAdminSupervisorTopupModal({ open, onClose, defaultUserId }: Props) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const [mode, setMode] = useState<Mode>("increase");
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
@@ -124,20 +128,20 @@ export function SuperAdminSupervisorTopupModal({ open, onClose, defaultUserId }:
     e.preventDefault();
     setFormError(null);
     if (!userId) {
-      setFormError("اختر مستخدماً (مشرف فرع أو موزع).");
+      setFormError(t("finance.modals.superAdminSupervisorTopup.pickUser"));
       return;
     }
     if (!idempotencyKey) {
-      setFormError("مفتاح idempotency غير جاهز. أغلق النافذة وافتحها مرة أخرى.");
+      setFormError(t("finance.modals.common.idempotencyNotReady"));
       return;
     }
     const amount = normalizeAmount(amountInput);
     if (!amount) {
-      setFormError("أدخل مبلغاً موجباً (حتى رقمين عشريين).");
+      setFormError(t("finance.modals.common.positiveAmount"));
       return;
     }
     if (!note.trim()) {
-      setFormError("السبب مطلوب.");
+      setFormError(t("finance.modals.common.reasonRequired"));
       return;
     }
     const signedAmount = mode === "increase" ? amount : `-${amount}`;
@@ -149,7 +153,7 @@ export function SuperAdminSupervisorTopupModal({ open, onClose, defaultUserId }:
       ? topUp.error.message
       : topUp.error instanceof Error
         ? topUp.error.message
-        : "تعذّر إكمال الطلب"
+        : t("finance.modals.common.genericCompleteError")
     : null;
   const done = topUp.isSuccess;
   const result = topUp.data;
@@ -158,27 +162,27 @@ export function SuperAdminSupervisorTopupModal({ open, onClose, defaultUserId }:
     <Modal
       open={open}
       onClose={onClose}
-      title="تعديل رصيد المشرف"
-      description="لمدير النظام — تعديل رصيد مشرف فرع/موزع بزيادة أو خصم مع سبب إلزامي."
+      title={t("finance.modals.superAdminSupervisorTopup.title")}
+      description={t("finance.modals.superAdminSupervisorTopup.description")}
     >
       {done && result ? (
         <div className="space-y-3">
           <p className="text-sm text-emerald-700">
             {result.idempotent
-              ? "تمت العملية (تسجيل مكرر بأمان — نفس مفتاح idempotency)."
-              : "تم تعديل رصيد المحفظة."}
+              ? t("finance.modals.superAdminSupervisorTopup.successNoop")
+              : t("finance.modals.superAdminSupervisorTopup.success")}
           </p>
           <p className="text-sm text-muted" dir="ltr">
-            الرصيد الجديد: {result.newBalanceCached}
+            {t("finance.modals.superAdminSupervisorTopup.newBalance", { value: result.newBalanceCached })}
           </p>
           <Button type="button" onClick={onClose}>
-            إغلاق
+            {t("finance.modals.common.close")}
           </Button>
         </div>
       ) : (
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <Label htmlFor="topup-supervisor-user">المستخدم (مشرف فرع / موزع)</Label>
+            <Label htmlFor="topup-supervisor-user">{t("finance.modals.superAdminSupervisorTopup.userLabel")}</Label>
             <select
               id="topup-supervisor-user"
               className="w-full rounded-md border border-card-border bg-background px-3 py-2 text-sm"
@@ -188,27 +192,27 @@ export function SuperAdminSupervisorTopupModal({ open, onClose, defaultUserId }:
             >
               {candidates.map((u) => (
                 <option key={u.id} value={u.id}>
-                  {u.fullName} — {u.phone} ({roleLabel(u.role)})
+                  {userListItemNameDisplay(u, lang)} — {u.phone} ({roleLabel(u.role, t)})
                 </option>
               ))}
             </select>
             {candidates.length === 0 && !usersLoading ? (
-              <p className="text-xs text-muted">لا يوجد مستخدمون بهذين الدورين في الصفحة الحالية (زد حجم الصفحة لاحقاً إن لزم).</p>
+              <p className="text-xs text-muted">{t("finance.modals.superAdminSupervisorTopup.noUsersHint")}</p>
             ) : null}
           </div>
           <div className="space-y-2">
-            <Label>نوع العملية</Label>
+            <Label>{t("finance.modals.superAdminSupervisorTopup.operationType")}</Label>
             <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" variant={mode === "increase" ? "default" : "secondary"} onClick={() => setMode("increase")}>
-                إضافة رصيد
+                {t("finance.modals.superAdminSupervisorTopup.add")}
               </Button>
               <Button type="button" size="sm" variant={mode === "decrease" ? "default" : "secondary"} onClick={() => setMode("decrease")}>
-                خصم رصيد
+                {t("finance.modals.superAdminSupervisorTopup.deduct")}
               </Button>
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="topup-supervisor-amount">المبلغ</Label>
+            <Label htmlFor="topup-supervisor-amount">{t("finance.modals.common.amount")}</Label>
             <Input
               id="topup-supervisor-amount"
               name="amount"
@@ -218,28 +222,28 @@ export function SuperAdminSupervisorTopupModal({ open, onClose, defaultUserId }:
               className="font-mono"
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
-              placeholder="مثال: 100 أو 10.50"
+              placeholder={t("finance.modals.superAdminSupervisorTopup.amountPlaceholder")}
             />
-            <p className="text-xs text-muted">لا يتجاوز رقمان عشريان. بدون اختيار عملة — الافتراضي من الخادم.</p>
+            <p className="text-xs text-muted">{t("finance.modals.superAdminSupervisorTopup.decimalsServerCurrencyHint")}</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="topup-supervisor-note">السبب</Label>
+            <Label htmlFor="topup-supervisor-note">{t("finance.modals.common.reason")}</Label>
             <Input
               id="topup-supervisor-note"
               name="note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="سبب التعديل"
+              placeholder={t("finance.modals.superAdminSupervisorTopup.reasonPlaceholder")}
             />
           </div>
           {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
           {serverError ? <p className="text-sm text-red-600">{serverError}</p> : null}
           <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="secondary" onClick={onClose}>
-              إلغاء
+              {t("finance.modals.common.cancel")}
             </Button>
             <Button type="submit" disabled={topUp.isPending || !idempotencyKey}>
-              {topUp.isPending ? "جارٍ الإرسال…" : "تأكيد التعديل"}
+              {topUp.isPending ? t("finance.modals.common.sending") : t("finance.modals.superAdminSupervisorTopup.confirm")}
             </Button>
           </div>
         </form>

@@ -1,12 +1,14 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
 
 export function CaptainGuidanceCard() {
+  const { t } = useTranslation();
   return (
     <Card className="border-card-border bg-accent/20 shadow-sm">
       <CardHeader>
-        <CardTitle className="text-base">إرشاد</CardTitle>
+        <CardTitle className="text-base">{t("captains.guidance.title")}</CardTitle>
         <CardDescription>
-          التفعيل يتحكم في دخول الكابتن للنظام؛ التوفر يُحدَّث من تطبيق الكابتن أو من لوحة التشغيل.
+          {t("captains.guidance.description")}
         </CardDescription>
       </CardHeader>
     </Card>

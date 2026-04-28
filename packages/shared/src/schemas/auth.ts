@@ -1,6 +1,18 @@
 import { z } from "zod";
 import { UserRoleSchema } from "../enums.js";
 
+const ValueTranslationsZ = z.object({
+  ar: z.union([z.string(), z.null()]).optional(),
+  en: z.union([z.string(), z.null()]).optional(),
+  he: z.union([z.string(), z.null()]).optional(),
+});
+
+const UserDisplayI18nZ = z
+  .object({
+    fullName: ValueTranslationsZ.optional(),
+  })
+  .passthrough();
+
 /** تسجيل الدخول — هاتف أو بريد + كلمة المرور (مطابقة API) */
 export const LoginBodySchema = z
   .object({
@@ -24,6 +36,8 @@ export const AuthUserSchema = z.object({
   branchId: z.string().nullable().optional(),
   /** رمز صفحة الطلبات العامة لمدير الشركة */
   publicOwnerCode: z.string().nullable().optional(),
+  /** Optional UI-only fullName translations; optional for older clients. */
+  displayI18n: UserDisplayI18nZ.optional(),
 });
 
 export type AuthUser = z.infer<typeof AuthUserSchema>;

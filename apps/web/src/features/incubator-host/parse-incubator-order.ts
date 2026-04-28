@@ -1,6 +1,8 @@
 /**
- * تحليل نص طلب خام من «الأم الحاضنة» — مطابقة بالتسميات العربية وليس بترتيب أسطر ثابت.
+ * Parses raw incubator text — field matching uses fixed Arabic **aliases**; line order is flexible.
  */
+
+import i18n from "@/i18n/i18n";
 
 export type IncubatorOrderFieldKey =
   | "orderNumber"
@@ -26,16 +28,13 @@ export type IncubatorParseResult = {
   log: string[];
 };
 
-export const FIELD_LABELS_AR: Record<IncubatorOrderFieldKey, string> = {
-  orderNumber: "رقم الطلبية",
-  customerName: "اسم العميل",
-  restaurantName: "اسم المطعم",
-  orderStatus: "حالة الطلبية",
-  area: "المنطقة",
-  nearLocation: "بالقرب من",
-  phone: "رقم الهاتف",
-  total: "المجموع",
-};
+export function getIncubatorSourceFieldLabel(key: IncubatorOrderFieldKey): string {
+  return String(i18n.t(`incubator.parser.sourceFieldLabels.${key}`));
+}
+
+function tParseLog(subKey: string, options?: Record<string, string | number>): string {
+  return String(i18n.t(`incubator.parser.log.${subKey}`, options));
+}
 
 /** ترتيب المطابقة: الأطول أولاً لتقليل التداخل بين التسميات القصيرة والطويلة. */
 const FIELD_ALIASES: { key: IncubatorOrderFieldKey; aliases: string[] }[] = [
@@ -194,7 +193,7 @@ export function parseIncubatorRawOrder(raw: string): IncubatorParseResult {
 
   const text = normalizeInputText(raw);
   if (!text.trim()) {
-    log.push("المدخل فارغ — لا يوجد ما يُحلَّل.");
+    log.push(tParseLog("emptyInput"));
     return {
       fields,
       normalizedPhone: null,
@@ -211,7 +210,7 @@ export function parseIncubatorRawOrder(raw: string): IncubatorParseResult {
     const lineRaw = lines[i];
     const line = lineRaw.trim();
     if (!line) {
-      log.push(`سطر ${i + 1}: فارغ — تُجاهل.`);
+      log.push(tParseLog("lineEmpty", { line: i + 1 }));
       continue;
     }
 
@@ -222,30 +221,38 @@ export function parseIncubatorRawOrder(raw: string): IncubatorParseResult {
         const prev = fields[key];
         fields[key] = appendSegment(prev, lv.value);
         currentKey = key;
-        log.push(`سطر ${i + 1}: عُرِف الحقل «${FIELD_LABELS_AR[key]}» من التسمية «${lv.label}».`);
+        log.push(
+          tParseLog("fieldRecognized", {
+            line: i + 1,
+            field: getIncubatorSourceFieldLabel(key),
+            rawLabel: lv.label,
+          })
+        );
       } else {
-        const msg = `سطر ${i + 1}: تسمية غير معروفة «${lv.label}» — لم يُعثر على حقل مطابق.`;
+        const msg = tParseLog("unknownLabel", { line: i + 1, rawLabel: lv.label });
         warnings.push(msg);
         log.push(msg);
         if (currentKey) {
           fields[currentKey] = appendSegment(fields[currentKey], lv.value);
-          log.push(`→ أُلحق قيمة السطر بالحقل الحالي «${FIELD_LABELS_AR[currentKey]}» (تسمية غير معروفة).`);
+          log.push(tParseLog("appendedUnknown", { field: getIncubatorSourceFieldLabel(currentKey) }));
         }
       }
       continue;
     }
 
     if (looksLikeLabeledLine(line)) {
-      const w = `سطر ${i + 1}: يبدو كحقل لكن لم يُستخرج تسمية/قيمة بشكل صالح: ${line.slice(0, 72)}${line.length > 72 ? "…" : ""}`;
+      const snippet = `${line.slice(0, 72)}${line.length > 72 ? "…" : ""}`;
+      const w = tParseLog("lineMalformedLabeled", { line: i + 1, snippet });
       warnings.push(w);
       log.push(w);
     }
 
     if (currentKey) {
       fields[currentKey] = appendSegment(fields[currentKey], line);
-      log.push(`سطر ${i + 1}: تابع — أُلحق بـ «${FIELD_LABELS_AR[currentKey]}».`);
+      log.push(tParseLog("lineContinuation", { line: i + 1, field: getIncubatorSourceFieldLabel(currentKey) }));
     } else {
-      const w = `سطر ${i + 1}: نص بدون تسمية ولا حقل سابق — تُجاهل: ${line.slice(0, 80)}${line.length > 80 ? "…" : ""}`;
+      const snippet = `${line.slice(0, 80)}${line.length > 80 ? "…" : ""}`;
+      const w = tParseLog("lineUnlabeled", { line: i + 1, snippet });
       warnings.push(w);
       log.push(w);
     }
@@ -259,21 +266,23 @@ export function parseIncubatorRawOrder(raw: string): IncubatorParseResult {
   const normalizedTotal = normalizeAmountText(fields.total);
 
   if (fields.phone && !normalizedPhone) {
-    const w = "فشل توحيد رقم الهاتف — راجع القيمة المستخرجة.";
+    const w = tParseLog("phoneNormalizeFailed");
     warnings.push(w);
     log.push(w);
   }
   if (fields.total && !normalizedTotal) {
-    const w = "فشل استخراج المبلغ من «المجموع» — راجع القيمة المستخرجة.";
+    const w = tParseLog("totalParseFailed", { field: getIncubatorSourceFieldLabel("total") });
     warnings.push(w);
     log.push(w);
   }
 
   const missing = (Object.keys(fields) as IncubatorOrderFieldKey[]).filter((k) => !fields[k]);
+  const listSep = String(i18n.t("incubator.parser.fieldListSeparator"));
   if (missing.length) {
-    log.push(`ملخص: لم تُستخرج قيم للحقول: ${missing.map((k) => FIELD_LABELS_AR[k]).join("، ")}.`);
+    const fieldsStr = missing.map((k) => getIncubatorSourceFieldLabel(k)).join(listSep);
+    log.push(tParseLog("summaryMissing", { fields: fieldsStr }));
   } else {
-    log.push("ملخص: جميع الحقول المعروفة لها قيم.");
+    log.push(tParseLog("summaryAllFilled"));
   }
 
   return {

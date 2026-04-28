@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import i18n from "@/i18n/i18n";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { CreateCaptainPayload } from "@/lib/api/services/captains";
 import { api } from "@/lib/api/singleton";
@@ -9,7 +10,7 @@ export function useCreateCaptain() {
   return useMutation({
     mutationFn: (body: CreateCaptainPayload) => api.captains.create(body),
     onSuccess: async () => {
-      toastSuccess("تم إنشاء الكابتن");
+      toastSuccess(String(i18n.t("mutationToasts.captainCreated")));
       await qc.invalidateQueries({ queryKey: queryKeys.captains.root });
       await qc.invalidateQueries({ queryKey: queryKeys.users.root });
       await qc.invalidateQueries({ queryKey: queryKeys.dashboard.root });
@@ -17,6 +18,6 @@ export function useCreateCaptain() {
       await qc.invalidateQueries({ queryKey: queryKeys.tracking.root });
       await qc.invalidateQueries({ queryKey: queryKeys.companies.root });
     },
-    onError: (e) => toastApiError(e, "تعذر إنشاء الكابتن"),
+    onError: (e) => toastApiError(e, String(i18n.t("mutationToasts.captainCreateFailed"))),
   });
 }

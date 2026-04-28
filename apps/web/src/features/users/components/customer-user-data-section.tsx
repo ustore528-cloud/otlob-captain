@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { clampLatLng, clampLatLngPair, ISRAEL_LEAFLET_MAX_BOUNDS, ISRAEL_MAP_DEFAULT_CENTER, ISRAEL_MAP_DEFAULT_ZOOM } from "@/lib/israel-map-bounds";
@@ -14,12 +15,13 @@ type Props = {
   canEdit: boolean;
 };
 
-function dash(s: string | null | undefined) {
-  if (s == null || s === "") return "—";
-  return s;
+function dash(s: string | number | null | undefined, empty: string) {
+  if (s == null || s === "") return empty;
+  return String(s);
 }
 
 export function CustomerUserDataSection({ user: u, canEdit }: Props) {
+  const { t } = useTranslation();
   const update = useUpdateUserCustomerProfile();
   const [editing, setEditing] = useState(false);
   const [includeMapPin, setIncludeMapPin] = useState(false);
@@ -104,7 +106,7 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
       mapRef.current = null;
       markerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- نقرأ أحدث dropoffCoords عند فتح الخريطة فقط
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- read latest dropoffCoords only when map opens
   }, [editing, includeMapPin]);
 
   const errorClass = (name: string) => (errors[name] ? "border-red-500 focus-visible:ring-red-300" : "");
@@ -116,22 +118,22 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
       try {
         const url = new URL(locationLink);
         if (url.protocol !== "http:" && url.protocol !== "https:") {
-          next.locationLink = "الرابط يجب أن يبدأ بـ http أو https.";
+          next.locationLink = t("users.customerProfile.errors.linkScheme");
         }
       } catch {
-        next.locationLink = "صيغة الرابط غير صحيحة — الصق الرابط كاملاً.";
+        next.locationLink = t("users.customerProfile.errors.linkInvalid");
       }
     }
     const amountRaw = String(form.get("amount") ?? "").trim();
     const deliveryRaw = String(form.get("delivery") ?? "").trim();
     if (amountRaw && (!Number.isFinite(Number(amountRaw)) || Number(amountRaw) < 0)) {
-      next.amount = "سعر الطلب يجب أن يكون رقمًا موجبًا.";
+      next.amount = t("users.customerProfile.errors.amount");
     }
     if (deliveryRaw && (!Number.isFinite(Number(deliveryRaw)) || Number(deliveryRaw) < 0)) {
-      next.delivery = "تكلفة التوصيل يجب أن تكون رقمًا موجبًا.";
+      next.delivery = t("users.customerProfile.errors.delivery");
     }
     if (includeMapPin && !dropoffCoords) {
-      next.dropoffCoords = "فعّلت خيار الخريطة — اضغط على الخريطة لتحديد موقع التسليم.";
+      next.dropoffCoords = t("users.customerProfile.errors.mapRequired");
     }
     return next;
   }
@@ -172,34 +174,31 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
 
   if (u.role !== "CUSTOMER") return null;
 
+  const emptyDisplay = t("common.none");
+
   return (
     <div className="mt-3 border-t border-card-border pt-3">
-      <p className="mb-2 text-xs font-medium text-muted">بيانات المستخدم العميل</p>
-      <p className="mb-3 text-[11px] leading-relaxed text-muted">
-        نفس حقول «طلب جديد»: عناوين، رابط موقع، منطقة، أسعار تفضيلية، وخيار تثبيت موقع على الخريطة. يمكن حفظها كمرجع
-        لحساب العميل.
-      </p>
+      <p className="mb-2 text-xs font-medium text-muted">{t("users.customerProfile.sectionTitle")}</p>
+      <p className="mb-3 text-[11px] leading-relaxed text-muted">{t("users.customerProfile.sectionBody")}</p>
 
       {!editing ? (
         <div className="grid gap-2 text-sm">
-          <Row label="عنوان الاستلام" value={dash(u.customerPickupAddress)} />
-          <Row label="عنوان التسليم" value={dash(u.customerDropoffAddress)} />
-          <Row label="رابط الموقع" value={dash(u.customerLocationLink)} mono />
-          <Row label="المنطقة" value={dash(u.customerArea)} />
-          <Row label="سعر الطلب (تفضيلي)" value={dash(u.customerPreferredAmount)} />
-          <Row label="تكلفة التوصيل (تفضيلي)" value={dash(u.customerPreferredDelivery)} />
+          <Row label={t("users.customerProfile.rows.pickup")} value={dash(u.customerPickupAddress, emptyDisplay)} />
+          <Row label={t("users.customerProfile.rows.dropoff")} value={dash(u.customerDropoffAddress, emptyDisplay)} />
+          <Row label={t("users.customerProfile.rows.link")} value={dash(u.customerLocationLink, emptyDisplay)} mono />
+          <Row label={t("users.customerProfile.rows.area")} value={dash(u.customerArea, emptyDisplay)} />
+          <Row label={t("users.customerProfile.rows.amount")} value={dash(u.customerPreferredAmount, emptyDisplay)} />
+          <Row label={t("users.customerProfile.rows.delivery")} value={dash(u.customerPreferredDelivery, emptyDisplay)} />
           {u.customerDropoffLat != null && u.customerDropoffLng != null ? (
             <div dir="ltr" className="text-xs font-mono text-muted">
-              إحداثيات محفوظة: {u.customerDropoffLat}, {u.customerDropoffLng}
+              {t("users.customerProfile.coordsSaved", { lat: u.customerDropoffLat, lng: u.customerDropoffLng })}
             </div>
           ) : (
-            <p className="text-xs text-amber-800 dark:text-amber-200/90">
-              لا توجد إحداثيات خريطة محفوظة — يمكن للكابتن ضبط الموقع من التطبيق لاحقًا.
-            </p>
+            <p className="text-xs text-amber-800 dark:text-amber-200/90">{t("users.customerProfile.coordsNone")}</p>
           )}
           {canEdit ? (
             <Button type="button" size="sm" variant="secondary" className="mt-1 w-full sm:w-auto" onClick={() => setEditing(true)}>
-              تعديل البيانات
+              {t("users.customerProfile.edit")}
             </Button>
           ) : null}
         </div>
@@ -207,7 +206,7 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
         <form className="grid gap-4" onSubmit={onSubmit} noValidate>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor={`pickup-${u.id}`}>عنوان الاستلام</Label>
+              <Label htmlFor={`pickup-${u.id}`}>{t("users.customerProfile.pickupLabel")}</Label>
               <Input
                 id={`pickup-${u.id}`}
                 name="pickupAddress"
@@ -217,7 +216,7 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
               />
             </div>
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor={`dropoff-${u.id}`}>عنوان التسليم</Label>
+              <Label htmlFor={`dropoff-${u.id}`}>{t("users.customerProfile.dropoffLabel")}</Label>
               <Input
                 id={`dropoff-${u.id}`}
                 name="dropoffAddress"
@@ -227,7 +226,7 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
               />
             </div>
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor={`link-${u.id}`}>لصق رابط الموقع (اختياري)</Label>
+              <Label htmlFor={`link-${u.id}`}>{t("users.customerProfile.linkLabel")}</Label>
               <Input
                 id={`link-${u.id}`}
                 name="locationLink"
@@ -240,17 +239,14 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
                 className={`text-left ${errorClass("locationLink")}`}
               />
               {errors.locationLink ? <p className="text-xs text-red-600">{errors.locationLink}</p> : null}
-              <p className="text-xs text-muted">
-                الصق رابط المشاركة من خرائط جوجل أو أي رابط https يوضح موقع التسليم؛ يُحفظ للكابتن مع الطلب عند
-                الاستخدام.
-              </p>
+              <p className="text-xs text-muted">{t("users.customerProfile.linkHelp")}</p>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor={`area-${u.id}`}>المنطقة</Label>
+              <Label htmlFor={`area-${u.id}`}>{t("users.customerProfile.areaLabel")}</Label>
               <Input id={`area-${u.id}`} name="area" maxLength={200} defaultValue={u.customerArea ?? ""} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor={`amount-${u.id}`}>سعر الطلب (تفضيلي)</Label>
+              <Label htmlFor={`amount-${u.id}`}>{t("users.customerProfile.amountLabel")}</Label>
               <Input
                 id={`amount-${u.id}`}
                 name="amount"
@@ -264,7 +260,7 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
               {errors.amount ? <p className="text-xs text-red-600">{errors.amount}</p> : null}
             </div>
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor={`delivery-${u.id}`}>تكلفة التوصيل (تفضيلي)</Label>
+              <Label htmlFor={`delivery-${u.id}`}>{t("users.customerProfile.deliveryLabel")}</Label>
               <Input
                 id={`delivery-${u.id}`}
                 name="delivery"
@@ -284,11 +280,8 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
                   className="rounded-xl border border-dashed border-amber-600/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/35 dark:bg-amber-500/15 dark:text-amber-100"
                   role="status"
                 >
-                  <p className="font-medium">لم يُحدَّد موقع على الخريطة</p>
-                  <p className="mt-1 text-xs opacity-90">
-                    يمكن للكابتن تأكيد أو ضبط موقع التسليم من تطبيق الكابتن عند الحاجة. لتثبيت موقع الآن، فعّل الخيار
-                    أدناه.
-                  </p>
+                  <p className="font-medium">{t("users.customerProfile.mapNoneTitle")}</p>
+                  <p className="mt-1 text-xs opacity-90">{t("users.customerProfile.mapNoneBody")}</p>
                 </div>
               ) : null}
 
@@ -308,21 +301,19 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
                   }}
                 />
                 <span className="text-sm leading-snug">
-                  <span className="font-medium">إضافة موقع التسليم على الخريطة (اختياري)</span>
-                  <span className="mt-0.5 block text-xs text-muted">
-                    عند التفعيل، اضغط على الخريطة لتثبيت نقطة التسليم وحفظ الإحداثيات مع بيانات العميل.
-                  </span>
+                  <span className="font-medium">{t("users.customerProfile.mapToggleTitle")}</span>
+                  <span className="mt-0.5 block text-xs text-muted">{t("users.customerProfile.mapToggleBody")}</span>
                 </span>
               </label>
 
               {includeMapPin ? (
                 <div className="grid gap-2">
-                  <Label className="text-muted-foreground">خريطة تثبيت موقع التسليم</Label>
+                  <Label className="text-muted-foreground">{t("users.customerProfile.mapLabel")}</Label>
                   <div
                     ref={mapHostRef}
                     className={`h-56 w-full overflow-hidden rounded-xl border ${errors.dropoffCoords ? "border-red-500" : "border-card-border"}`}
                   />
-                  <p className="text-xs text-muted">اضغط على الخريطة لتثبيت موقع التسليم.</p>
+                  <p className="text-xs text-muted">{t("users.customerProfile.mapHint")}</p>
                   {errors.dropoffCoords ? <p className="text-xs text-red-600">{errors.dropoffCoords}</p> : null}
                   {dropoffCoords ? (
                     <div dir="ltr" className="text-xs font-mono text-muted">
@@ -336,10 +327,10 @@ export function CustomerUserDataSection({ user: u, canEdit }: Props) {
 
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(false)}>
-              إلغاء
+              {t("users.customerProfile.cancel")}
             </Button>
             <Button type="submit" size="sm" disabled={update.isPending}>
-              {update.isPending ? "جارٍ الحفظ…" : "حفظ"}
+              {update.isPending ? t("common.saving") : t("users.customerProfile.save")}
             </Button>
           </div>
         </form>

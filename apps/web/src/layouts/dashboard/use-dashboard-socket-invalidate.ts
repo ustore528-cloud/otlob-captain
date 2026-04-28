@@ -25,7 +25,9 @@ export function useDashboardSocketInvalidate(token: string | null) {
      * تحديث موقع الكابتن فقط — لا يغيّر قوائم الطلبات؛ يكفي الخريطة النشطة + سجل النشاط (يُسجَّل موقع في الخادم).
      * يقلّل الضغط عن التكرار مع `invalidateOrderDistributionDomain` بعد التعيين وعن إعادة جلب غير لازمة مع كل ping.
      */
-    const bumpCaptainLocationOnly = () => {
+    const bumpCaptainLocationOnly = (payload: unknown) => {
+      // eslint-disable-next-line no-console
+      console.info("[tracking-map] received", { event: "captain:location", payload });
       void qc.invalidateQueries({ queryKey: queryKeys.tracking.activeMap() });
       void qc.invalidateQueries({ queryKey: queryKeys.activity.root });
     };

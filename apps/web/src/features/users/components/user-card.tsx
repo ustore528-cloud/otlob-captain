@@ -1,9 +1,11 @@
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CustomerUserDataSection } from "@/features/users/components/customer-user-data-section";
 import { userRoleLabel } from "@/lib/user-role";
 import type { UserListItem } from "@/types/api";
+import { userListItemNameDisplay } from "@/i18n/localize-entity-labels";
 
 type Props = {
   user: UserListItem;
@@ -14,26 +16,30 @@ type Props = {
 };
 
 export function UserCard({ user: u, canToggleActive, canEditCustomerProfile, togglePending, onToggleActive }: Props) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   return (
     <Card className="border-card-border bg-card shadow-sm">
       <CardHeader className="pb-2">
-        <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted">حساب مستخدم</p>
+        <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted">{t("users.card.accountBadge")}</p>
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base leading-snug">{u.fullName}</CardTitle>
-          <Badge variant={u.isActive ? "success" : "muted"}>{u.isActive ? "نشط" : "موقوف"}</Badge>
+          <CardTitle className="text-base leading-snug">{userListItemNameDisplay(u, lang)}</CardTitle>
+          <Badge variant={u.isActive ? "success" : "muted"}>
+            {u.isActive ? t("common.status.active") : t("common.status.inactive")}
+          </Badge>
         </div>
         <CardDescription>{userRoleLabel(u.role)}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 text-sm">
         <div>
-          <span className="text-xs text-muted">هاتف الحساب (للدخول / الاتصال)</span>
+          <span className="text-xs text-muted">{t("users.card.accountPhoneCaption")}</span>
           <div className="mt-0.5 font-mono text-base font-medium tracking-tight" dir="ltr">
             {u.phone}
           </div>
         </div>
         {u.email ? (
           <div>
-            <span className="text-xs text-muted">البريد</span>
+            <span className="text-xs text-muted">{t("users.card.emailCaption")}</span>
             <div className="mt-0.5 break-all text-xs" dir="ltr">
               {u.email}
             </div>
@@ -47,10 +53,10 @@ export function UserCard({ user: u, canToggleActive, canEditCustomerProfile, tog
             disabled={togglePending}
             onClick={() => onToggleActive(u.id, !u.isActive)}
           >
-            {u.isActive ? "تعطيل الحساب" : "تفعيل الحساب"}
+            {u.isActive ? t("users.card.toggleDisable") : t("users.card.toggleEnable")}
           </Button>
         ) : (
-          <p className="text-xs text-muted">تعديل حالة التفعيل متاح للمدير فقط.</p>
+          <p className="text-xs text-muted">{t("users.card.toggleHint")}</p>
         )}
         <CustomerUserDataSection user={u} canEdit={canEditCustomerProfile} />
       </CardContent>

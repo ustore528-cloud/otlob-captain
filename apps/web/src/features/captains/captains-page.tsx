@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
 import { PageHeader } from "@/components/layout/page-header";
 import { AddCaptainFormCard } from "@/features/captains/components/add-captain-form-card";
@@ -11,6 +12,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { CaptainListItem } from "@/types/api";
 
 export function CaptainsPageView() {
+  const { t } = useTranslation();
   const role = useAuthStore((s) => s.user?.role);
   const [reportCap, setReportCap] = useState<CaptainListItem | null>(null);
   const [editCap, setEditCap] = useState<CaptainListItem | null>(null);
@@ -24,8 +26,8 @@ export function CaptainsPageView() {
   return (
     <div className="grid gap-8">
       <PageHeader
-        title="الكباتن"
-        description="إدارة الحسابات، التفعيل، التعديل، التقرير (طلبات مع فلترة)، وحذف نهائي للمدير عند عدم وجود طلبات نشطة."
+        title={t("captains.page.title")}
+        description={t("captains.page.description")}
         divider
       />
 

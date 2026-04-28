@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Bell, Copy, Link2, Radio, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,9 @@ import { StatCard } from "@/components/layout/stat-card";
 import { QueryErrorLine } from "@/features/dashboard/components/query-error-line";
 import { useActivityList, useDashboardStats, useNotifications, useSendQuickStatusAlert, type QuickStatusCode } from "@/hooks";
 import { canListOrdersRole, isCompanyAdminRole, isDispatchRole } from "@/lib/rbac-roles";
+import { userRoleLabel } from "@/lib/user-role";
 import { useAuthStore } from "@/stores/auth-store";
+import { getLocalizedText } from "@/i18n/localize-dynamic-text";
 
 const DashboardMapSettingsCardLazy = lazy(() =>
   import("./components/dashboard-map-settings-card").then((m) => ({ default: m.DashboardMapSettingsCard })),
@@ -25,9 +28,11 @@ function useDispatchRole() {
 }
 
 /**
- * لوحة التشغيل الرئيسية — نفس التخطيط والألوان؛ البيانات من React Query (قابلة للاستبدال بمصدر آخر عبر نفس أنواع العقود).
+ * Main operations dashboard — same layout; data from React Query.
  */
 export function DashboardPage() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage ?? i18n.language;
   const user = useAuthStore((s) => s.user);
   const dispatch = useDispatchRole();
   const canListOrders = canListOrdersRole(user?.role);
@@ -47,21 +52,27 @@ export function DashboardPage() {
   const latest = notifications.data?.items?.[0];
 
   const quickStatusButtons: Array<{ code: QuickStatusCode; label: string }> = [
-    { code: "PRESSURE", label: "ضغط" },
-    { code: "LOW_ACTIVITY", label: "حركة ضعيفة" },
-    { code: "RAISE_READINESS", label: "ارفع الجاهزية" },
-    { code: "ON_FIRE", label: "الوضع نار" },
+    { code: "PRESSURE", label: t("dashboard.quickStatus.PRESSURE") },
+    { code: "LOW_ACTIVITY", label: t("dashboard.quickStatus.LOW_ACTIVITY") },
+    { code: "RAISE_READINESS", label: t("dashboard.quickStatus.RAISE_READINESS") },
+    { code: "ON_FIRE", label: t("dashboard.quickStatus.ON_FIRE") },
   ];
 
   return (
     <div className="grid gap-8">
       <PageHeader
-        title={`مرحبًا${user?.fullName ? `، ${user.fullName}` : ""}`}
-        description="نظرة تشغيلية سريعة على الطلبات والتنبيهات."
+        title={
+          user?.fullName
+            ? t("dashboard.page.welcomeWithName", {
+                name: getLocalizedText(user.fullName, { lang, mode: "generic" }),
+              })
+            : t("dashboard.page.welcome")
+        }
+        description={t("dashboard.page.description")}
         actions={
           <Button type="button" variant="secondary" onClick={() => void dashboard.refetch()}>
             <Radio className="size-4 opacity-80" />
-            تحديث
+            {t("common.refresh")}
           </Button>
         }
       />
@@ -69,9 +80,9 @@ export function DashboardPage() {
       {user && isCompanyAdminRole(user.role) && user.publicOwnerCode ? (
         <Card className="border-primary/25 bg-primary/5">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">رابط الطلبات الخاص بك</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.page.requestLinkTitle")}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              كود المدير: <span className="font-mono font-medium text-foreground">{user.publicOwnerCode}</span>
+              {t("dashboard.page.ownerCode")}: <span className="font-mono font-medium text-foreground">{user.publicOwnerCode}</span>
             </p>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
@@ -84,7 +95,7 @@ export function DashboardPage() {
               }}
             >
               <Copy className="ms-1 size-4 opacity-80" />
-              نسخ الرابط
+              {t("dashboard.page.copyLink")}
             </Button>
             <Button type="button" variant="secondary" asChild>
               <a
@@ -93,7 +104,7 @@ export function DashboardPage() {
                 rel="noreferrer"
               >
                 <Link2 className="ms-1 size-4 opacity-80" />
-                فتح صفحة الطلب
+                {t("dashboard.page.openRequestPage")}
               </a>
             </Button>
           </CardContent>
@@ -109,20 +120,30 @@ export function DashboardPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard
-            label="إجمالي الطلبات (نطاقك)"
-            value={canListOrders ? (stats?.ordersTotal ?? "—") : "—"}
-            hint={canListOrders ? undefined : "غير متاح لدورك"}
+            label={t("dashboard.stats.ordersTotal")}
+            value={canListOrders ? (stats?.ordersTotal ?? t("common.none")) : t("dashboard.stats.ordersUnavailable")}
+            hint={canListOrders ? undefined : t("dashboard.stats.ordersHintNoAccess")}
             icon={Truck}
           />
           {dispatch ? (
-            <StatCard label="كباتن نشطون" value={stats?.captainsActiveTotal ?? "—"} hint="حسب صلاحية الإدارة" />
+            <StatCard
+              label={t("dashboard.stats.captainsActive")}
+              value={stats?.captainsActiveTotal ?? t("common.none")}
+              hint={t("dashboard.stats.captainsActiveHint")}
+            />
           ) : (
-            <StatCard label="الصلاحية" value={user?.role ?? "—"} hint="عرض الطلبات حسب دورك" />
+            <StatCard
+              label={t("dashboard.stats.role")}
+              value={user ? userRoleLabel(user.role) : t("common.none")}
+              hint={t("dashboard.stats.roleHint")}
+            />
           )}
           <StatCard
-            label="آخر تنبيه"
-            value={latest ? (latest.isRead ? "مقروء" : "جديد") : "—"}
-            hint={latest?.title ?? "لا توجد إشعارات"}
+            label={t("dashboard.stats.lastAlert")}
+            value={
+              latest ? (latest.isRead ? t("dashboard.stats.read") : t("dashboard.stats.newBadge")) : t("common.none")
+            }
+            hint={latest?.title ?? t("dashboard.stats.noNotifications")}
             icon={Bell}
           />
         </div>
@@ -136,8 +157,14 @@ export function DashboardPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            <StatCard label="بانتظار التوزيع" value={stats?.pendingOrders ?? "—"} />
-            <StatCard label="طلبات التجهيز" value={stats?.confirmedOrders ?? "—"} />
+            <StatCard
+              label={t("dashboard.stats.pendingDistribution")}
+              value={stats?.pendingOrders ?? t("common.none")}
+            />
+            <StatCard
+              label={t("dashboard.stats.confirmedPreparing")}
+              value={stats?.confirmedOrders ?? t("common.none")}
+            />
           </div>
         )
       ) : null}
@@ -151,7 +178,7 @@ export function DashboardPage() {
       {dispatch ? (
         <Card className="border-card-border shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base">تنبيه سريع عن حالة الشغل</CardTitle>
+            <CardTitle className="text-base">{t("dashboard.quickWorkStatus.title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">

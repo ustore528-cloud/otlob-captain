@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 /**
  * Button hierarchy (dashboard):
  * - `default` — primary action (one main CTA per card or section).
- * - `secondary` — supporting actions: refresh, export, pagination, «تحميل المزيد».
+ * - `secondary` — supporting actions: refresh, export, pagination, “load more”.
  * - `ghost` — low-emphasis / toolbar.
  * - `destructive` — irreversible or dangerous (use sparingly).
  */

@@ -1,6 +1,6 @@
 export { IncubatorHostPageView } from "./incubator-host-page-view";
 export {
-  FIELD_LABELS_AR,
+  getIncubatorSourceFieldLabel,
   parseIncubatorRawOrder,
   type IncubatorParseResult,
   type ParsedIncubatorOrder,

@@ -1,4 +1,5 @@
 import { ApiError, apiFetch } from "@/lib/api/http";
+import i18n from "@/i18n/i18n";
 
 /** Must match API `GET /api/v1/geocode/place` (kept local so builds do not depend on a separate routes module in the repo snapshot). */
 const GEOCODE_PLACE_PATH = "/api/v1/geocode/place" as const;
@@ -17,7 +18,7 @@ function isRecord(x: unknown): x is Record<string, unknown> {
 
 function parseGeocodePlacePayload(data: unknown): GeocodePlaceResult {
   if (!isRecord(data)) {
-    throw new ApiError("استجابة غير صالحة من خادم تحديد الموقع.", 502, "GEOCODE_BAD_SHAPE");
+    throw new ApiError(String(i18n.t("apiErrors.geocodeBadShape")), 502, "GEOCODE_BAD_SHAPE");
   }
   const lat = typeof data.lat === "number" ? data.lat : Number(data.lat);
   const lng = typeof data.lng === "number" ? data.lng : Number(data.lng);
@@ -25,7 +26,7 @@ function parseGeocodePlacePayload(data: unknown): GeocodePlaceResult {
   const displayName = typeof data.displayName === "string" ? data.displayName : "";
   const query = typeof data.query === "string" ? data.query : "";
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(zoom)) {
-    throw new ApiError("بيانات إحداثيات ناقصة من الخادم.", 502, "GEOCODE_BAD_FIELDS");
+    throw new ApiError(String(i18n.t("apiErrors.geocodeBadFields")), 502, "GEOCODE_BAD_FIELDS");
   }
   return {
     lat,

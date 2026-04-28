@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { LoginBody, LoginResponse } from "@captain/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ function parseLoginBody(identifier: string, password: string): LoginBody {
 }
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
 
@@ -32,7 +34,7 @@ export function LoginPage() {
       setSession(data.accessToken, data.user);
       void navigate("/", { replace: true });
     },
-    onError: (e) => toastApiError(e, "تعذر تسجيل الدخول"),
+    onError: (e) => toastApiError(e, t("login.error")),
   });
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -49,12 +51,12 @@ export function LoginPage() {
         <CardHeader>
           <img src={brandWordmark} alt="2in" className="mb-1 h-10 w-auto object-contain self-start" />
           <CardTitle>2in</CardTitle>
-          <CardDescription>تسجيل الدخول إلى لوحة التشغيل</CardDescription>
+          <CardDescription>{t("login.subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="grid gap-4" onSubmit={onSubmit}>
             <div className="grid gap-2">
-              <Label htmlFor="identifier">البريد أو الهاتف</Label>
+              <Label htmlFor="identifier">{t("login.identifierLabel")}</Label>
               <Input
                 id="identifier"
                 name="identifier"
@@ -62,11 +64,11 @@ export function LoginPage() {
                 required
                 dir="ltr"
                 className="text-left"
-                placeholder="05xxxxxxxx أو name@domain.com"
+                placeholder={t("login.identifierPlaceholder")}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="password">كلمة المرور</Label>
+              <Label htmlFor="password">{t("login.passwordLabel")}</Label>
               <Input
                 id="password"
                 name="password"
@@ -78,10 +80,10 @@ export function LoginPage() {
               />
             </div>
             {login.isError ? (
-              <p className="text-sm text-red-600">{(login.error as Error).message ?? "تعذر تسجيل الدخول"}</p>
+              <p className="text-sm text-red-600">{(login.error as Error).message ?? t("login.error")}</p>
             ) : null}
             <Button type="submit" disabled={login.isPending}>
-              {login.isPending ? "جارٍ الدخول…" : "دخول"}
+              {login.isPending ? t("login.submitting") : t("login.submit")}
             </Button>
           </form>
         </CardContent>

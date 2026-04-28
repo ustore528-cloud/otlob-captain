@@ -21,6 +21,8 @@ import { canAccessFinancePage } from "@/lib/rbac-roles";
 import { downloadOrdersHistoryCsv } from "@/features/reports/utils/orders-history-csv-export";
 import { tableDateLocale } from "@/i18n/date-locale";
 import { toast } from "sonner";
+import { getLocalizedText } from "@/i18n/localize-dynamic-text";
+import { captainOptionLabel, storeOptionLabel } from "@/i18n/localize-entity-labels";
 
 const PAGE_SIZE = 20;
 const MS_7D = 7 * 24 * 60 * 60 * 1000;
@@ -53,6 +55,7 @@ type RangeErrCode = "INVALID" | "ORDER" | "MAX" | null;
 
 export function ReportsPageView() {
   const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage ?? i18n.language;
   const dateLocale = tableDateLocale(i18n.resolvedLanguage ?? i18n.language);
   const role = useAuthStore((s) => s.user?.role);
   const token = useAuthStore((s) => s.token);
@@ -299,7 +302,7 @@ export function ReportsPageView() {
             >
               {(captainsQ.data?.items ?? []).map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.user.fullName} — {c.area}
+                  {captainOptionLabel(c, lang)}
                 </option>
               ))}
             </select>
@@ -417,9 +420,14 @@ export function ReportsPageView() {
                           {r.orderNumber}
                         </td>
                         <td className="border-b border-card-border px-3 py-2.5">
-                          {r.storeName} ({r.storeArea})
+                          {getLocalizedText(r.storeName, { lang, mode: "generic" })} (
+                          {getLocalizedText(r.storeArea, { lang, mode: "place" })})
                         </td>
-                        <td className="border-b border-card-border px-3 py-2.5">{r.captainName ?? "—"}</td>
+                        <td className="border-b border-card-border px-3 py-2.5">
+                          {r.captainName != null && r.captainName !== ""
+                            ? getLocalizedText(r.captainName, { lang, mode: "generic" })
+                            : "—"}
+                        </td>
                         <td className="border-b border-card-border px-3 py-2.5 font-mono" dir="ltr">
                           {r.deliveryFee} {r.currency === "ILS" ? ILS_LABEL : r.currency}
                         </td>
@@ -486,7 +494,7 @@ export function ReportsPageView() {
                 <option value="">{t("reports.filterAll")}</option>
                 {(captainsQ.data?.items ?? []).map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.user.fullName} — {c.area}
+                    {captainOptionLabel(c, lang)}
                   </option>
                 ))}
               </select>
@@ -504,7 +512,7 @@ export function ReportsPageView() {
                 <option value="">{t("reports.filterAll")}</option>
                 {(storesQ.data?.items ?? []).map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name} — {s.area}
+                    {storeOptionLabel(s, lang)}
                   </option>
                 ))}
               </select>
@@ -576,10 +584,20 @@ export function ReportsPageView() {
                     ordersHistory.data.rows.map((r, idx) => (
                       <tr key={`${r.orderNumber}-${idx}`} className="transition hover:bg-accent/50">
                         <td className="border-b border-card-border px-3 py-2.5 font-mono text-xs" dir="ltr">{r.orderNumber}</td>
-                        <td className="border-b border-card-border px-3 py-2.5">{r.storeName}</td>
-                        <td className="border-b border-card-border px-3 py-2.5">{r.captainName ?? "—"}</td>
+                        <td className="border-b border-card-border px-3 py-2.5">
+                          {getLocalizedText(r.storeName, { lang, mode: "generic" })}
+                        </td>
+                        <td className="border-b border-card-border px-3 py-2.5">
+                          {r.captainName != null && r.captainName !== ""
+                            ? getLocalizedText(r.captainName, { lang, mode: "generic" })
+                            : "—"}
+                        </td>
                         <td className="border-b border-card-border px-3 py-2.5" dir="ltr">{r.captainPhone ?? "—"}</td>
-                        <td className="border-b border-card-border px-3 py-2.5">{r.customerName ?? "—"}</td>
+                        <td className="border-b border-card-border px-3 py-2.5">
+                          {r.customerName != null && r.customerName !== ""
+                            ? getLocalizedText(r.customerName, { lang, mode: "generic" })
+                            : "—"}
+                        </td>
                         <td className="border-b border-card-border px-3 py-2.5">{r.status}</td>
                         <td className="border-b border-card-border px-3 py-2.5 text-xs" dir="ltr">
                           {r.assignedAt ? new Date(r.assignedAt).toLocaleString(dateLocale, { hour12: false }) : t("common.none")}

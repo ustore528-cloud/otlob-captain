@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ActiveMapCaptain, OrderListItem } from "@/types/api";
 import { clampLatLng, clampLatLngPair, googleMapsRestrictionOption } from "@/lib/israel-map-bounds";
+import { isRtlLang } from "@/i18n/i18n";
+import { captainUserNameDisplay } from "@/i18n/localize-entity-labels";
 
 declare global {
   interface Window {
@@ -22,7 +25,7 @@ function getApiKey(): string {
   return (import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "").trim();
 }
 
-/** مفتاح حقيقي مفعّل — وإلا نستخدم خريطة OSM (Leaflet) في التوزيع */
+/** True when a real API key is set; otherwise the distribution board uses OSM (Leaflet). */
 export function hasGoogleMapsApiKey(): boolean {
   const k = getApiKey();
   return k.length > 0 && k !== GOOGLE_KEY_PLACEHOLDER;
@@ -48,6 +51,8 @@ function captainStatus(c: ActiveMapCaptain): "available" | "waiting" | "busy" | 
 }
 
 export function GoogleTrackingMap({ captains, orders, defaultCenter, defaultZoom }: Props) {
+  const { t, i18n } = useTranslation();
+  const rtl = isRtlLang(i18n.resolvedLanguage ?? i18n.language);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any | null>(null);
   const captainMarkersRef = useRef<Map<string, any>>(new Map());
@@ -86,13 +91,13 @@ export function GoogleTrackingMap({ captains, orders, defaultCenter, defaultZoom
       }
     };
     const onScriptError = () => {
-      setLoadError("Google Maps script failed to load.");
+      setLoadError(String(i18n.t("distribution.google.scriptLoadFailed")));
       // eslint-disable-next-line no-console
       console.error("[distribution:google-maps] script load failed");
     };
     const prevAuthFailure = (window as any).gm_authFailure;
     (window as any).gm_authFailure = () => {
-      setLoadError("Google Maps JavaScript API auth failure.");
+      setLoadError(String(i18n.t("distribution.google.authFailed")));
       // eslint-disable-next-line no-console
       console.error("[distribution:google-maps] gm_authFailure");
       if (typeof prevAuthFailure === "function") prevAuthFailure();
@@ -129,6 +134,7 @@ export function GoogleTrackingMap({ captains, orders, defaultCenter, defaultZoom
 
   useEffect(() => {
     if (!hasUsableApiKey || !mapRef.current || !window.google) return;
+    const lang = i18n.resolvedLanguage ?? i18n.language;
     const map = mapRef.current;
     const nextIds = new Set<string>();
     for (const captain of captains) {
@@ -143,13 +149,14 @@ export function GoogleTrackingMap({ captains, orders, defaultCenter, defaultZoom
           map,
           position: pos,
           icon: createCaptainIcon(status),
-          title: captain.user.fullName,
+          title: captainUserNameDisplay(captain, lang),
           optimized: true,
         });
         captainMarkersRef.current.set(captain.id, marker);
       } else {
         marker.setPosition(pos);
         marker.setIcon(createCaptainIcon(status));
+        marker.setTitle(captainUserNameDisplay(captain, lang));
       }
     }
     for (const [id, marker] of captainMarkersRef.current.entries()) {
@@ -157,7 +164,7 @@ export function GoogleTrackingMap({ captains, orders, defaultCenter, defaultZoom
       marker.setMap(null);
       captainMarkersRef.current.delete(id);
     }
-  }, [captains, hasUsableApiKey]);
+  }, [captains, hasUsableApiKey, i18n.language, i18n.resolvedLanguage]);
 
   useEffect(() => {
     if (!hasUsableApiKey || !mapRef.current || !window.google || !geocoderRef.current) return;
@@ -251,18 +258,16 @@ export function GoogleTrackingMap({ captains, orders, defaultCenter, defaultZoom
   if (!hasUsableApiKey) {
     return (
       <div className="flex h-[calc(100vh-260px)] items-center justify-center rounded-2xl border border-card-border bg-white p-6 shadow-sm">
-        <div className="max-w-lg text-center" dir="rtl">
-          <h3 className="text-lg font-semibold text-foreground">خريطة Google غير مفعّلة</h3>
-          <p className="mt-2 text-sm text-muted">
-            أضف مفتاح Google Maps في VITE_GOOGLE_MAPS_API_KEY لتفعيل التتبع الحقيقي. عند التفعيل تُقيَّد الخريطة لعرض إسرائيل فقط.
-          </p>
-          <div className="mt-3 rounded-lg border border-card-border bg-slate-50 p-3 text-right text-xs text-slate-700">
-            <p className="font-semibold">الملف المطلوب:</p>
-            <p dir="ltr">apps/web/.env.local</p>
-            <p className="mt-2 font-semibold">الصيغة:</p>
-            <p dir="ltr">VITE_GOOGLE_MAPS_API_KEY=AIza...</p>
-            <p className="mt-2">ثم أعد تشغيل السيرفر:</p>
-            <p dir="ltr">npm run dev -w @captain/web</p>
+        <div className="max-w-lg text-center" dir={rtl ? "rtl" : "ltr"}>
+          <h3 className="text-lg font-semibold text-foreground">{t("distribution.google.disabledTitle")}</h3>
+          <p className="mt-2 text-sm text-muted">{t("distribution.google.disabledBody")}</p>
+          <div className="mt-3 rounded-lg border border-card-border bg-slate-50 p-3 text-start text-xs text-slate-700">
+            <p className="font-semibold">{t("distribution.google.requiredFile")}</p>
+            <p dir="ltr">{t("distribution.google.envFilePath")}</p>
+            <p className="mt-2 font-semibold">{t("distribution.google.format")}</p>
+            <p dir="ltr">{t("distribution.google.envLineExample")}</p>
+            <p className="mt-2">{t("distribution.google.restart")}</p>
+            <p dir="ltr">{t("distribution.google.devCommand")}</p>
           </div>
         </div>
       </div>
@@ -271,11 +276,14 @@ export function GoogleTrackingMap({ captains, orders, defaultCenter, defaultZoom
 
   if (loadError) {
     return (
-      <div className="flex h-[calc(100vh-260px)] items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm" dir="rtl">
+      <div
+        className="flex h-[calc(100vh-260px)] items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm"
+        dir={rtl ? "rtl" : "ltr"}
+      >
         <div className="max-w-lg text-center">
-          <h3 className="text-lg font-semibold text-red-700">تعذّر تحميل Google Maps</h3>
+          <h3 className="text-lg font-semibold text-red-700">{t("distribution.google.loadFailedTitle")}</h3>
           <p className="mt-2 text-sm text-red-700">{loadError}</p>
-          <p className="mt-2 text-xs text-red-600">تحقق من صلاحية المفتاح وتفعيل Maps JavaScript API والفوترة وقيود referrer.</p>
+          <p className="mt-2 text-xs text-red-600">{t("distribution.google.loadFailedBody")}</p>
         </div>
       </div>
     );

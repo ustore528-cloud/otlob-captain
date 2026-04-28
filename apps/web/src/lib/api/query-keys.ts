@@ -39,7 +39,8 @@ export const queryKeys = {
 
   stores: {
     root: ["stores"] as const,
-    list: (page: number, pageSize: number) => ["stores", "list", page, pageSize] as const,
+    list: (page: number, pageSize: number, companyId?: string) =>
+      ["stores", "list", page, pageSize, companyId ?? ""] as const,
   },
 
   tracking: {
@@ -124,6 +125,7 @@ export type CaptainOrdersQueryParams = {
   q?: string;
   area?: string;
   status?: string;
+  currentOnly?: boolean;
 };
 
 export type UsersListParams = {

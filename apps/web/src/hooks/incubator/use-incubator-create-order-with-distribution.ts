@@ -1,12 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import i18n from "@/i18n/i18n";
 import type { CreateOrderPayload } from "@/lib/api/services/orders";
 import { invalidateOrderDistributionDomain } from "@/lib/invalidate-order-domain";
 import { api } from "@/lib/api/singleton";
 import { toastApiError, toastSuccess } from "@/lib/toast";
 
-/**
- * إنشاء طلب ثم استدعاء نفس مسار «توزيع تلقائي» في قائمة الطلبات — دون تغيير منطق الإنشاء العام.
- */
 export function useIncubatorCreateOrderWithDistribution() {
   const qc = useQueryClient();
   return useMutation({
@@ -21,16 +19,13 @@ export function useIncubatorCreateOrderWithDistribution() {
     },
     onSuccess: async (result) => {
       if (result.distributionStarted) {
-        toastSuccess(`تم إنشاء الطلب ${result.order.orderNumber} وبدء التوزيع التلقائي.`);
+        toastSuccess(String(i18n.t("mutationToasts.orderCreatedWithDist", { number: result.order.orderNumber })));
       } else {
-        toastSuccess(`تم إنشاء الطلب ${result.order.orderNumber}.`);
-        toastApiError(
-          result.distributionError,
-          "تعذر بدء التوزيع التلقائي تلقائياً — افتح قائمة الطلبات واضغط «توزيع تلقائي» لهذا الطلب.",
-        );
+        toastSuccess(String(i18n.t("mutationToasts.orderCreatedNoDist", { number: result.order.orderNumber })));
+        toastApiError(result.distributionError, String(i18n.t("mutationToasts.autoDistFailed")));
       }
       await invalidateOrderDistributionDomain(qc);
     },
-    onError: (e) => toastApiError(e, "تعذر إنشاء الطلب"),
+    onError: (e) => toastApiError(e, String(i18n.t("mutationToasts.incubatorCreateFailed"))),
   });
 }

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
+import i18n from "@/i18n/i18n";
 import { invalidateOrderDistributionDomain } from "@/lib/invalidate-order-domain";
 import { api } from "@/lib/api/singleton";
 import { toastApiError, toastSuccess } from "@/lib/toast";
@@ -73,7 +74,11 @@ export function useAssignOrderToCaptain() {
     },
     onSuccess: (_, v) => {
       const successAt = performance.now();
-      toastSuccess(v.mode === "drag-drop" ? "تم التعيين (سحب وإفلات)" : "تم التعيين اليدوي");
+      toastSuccess(
+        String(
+          i18n.t(v.mode === "drag-drop" ? "mutationToasts.assignDragDrop" : "mutationToasts.assignManual"),
+        ),
+      );
       const t = timingRef.current;
       // eslint-disable-next-line no-console
       console.info("[otlob:assign-timing] success UI fired", {
@@ -124,7 +129,7 @@ export function useAssignOrderToCaptain() {
         clickToErrorMs: t?.clickAtMs != null ? failAt - t.clickAtMs : undefined,
       });
       timingRef.current = null;
-      toastApiError(e, "تعذر تعيين الكابتن");
+      toastApiError(e, String(i18n.t("mutationToasts.assignCaptainFailed")));
     },
   });
 }

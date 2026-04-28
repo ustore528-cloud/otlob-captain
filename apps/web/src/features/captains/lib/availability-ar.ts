@@ -1,10 +1,6 @@
-/** تسميات حالة التوفر كما في تطبيق الكابتن — يمكن مواءمتها مع enum الخادم لاحقًا */
+import i18n from "@/i18n/i18n";
+
+/** Captain availability label for UI (server enum stays unchanged). */
 export function availabilityAr(s: string): string {
-  const m: Record<string, string> = {
-    OFFLINE: "غير متصل",
-    AVAILABLE: "متاح",
-    BUSY: "مشغول",
-    ON_DELIVERY: "في التوصيل",
-  };
-  return m[s] ?? s;
+  return i18n.t(`statuses.captain.${s}`, { defaultValue: s });
 }

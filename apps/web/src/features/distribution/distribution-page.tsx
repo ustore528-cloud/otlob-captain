@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ClipboardList, MapPinned, Settings, Users, FileBarChart2, Route } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -18,6 +19,7 @@ import { formatOrderDisplayLabel } from "@captain/shared";
 import { formatDistributionQueueSerial } from "@/features/distribution/distribution-queue-serial";
 import { AutoDistributeButton } from "@/features/distribution/components/auto-distribute-button";
 import { CaptainMiniCard } from "@/features/distribution/components/captain-mini-card";
+import { CaptainDetailsModal } from "@/features/distribution/components/captain-details-modal";
 import { DistributionMap } from "@/features/distribution/distribution-map";
 import { GoogleTrackingMap, hasGoogleMapsApiKey } from "@/features/distribution/components/google-tracking-map";
 import { OrdersPanel } from "@/features/distribution/components/orders-panel";
@@ -25,6 +27,8 @@ import { filterCaptainsForManualAssign, isCaptainRosterDropAllowed } from "@/fea
 import { isCompanyAdminRole, isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ActiveMapCaptain, OrderListItem } from "@/types/api";
+import { isRtlLang } from "@/i18n/i18n";
+import { orderCustomerNameQuick, resolveCaptainDisplayNameForPending } from "@/i18n/localize-entity-labels";
 
 type PendingAssignmentUi = {
   id: string;
@@ -61,6 +65,8 @@ function useDispatchRole() {
 }
 
 export function DistributionPageView() {
+  const { t, i18n } = useTranslation();
+  const rtl = isRtlLang(i18n.resolvedLanguage ?? i18n.language);
   const token = useAuthStore((s) => s.token);
   const role = useAuthStore((s) => s.user?.role);
   const isCompanyAdmin = isCompanyAdminRole(role);
@@ -69,6 +75,8 @@ export function DistributionPageView() {
   const [manualOrder, setManualOrder] = useState<OrderListItem | null>(null);
   const [pendingAssignments, setPendingAssignments] = useState<PendingAssignmentUi[]>([]);
   const [captainFilter, setCaptainFilter] = useState<CaptainFilter>("all");
+  const [captainSearch, setCaptainSearch] = useState("");
+  const [selectedCaptainId, setSelectedCaptainId] = useState<string | null>(null);
 
   const distributionPollMs = 4000;
   const pendingQ = useOrders(PENDING_LIST_PARAMS, { enabled: Boolean(token) && canDispatch, refetchInterval: distributionPollMs });
@@ -89,6 +97,10 @@ export function DistributionPageView() {
     const c = assignedQ.data?.items ?? [];
     return dedupeOrdersById([...c, ...a, ...b].sort((x, y) => (x.createdAt < y.createdAt ? 1 : -1)));
   }, [assignedQ.data?.items, pendingQ.data?.items, confirmedQ.data?.items]);
+  const manualAssignableOrders = useMemo(
+    () => mergedOrders.filter((o) => !o.assignedCaptain),
+    [mergedOrders],
+  );
 
   const mapCaptainsDeduped = useMemo(() => dedupeCaptainsById(mapCaptains.data ?? []), [mapCaptains.data]);
   const pendingOrderIds = useMemo(() => new Set(pendingAssignments.map((x) => x.orderId)), [pendingAssignments]);
@@ -102,6 +114,8 @@ export function DistributionPageView() {
     return map;
   }, [mapCaptainsDeduped, captainRoster]);
 
+  const lang = i18n.resolvedLanguage ?? i18n.language;
+
   const manualAssignCaptains = useMemo(
     () => (manualOrder ? filterCaptainsForManualAssign(manualOrder, captainRoster) : []),
     [manualOrder, captainRoster],
@@ -109,8 +123,8 @@ export function DistributionPageView() {
   const manualAssignEmptyHint = useMemo(() => {
     if (!manualOrder || manualOrder.store.subscriptionType !== "SUPERVISOR_LINKED") return undefined;
     if (manualAssignCaptains.length > 0) return undefined;
-    return "لا يوجد في الصفحة الحالية كباتن متوافقون مع مشرف المتجر.";
-  }, [manualOrder, manualAssignCaptains.length]);
+    return t("distribution.manualAssign.noCompatibleCaptains");
+  }, [manualOrder, manualAssignCaptains.length, t]);
 
   const dropScopeGuard = useCallback(
     (orderId: string, captainId: string) => {
@@ -123,10 +137,10 @@ export function DistributionPageView() {
   const onDropScopeRejected = useCallback(() => {
     toast.error(
       isCompanyAdmin
-        ? "هذا الكابتن خارج نطاق التوزيع المسموح لهذا الطلب."
-        : "هذا الكابتن خارج نطاق مشرف المتجر لهذا الطلب.",
+        ? t("distribution.guard.companyAdminOutOfScope")
+        : t("distribution.guard.supervisorOutOfScope"),
     );
-  }, [isCompanyAdmin]);
+  }, [isCompanyAdmin, t]);
 
   const manualOrderLabel = useMemo(() => {
     if (!manualOrder) return "";
@@ -145,15 +159,33 @@ export function DistributionPageView() {
       if (pendingOrderIds.has(orderId)) return;
       const order = ordersById.get(orderId);
       if (!order) return;
-      const captainName = captainNameById.get(captainId) ?? "كابتن محدد";
+      const captainName = resolveCaptainDisplayNameForPending(
+        captainId,
+        mapCaptainsDeduped,
+        captainRoster,
+        lang,
+        captainNameById.get(captainId) ?? t("distribution.common.selectedCaptain"),
+      );
       const optimisticId = `${order.id}:${captainId}:${Date.now()}`;
-      setPendingAssignments((prev) => [...prev, { id: optimisticId, orderId: order.id, orderNumber: order.orderNumber, customerName: order.customerName, captainId, captainName, mode: "drag-drop" }]);
+      const customerDisplay = orderCustomerNameQuick(order, lang);
+      setPendingAssignments((prev) => [
+        ...prev,
+        {
+          id: optimisticId,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerName: customerDisplay,
+          captainId,
+          captainName,
+          mode: "drag-drop",
+        },
+      ]);
       assign.mutate(
         { orderId, captainId, mode: "drag-drop", source: "distribution-dashboard-drag-drop" },
         { onSettled: () => removePendingAssignment(optimisticId) },
       );
     },
-    [assign, captainNameById, ordersById, pendingOrderIds, removePendingAssignment],
+    [assign, captainNameById, captainRoster, lang, mapCaptainsDeduped, ordersById, pendingOrderIds, removePendingAssignment, t],
   );
 
   if (!token) return null;
@@ -166,61 +198,50 @@ export function DistributionPageView() {
   const delayedOrders = mergedOrders.filter((o) => Date.now() - Date.parse(o.createdAt) > 20 * 60 * 1000).length;
 
   const filteredCaptains = mapCaptainsDeduped.filter((c) => {
+    const displayName = resolveCaptainDisplayNameForPending(
+      c.id,
+      mapCaptainsDeduped,
+      captainRoster,
+      lang,
+      c.user.fullName,
+    )
+      .toLowerCase()
+      .trim();
+    const q = captainSearch.toLowerCase().trim();
+    if (q && !displayName.includes(q)) return false;
     if (captainFilter === "all") return true;
     if (captainFilter === "available") return c.availabilityStatus === "AVAILABLE" && c.activeOrders === 0 && c.waitingOffers === 0;
     if (captainFilter === "waiting") return c.waitingOffers > 0;
     if (captainFilter === "busy") return c.activeOrders > 0;
     return !c.lastLocation || c.availabilityStatus !== "AVAILABLE";
   });
+  const selectedCaptain = selectedCaptainId ? mapCaptainsDeduped.find((c) => c.id === selectedCaptainId) ?? null : null;
+  const selectedRosterCaptain = selectedCaptainId ? captainRoster.find((c) => c.id === selectedCaptainId) ?? null : null;
 
   return (
-    <div className="grid gap-6 [direction:rtl]">
-      <PageHeader title="لوحة توزيع الطلبات" description="إدارة مباشرة للكباتن والطلبات على الخريطة" />
+    <div className={`grid gap-6 ${rtl ? "[direction:rtl]" : "[direction:ltr]"}`}>
+      <PageHeader title={t("distribution.page.title")} description={t("distribution.page.description")} />
 
       <div className="grid grid-cols-2 gap-2 rounded-2xl border border-card-border bg-white p-3 shadow-sm sm:grid-cols-5">
-        <StatBox label="الطلبات الجديدة" value={newOrdersCount} tone="text-primary" />
-        <StatBox label="المتاحون" value={availableCaptains} tone="text-emerald-600" />
-        <StatBox label="بانتظار الرد" value={waitingCaptains} tone="text-amber-600" />
-        <StatBox label="المشغولون" value={busyCaptains} tone="text-rose-600" />
-        <StatBox label="الطلبات المتأخرة" value={delayedOrders} tone="text-orange-600" />
+        <StatBox label={t("distribution.stats.newOrders")} value={newOrdersCount} tone="text-primary" />
+        <StatBox label={t("distribution.stats.available")} value={availableCaptains} tone="text-emerald-600" />
+        <StatBox label={t("distribution.stats.waiting")} value={waitingCaptains} tone="text-amber-600" />
+        <StatBox label={t("distribution.stats.busy")} value={busyCaptains} tone="text-rose-600" />
+        <StatBox label={t("distribution.stats.delayed")} value={delayedOrders} tone="text-orange-600" />
       </div>
 
-      <section className="grid gap-4 [direction:ltr] lg:grid-cols-[56px_minmax(300px,360px)_minmax(0,1fr)_minmax(280px,340px)]">
-        <aside className="flex flex-col items-center gap-2 rounded-2xl border border-card-border bg-white p-2 shadow-sm [direction:rtl]">
-          <RailIcon label="التوزيع" active icon={<Route className="size-5" />} />
-          <RailIcon label="الكباتن" icon={<Users className="size-5" />} />
-          <RailIcon label="الطلبات" icon={<ClipboardList className="size-5" />} />
-          <RailIcon label="الخريطة" icon={<MapPinned className="size-5" />} />
-          <RailIcon label="التقارير" icon={<FileBarChart2 className="size-5" />} />
+      <section className="grid gap-4 [direction:ltr] lg:grid-cols-[56px_minmax(0,1fr)_minmax(320px,380px)]">
+        <aside className={`flex flex-col items-center gap-2 rounded-2xl border border-card-border bg-white p-2 shadow-sm ${rtl ? "[direction:rtl]" : "[direction:ltr]"}`}>
+          <RailIcon label={t("distribution.rail.distribution")} active icon={<Route className="size-5" />} />
+          <RailIcon label={t("distribution.rail.captains")} icon={<Users className="size-5" />} />
+          <RailIcon label={t("distribution.rail.orders")} icon={<ClipboardList className="size-5" />} />
+          <RailIcon label={t("distribution.rail.map")} icon={<MapPinned className="size-5" />} />
+          <RailIcon label={t("distribution.rail.reports")} icon={<FileBarChart2 className="size-5" />} />
           <div className="mt-auto" />
-          <RailIcon label="الإعدادات" icon={<Settings className="size-5" />} />
+          <RailIcon label={t("distribution.rail.settings")} icon={<Settings className="size-5" />} />
         </aside>
 
-        <aside className="rounded-2xl border border-card-border bg-white p-3 shadow-sm [direction:rtl]">
-          <AutoDistributeButton orderIds={mergedOrders.map((o) => o.id)} />
-          <div className="mt-3 flex flex-wrap gap-1">
-            <FilterChip label="الكل" active={captainFilter === "all"} onClick={() => setCaptainFilter("all")} />
-            <FilterChip label="المتاحون" active={captainFilter === "available"} onClick={() => setCaptainFilter("available")} />
-            <FilterChip label="بانتظار الرد" active={captainFilter === "waiting"} onClick={() => setCaptainFilter("waiting")} />
-            <FilterChip label="مشغول" active={captainFilter === "busy"} onClick={() => setCaptainFilter("busy")} />
-            <FilterChip label="بعيد" active={captainFilter === "far"} onClick={() => setCaptainFilter("far")} />
-          </div>
-          <div className="mt-3 grid max-h-[calc(100vh-270px)] grid-cols-4 gap-2 overflow-y-auto">
-            {filteredCaptains.map((c) => (
-              <CaptainMiniCard
-                key={c.id}
-                captain={c}
-                pending={pendingCaptainIds.includes(c.id)}
-                onDropOrderOnCaptain={onAssignDrop}
-                activeDragOrderId={dragOrderId}
-                dropAllow={dropScopeGuard}
-                onDropRejectedByGuard={onDropScopeRejected}
-              />
-            ))}
-          </div>
-        </aside>
-
-        <div className="rounded-2xl border border-card-border bg-white p-3 shadow-sm [direction:rtl]">
+        <div className={`relative z-[1] rounded-2xl border border-card-border bg-white p-3 shadow-sm ${rtl ? "[direction:rtl]" : "[direction:ltr]"}`}>
           {hasGoogleMapsApiKey() ? (
             <GoogleTrackingMap
               captains={mapCaptainsDeduped}
@@ -241,21 +262,68 @@ export function DistributionPageView() {
           )}
         </div>
 
-        <div dir="rtl">
-          <OrdersPanel
-            orders={mergedOrders}
-            pendingOrderIds={pendingOrderIds}
-            onManual={setManualOrder}
-            onResend={(ord) =>
-              resend.mutate({
-                orderId: ord.id,
-                clickAtMs: performance.now(),
-                source: "distribution-queue-resend",
-              })
-            }
-            onDragState={setDragOrderId}
+        <aside className={`relative z-20 grid gap-4 ${rtl ? "[direction:rtl]" : "[direction:ltr]"}`}>
+          <div className="rounded-2xl border border-card-border bg-white p-3 shadow-sm">
+          <AutoDistributeButton
+            orderIds={mergedOrders
+              .filter((o) => o.status === "PENDING" || o.status === "CONFIRMED")
+              .map((o) => o.id)}
           />
-        </div>
+          <div className="mt-3">
+            <input
+              type="search"
+              value={captainSearch}
+              onChange={(e) => setCaptainSearch(e.target.value)}
+              placeholder="بحث باسم الكابتن"
+              className="h-9 w-full rounded-lg border border-card-border bg-background px-3 text-sm"
+            />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1">
+            <FilterChip label={t("common.all")} active={captainFilter === "all"} onClick={() => setCaptainFilter("all")} />
+            <FilterChip
+              label={t("distribution.filters.available")}
+              active={captainFilter === "available"}
+              onClick={() => setCaptainFilter("available")}
+            />
+            <FilterChip
+              label={t("distribution.filters.waiting")}
+              active={captainFilter === "waiting"}
+              onClick={() => setCaptainFilter("waiting")}
+            />
+            <FilterChip label={t("distribution.filters.busy")} active={captainFilter === "busy"} onClick={() => setCaptainFilter("busy")} />
+            <FilterChip label={t("distribution.filters.far")} active={captainFilter === "far"} onClick={() => setCaptainFilter("far")} />
+          </div>
+          <div className="mt-3 grid max-h-[min(44vh,520px)] grid-cols-2 gap-2 overflow-y-auto xl:grid-cols-3">
+            {filteredCaptains.map((c) => (
+              <CaptainMiniCard
+                key={c.id}
+                captain={c}
+                pending={pendingCaptainIds.includes(c.id)}
+                onDropOrderOnCaptain={onAssignDrop}
+                activeDragOrderId={dragOrderId}
+                onClick={setSelectedCaptainId}
+                dropAllow={dropScopeGuard}
+                onDropRejectedByGuard={onDropScopeRejected}
+              />
+            ))}
+          </div>
+          </div>
+          <div dir={rtl ? "rtl" : "ltr"} className="relative z-20">
+            <OrdersPanel
+              orders={manualAssignableOrders}
+              pendingOrderIds={pendingOrderIds}
+              onManual={setManualOrder}
+              onResend={(ord) =>
+                resend.mutate({
+                  orderId: ord.id,
+                  clickAtMs: performance.now(),
+                  source: "distribution-queue-resend",
+                })
+              }
+              onDragState={setDragOrderId}
+            />
+          </div>
+        </aside>
       </section>
 
       <ManualAssignModal
@@ -268,8 +336,26 @@ export function DistributionPageView() {
         onSubmit={(captainId) => {
           if (!manualOrder || pendingOrderIds.has(manualOrder.id)) return;
           const optimisticId = `${manualOrder.id}:${captainId}:${Date.now()}`;
-          const captainName = captainNameById.get(captainId) ?? "كابتن محدد";
-          setPendingAssignments((prev) => [...prev, { id: optimisticId, orderId: manualOrder.id, orderNumber: manualOrder.orderNumber, customerName: manualOrder.customerName, captainId, captainName, mode: "manual" }]);
+          const captainName = resolveCaptainDisplayNameForPending(
+            captainId,
+            mapCaptainsDeduped,
+            captainRoster,
+            lang,
+            captainNameById.get(captainId) ?? t("distribution.common.selectedCaptain"),
+          );
+          const customerDisplay = orderCustomerNameQuick(manualOrder, lang);
+          setPendingAssignments((prev) => [
+            ...prev,
+            {
+              id: optimisticId,
+              orderId: manualOrder.id,
+              orderNumber: manualOrder.orderNumber,
+              customerName: customerDisplay,
+              captainId,
+              captainName,
+              mode: "manual",
+            },
+          ]);
           assign.mutate(
             { orderId: manualOrder.id, captainId, mode: "manual", clickAtMs: performance.now(), source: "distribution-manual-assign-modal" },
             {
@@ -278,6 +364,12 @@ export function DistributionPageView() {
             },
           );
         }}
+      />
+      <CaptainDetailsModal
+        open={Boolean(selectedCaptain)}
+        onClose={() => setSelectedCaptainId(null)}
+        captain={selectedCaptain}
+        rosterCaptain={selectedRosterCaptain}
       />
     </div>
   );

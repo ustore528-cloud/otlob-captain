@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef } from "react";
+import i18n from "@/i18n/i18n";
 import { invalidateOrderDistributionDomain } from "@/lib/invalidate-order-domain";
 import { api } from "@/lib/api/singleton";
 import { toastApiError, toastSuccess } from "@/lib/toast";
@@ -60,7 +61,7 @@ export function useResendOrderToDistribution() {
       const payload = toPayload(v);
       const successAt = performance.now();
       const t = timingRef.current;
-      toastSuccess("تمت إعادة التوزيع");
+      toastSuccess(String(i18n.t("mutationToasts.redistributeSuccess")));
       // eslint-disable-next-line no-console
       console.info("[otlob:resend-timing] success UI fired", {
         orderId: payload.orderId,
@@ -102,7 +103,7 @@ export function useResendOrderToDistribution() {
         clickToErrorMs: t?.clickAtMs != null ? now - t.clickAtMs : undefined,
       });
       timingRef.current = null;
-      toastApiError(e, "تعذرت إعادة التوزيع");
+      toastApiError(e, String(i18n.t("mutationToasts.redistributeFailed")));
     },
   });
 }

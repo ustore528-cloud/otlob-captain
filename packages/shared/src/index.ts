@@ -1,4 +1,5 @@
 export * from "./enums.js";
+export * from "./display-i18n.js";
 export * from "./api-paths.js";
 export * from "./schemas/auth.js";
 export * from "./schemas/restaurant.js";

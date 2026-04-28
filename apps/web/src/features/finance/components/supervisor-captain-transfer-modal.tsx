@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,13 +11,14 @@ import { ApiError } from "@/lib/api/http";
 import { queryClient } from "@/lib/query-client";
 import { queryKeys } from "@/lib/api/query-keys";
 import type { CaptainListItem } from "@/types/api";
+import { captainOptionLabel } from "@/i18n/localize-entity-labels";
 
 const AMOUNT_RE = /^\d+(\.\d{1,2})?$/;
 
 function normalizeAmount(s: string): string | null {
-  const t = s.trim();
-  if (!AMOUNT_RE.test(t)) return null;
-  const n = Number(t);
+  const raw = s.trim();
+  if (!AMOUNT_RE.test(raw)) return null;
+  const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return null;
   return n.toFixed(2);
 }
@@ -25,19 +27,21 @@ function listSupervisedCaptains(items: CaptainListItem[] | undefined, actorId: s
   if (!items?.length) return [];
   return items
     .filter((c) => c.supervisorUser != null && c.supervisorUser.id === actorId)
-    .sort((a, b) => a.user.fullName.localeCompare(b.user.fullName, "ar"));
+    .sort((a, b) => a.user.fullName.localeCompare(b.user.fullName, "en"));
 }
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  /** المستخدم المسجّل (مطابقة `Captain.supervisorUserId` في الـ API). */
+  /** Logged-in user id (matches `Captain.supervisorUserId` from the API). */
   actorUserId: string;
-  /** اختياري — يُستَخدَم لتهيئة اختيار الكابتن. */
+  /** Optional — used to initialize captain selection. */
   defaultCaptainId: string | null;
 };
 
 export function SupervisorCaptainTransferModal({ open, onClose, actorUserId, defaultCaptainId }: Props) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [captainId, setCaptainId] = useState<string | null>(null);
   const [amountInput, setAmountInput] = useState("");
@@ -96,16 +100,16 @@ export function SupervisorCaptainTransferModal({ open, onClose, actorUserId, def
     e.preventDefault();
     setFormError(null);
     if (!captainId) {
-      setFormError("اختر كابتناً مرتبطاً بك كمشرف.");
+      setFormError(t("finance.modals.supervisorCaptainTransfer.pickCaptain"));
       return;
     }
     if (!idempotencyKey) {
-      setFormError("مفتاح idempotency غير جاهز. أغلق النافذة وافتحها مرة أخرى.");
+      setFormError(t("finance.modals.common.idempotencyNotReady"));
       return;
     }
     const amount = normalizeAmount(amountInput);
     if (!amount) {
-      setFormError("أدخل مبلغاً موجباً (حتى رقمين عشريين).");
+      setFormError(t("finance.modals.common.positiveAmount"));
       return;
     }
     void transfer.mutate({ captainId, amount, key: idempotencyKey });
@@ -116,7 +120,7 @@ export function SupervisorCaptainTransferModal({ open, onClose, actorUserId, def
       ? transfer.error.message
       : transfer.error instanceof Error
         ? transfer.error.message
-        : "تعذّر إكمال الطلب"
+        : t("finance.modals.common.genericCompleteError")
     : null;
   const done = transfer.isSuccess;
   const result = transfer.data;
@@ -125,27 +129,30 @@ export function SupervisorCaptainTransferModal({ open, onClose, actorUserId, def
     <Modal
       open={open}
       onClose={onClose}
-      title="تحويل لكابتن"
-      description="للمشرف فقط. الكباتن الظاهرون هم المرتبطون بك في النظام. مفتاح idempotency يُولَّد عند فتح النافذة."
+      title={t("finance.modals.supervisorCaptainTransfer.title")}
+      description={t("finance.modals.supervisorCaptainTransfer.description")}
     >
       {done && result ? (
         <div className="space-y-3">
           <p className="text-sm text-emerald-700">
             {result.idempotent
-              ? "تمت العملية (تسجيل مكرر بأمان — نفس مفتاح idempotency)."
-              : "تم التحويل."}
+              ? t("finance.modals.supervisorCaptainTransfer.successNoop")
+              : t("finance.modals.supervisorCaptainTransfer.success")}
           </p>
           <p className="text-sm text-muted" dir="ltr">
-            رصيد محفظتك: {result.newFromBalanceCached} — رصيد كابتن: {result.newToBalanceCached}
+            {t("finance.modals.supervisorCaptainTransfer.balancesLine", {
+              from: result.newFromBalanceCached,
+              to: result.newToBalanceCached,
+            })}
           </p>
           <Button type="button" onClick={onClose}>
-            إغلاق
+            {t("finance.modals.common.close")}
           </Button>
         </div>
       ) : (
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <Label htmlFor="tx-captain">الكابتن (مرتبط بك فقط)</Label>
+            <Label htmlFor="tx-captain">{t("finance.modals.supervisorCaptainTransfer.captainLabel")}</Label>
             <select
               id="tx-captain"
               className="w-full rounded-md border border-card-border bg-background px-3 py-2 text-sm"
@@ -155,16 +162,16 @@ export function SupervisorCaptainTransferModal({ open, onClose, actorUserId, def
             >
               {supervised.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.user.fullName} — {c.area}
+                  {captainOptionLabel(c, lang)}
                 </option>
               ))}
             </select>
             {supervised.length === 0 && !captains.isLoading ? (
-              <p className="text-xs text-muted">لا كباتن مرتبطون بحسابك كمشرف — أو غيّر نطاق القائمة لاحقاً.</p>
+              <p className="text-xs text-muted">{t("finance.modals.supervisorCaptainTransfer.noCaptainsHint")}</p>
             ) : null}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="tx-amount">المبلغ</Label>
+            <Label htmlFor="tx-amount">{t("finance.modals.common.amount")}</Label>
             <Input
               id="tx-amount"
               name="amount"
@@ -174,18 +181,18 @@ export function SupervisorCaptainTransferModal({ open, onClose, actorUserId, def
               className="font-mono"
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
-              placeholder="مثال: 50 أو 10.00"
+              placeholder={t("finance.modals.supervisorCaptainTransfer.amountPlaceholder")}
             />
-            <p className="text-xs text-muted">بدون اختيار عملة. يتطلب نطاق شركتك ووجود رصيد كافٍ.</p>
+            <p className="text-xs text-muted">{t("finance.modals.supervisorCaptainTransfer.currencyHint")}</p>
           </div>
           {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
           {serverError ? <p className="text-sm text-red-600">{serverError}</p> : null}
           <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="secondary" onClick={onClose}>
-              إلغاء
+              {t("finance.modals.common.cancel")}
             </Button>
             <Button type="submit" disabled={transfer.isPending || !idempotencyKey || !supervised.length}>
-              {transfer.isPending ? "جارٍ التحويل…" : "تأكيد التحويل"}
+              {transfer.isPending ? t("finance.modals.common.transferring") : t("finance.modals.supervisorCaptainTransfer.confirm")}
             </Button>
           </div>
         </form>

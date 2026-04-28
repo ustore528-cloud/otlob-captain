@@ -1,9 +1,9 @@
 import i18n from "i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import { initReactI18next } from "react-i18next";
-import ar from "@/locales/ar.json";
-import en from "@/locales/en.json";
-import he from "@/locales/he.json";
+import ar from "@/i18n/locales/ar.json";
+import en from "@/i18n/locales/en.json";
+import he from "@/i18n/locales/he.json";
 
 export const WEB_LANG_STORAGE_KEY = "captain_web_lang";
 export const SUPPORTED_WEB_LANGS = ["en", "ar", "he"] as const;

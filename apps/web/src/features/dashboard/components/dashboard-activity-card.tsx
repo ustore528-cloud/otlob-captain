@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Activity } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ActivityItem } from "@/types/api";
@@ -9,20 +10,21 @@ type Props = {
 };
 
 export function DashboardActivityCard({ dispatch, loading, items }: Props) {
+  const { t } = useTranslation();
   return (
     <Card className="border-card-border shadow-sm">
       <CardHeader className="flex flex-row items-center gap-2 space-y-0">
         <Activity className="size-5 text-primary" />
         <div>
-          <CardTitle className="text-base">ملخص النشاط</CardTitle>
-          <CardDescription>آخر الأحداث التشغيلية (للمشغّل/المدير)</CardDescription>
+          <CardTitle className="text-base">{t("dashboard.widgets.activity.title")}</CardTitle>
+          <CardDescription>{t("dashboard.widgets.activity.description")}</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="text-sm">
         {!dispatch ? (
-          <p className="text-muted">يتوفر ملخص النشاط لحسابات الإدارة والتشغيل.</p>
+          <p className="text-muted">{t("dashboard.widgets.activity.dispatchOnly")}</p>
         ) : loading ? (
-          <p className="text-muted">جارٍ التحميل…</p>
+          <p className="text-muted">{t("common.loading")}</p>
         ) : (
           <ul className="grid gap-2">
             {items.map((a) => (

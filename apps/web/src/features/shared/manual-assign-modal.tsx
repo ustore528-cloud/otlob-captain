@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
 import { availabilityAr } from "@/features/captains/lib/availability-ar";
 import type { CaptainListItem } from "@/types/api";
+import { captainUserNameDisplay, supervisorNameDisplay } from "@/i18n/localize-entity-labels";
 
 type Props = {
   open: boolean;
@@ -32,7 +33,8 @@ export function ManualAssignModal({
   isPending,
   emptyHint,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const [captainId, setCaptainId] = useState("");
   const resolvedTitle = title ?? t("manualAssign.title");
   const resolvedDescription = description ?? t("manualAssign.description", { order: orderLabel });
@@ -59,9 +61,9 @@ export function ManualAssignModal({
             <option value="">{t("manualAssign.choose")}</option>
             {captains.map((c) => (
               <option key={c.id} value={c.id} disabled={!c.isActive || !c.user.isActive}>
-                {c.user.fullName} — {c.user.phone} ({availabilityAr(c.availabilityStatus)}) ·{" "}
+                {captainUserNameDisplay(c, lang)} — {c.user.phone} ({availabilityAr(c.availabilityStatus)}) ·{" "}
                 {c.supervisorUser
-                  ? `${t("manualAssign.supervisorPrefix")}: ${c.supervisorUser.fullName}`
+                  ? `${t("manualAssign.supervisorPrefix")}: ${supervisorNameDisplay(c.supervisorUser, lang)}`
                   : t("manualAssign.noSupervisorShort")}
               </option>
             ))}

@@ -1,4 +1,5 @@
 import { GripVertical, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,10 +8,11 @@ import { formatOrderDisplayLabel } from "@captain/shared";
 import type { OrderListItem } from "@/types/api";
 import { orderStatusBadgeVariant, orderStatusLabel } from "@/lib/order-status";
 import { cn } from "@/lib/utils";
+import { useLocalizedOrderListItem } from "@/i18n/use-localized-order-display";
 
 type Props = {
   order: OrderListItem;
-  /** رقم ترتيب في قائمة التوزيع الحالية فقط (عرض واجهة) — انظر `formatDistributionQueueSerial` */
+  /** Queue position in the current distribution list (UI only) — see `formatDistributionQueueSerial` */
   queueSerial: string;
   onDragState: (orderId: string | null) => void;
   onManual: (order: OrderListItem) => void;
@@ -36,6 +38,8 @@ function distributionCardTone(status: OrderListItem["status"]): string {
 }
 
 export function DraggableOrderCard({ order, queueSerial, onDragState, onManual, onResend, busy, pendingAssignment }: Props) {
+  const { t } = useTranslation();
+  const loc = useLocalizedOrderListItem(order);
   const isPendingAssign = Boolean(pendingAssignment);
   return (
     <Card
@@ -52,20 +56,23 @@ export function DraggableOrderCard({ order, queueSerial, onDragState, onManual, 
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-1 gap-1.5">
-          <div className="mt-0.5 shrink-0 text-muted" title={isPendingAssign ? "التعيين جارٍ" : "سحب للتعيين على الخريطة"}>
+          <div
+            className="mt-0.5 shrink-0 text-muted"
+            title={isPendingAssign ? t("distribution.draggable.titleAssigning") : t("distribution.draggable.titleDragToMap")}
+          >
             <GripVertical className="size-4" />
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-start gap-2">
               <div
                 className="flex shrink-0 flex-col items-center justify-center rounded-lg border border-border/80 bg-background/95 px-2.5 py-1.5 shadow-sm dark:bg-background/90"
-                title={`ترتيب في قائمة التوزيع — المرجع: ${order.orderNumber}`}
+                title={t("distribution.draggable.queueTitle", { number: order.orderNumber })}
                 dir="ltr"
               >
                 <span className="font-mono text-[1.35rem] font-bold leading-none tabular-nums tracking-tight text-foreground">
                   {queueSerial}
                 </span>
-                <span className="mt-0.5 text-[9px] font-semibold text-muted">ترتيب</span>
+                <span className="mt-0.5 text-[9px] font-semibold text-muted">{t("distribution.draggable.queueLabel")}</span>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -75,7 +82,7 @@ export function DraggableOrderCard({ order, queueSerial, onDragState, onManual, 
                   {isPendingAssign ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                       <Loader2 className="size-3 animate-spin" />
-                      جارٍ التعيين...
+                      {t("distribution.draggable.assigning")}
                     </span>
                   ) : null}
                   {order.status === "ASSIGNED" && order.pendingOfferExpiresAt ? (
@@ -87,30 +94,33 @@ export function DraggableOrderCard({ order, queueSerial, onDragState, onManual, 
                   dir="ltr"
                   title={order.orderNumber}
                 >
-                  مرجع: {formatOrderDisplayLabel(order.displayOrderNo ?? null, order.orderNumber)}
+                  {t("distribution.draggable.refPrefix")}{" "}
+                  {formatOrderDisplayLabel(order.displayOrderNo ?? null, order.orderNumber)}
                 </p>
                 <p className="font-mono text-[9px] leading-tight text-muted-foreground/90" dir="ltr" title={order.orderNumber}>
                   {order.orderNumber}
                 </p>
-                <p className="mt-0.5 text-sm font-medium leading-tight text-foreground">{order.customerName}</p>
+                <p className="mt-0.5 text-sm font-medium leading-tight text-foreground">{loc.customerName}</p>
                 <p className="text-xs leading-tight text-muted-foreground" dir="ltr">
                   {order.customerPhone}
                 </p>
-                <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{order.pickupAddress}</p>
+                <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{loc.pickupAddress}</p>
                 {order.assignedCaptain ? (
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    الكابتن الحالي: {order.assignedCaptain.user.fullName}
-                    {order.status === "ASSIGNED" ? " (بانتظار القبول/الرفض)" : ""}
+                    {t("distribution.draggable.currentCaptain")}: {loc.assignedCaptainName}
+                    {order.status === "ASSIGNED" ? t("distribution.draggable.awaitingCaptainResponseSuffix") : ""}
                   </p>
                 ) : null}
                 {order.distributionMode === "AUTO" && order.status === "ASSIGNED" ? (
                   <p className="mt-1 rounded-md border border-amber-500/25 bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium leading-snug text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-50">
-                    التوزيع التلقائي: عند الرفض أو انتهاء المهلة ينتقل الطلب تلقائياً إلى كابتن آخر متاح.
+                    {t("distribution.draggable.autoReassignNote")}
                   </p>
                 ) : null}
-                {isPendingAssign ? (
+                {isPendingAssign && pendingAssignment ? (
                   <p className="mt-1 rounded-md border border-primary/25 bg-primary/5 px-1.5 py-0.5 text-[10px] font-medium leading-snug text-primary">
-                    إلى {pendingAssignment?.captainName} {pendingAssignment?.mode === "drag-drop" ? "(سحب وإفلات)" : "(تعيين يدوي)"}
+                    {pendingAssignment.mode === "drag-drop"
+                      ? t("distribution.draggable.pendingToDragDrop", { name: pendingAssignment.captainName })
+                      : t("distribution.draggable.pendingToManual", { name: pendingAssignment.captainName })}
                   </p>
                 ) : null}
               </div>
@@ -119,10 +129,10 @@ export function DraggableOrderCard({ order, queueSerial, onDragState, onManual, 
         </div>
         <div className="flex w-full shrink-0 flex-col gap-1.5 sm:w-auto sm:items-end">
           <Button type="button" size="sm" variant="secondary" disabled={busy || isPendingAssign} onClick={() => onManual(order)}>
-            تعيين يدوي
+            {t("distribution.ordersPanel.manualAssign")}
           </Button>
           <Button type="button" size="sm" variant="default" disabled={busy || isPendingAssign} onClick={() => onResend(order)}>
-            إعادة توزيع
+            {t("distribution.ordersPanel.redistribute")}
           </Button>
         </div>
       </div>

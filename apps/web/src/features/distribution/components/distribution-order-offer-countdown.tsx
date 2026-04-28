@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { assignmentOfferSecondsLeft } from "@/features/distribution/captain-map-visual";
 
 type Props = {
@@ -10,11 +11,12 @@ type Props = {
  * Live seconds remaining until `expiresAtIso` (1 Hz). Not a standalone fake timer.
  */
 export function DistributionOrderOfferCountdown({ expiresAtIso }: Props) {
+  const { t } = useTranslation();
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (!expiresAtIso) return;
-    const id = window.setInterval(() => setTick((t) => t + 1), 1000);
+    const id = window.setInterval(() => setTick((n) => n + 1), 1000);
     return () => window.clearInterval(id);
   }, [expiresAtIso]);
 
@@ -35,13 +37,13 @@ export function DistributionOrderOfferCountdown({ expiresAtIso }: Props) {
           ? "border-destructive/55 bg-destructive/10 text-destructive"
           : "border-amber-700/35 bg-amber-500/12 text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-50"
       }`}
-      title="ثوانٍ متبقية لمهلة قبول/رفض العرض — من الخادم (متزامنة مع الكابتن والخريطة)"
+      title={t("distribution.offerCountdown.title")}
     >
-      <span className="font-normal opacity-90">مهلة</span>
+      <span className="font-normal opacity-90">{t("distribution.offerCountdown.label")}</span>
       <span dir="ltr" className="min-w-[2ch] text-center font-mono text-xs">
         {secondsLeft}
       </span>
-      <span className="font-normal opacity-90">ث</span>
+      <span className="font-normal opacity-90">{t("distribution.offerCountdown.sec")}</span>
       <span className="font-normal opacity-75">/ 30</span>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export function SuperAdminCompanyTopupModal({ open, onClose, companyId, companyName }: Props) {
+  const { t } = useTranslation();
   const [idempotencyKey, setIdempotencyKey] = useState("");
   const [amountInput, setAmountInput] = useState("");
   const [reasonInput, setReasonInput] = useState("");
@@ -63,21 +65,21 @@ export function SuperAdminCompanyTopupModal({ open, onClose, companyId, companyN
     e.preventDefault();
     setFormError(null);
     if (!companyId) {
-      setFormError("اختر شركة أولاً من التبويب.");
+      setFormError(t("finance.modals.superAdminCompanyTopup.pickCompany"));
       return;
     }
     if (!idempotencyKey) {
-      setFormError("مفتاح idempotency غير جاهز. أغلق النافذة وافتحها مرة أخرى.");
+      setFormError(t("finance.modals.common.idempotencyNotReady"));
       return;
     }
     const amount = normalizeAmount(amountInput);
     if (!amount) {
-      setFormError("أدخل مبلغاً موجباً (حتى رقمين عشريين).");
+      setFormError(t("finance.modals.common.positiveAmount"));
       return;
     }
     const reason = reasonInput.trim();
     if (reason.length === 0) {
-      setFormError("سبب الشحن مطلوب.");
+      setFormError(t("finance.modals.superAdminCompanyTopup.chargeReasonRequired"));
       return;
     }
     const cur = currencyInput.trim().toUpperCase();
@@ -93,11 +95,11 @@ export function SuperAdminCompanyTopupModal({ open, onClose, companyId, companyN
   const serverError = topUp.isError
     ? topUp.error instanceof ApiError
       ? topUp.error.status === 403
-        ? "غير مسموح بهذه العملية (403)."
+        ? t("finance.modals.common.forbidden403")
         : topUp.error.message
       : topUp.error instanceof Error
         ? topUp.error.message
-        : "تعذّر إكمال الطلب"
+        : t("finance.modals.common.genericCompleteError")
     : null;
   const done = topUp.isSuccess;
   const result = topUp.data;
@@ -106,24 +108,27 @@ export function SuperAdminCompanyTopupModal({ open, onClose, companyId, companyN
     <Modal
       open={open}
       onClose={onClose}
-      title="شحن محفظة الشركة"
-      description="لمدير النظام فقط. يُولَّد مفتاح idempotency تلقائياً عند فتح النافذة ويُرسل في جسم الطلب."
+      title={t("finance.modals.superAdminCompanyTopup.title")}
+      description={t("finance.modals.superAdminCompanyTopup.description")}
     >
       {done && result ? (
         <div className="space-y-3">
           <p className="text-sm text-emerald-700">
             {result.idempotent
-              ? "تمت العملية (تسجيل مكرر بأمان — نفس مفتاح idempotency في الجسم)."
-              : "تم شحن رصيد محفظة الشركة."}
+              ? t("finance.modals.superAdminCompanyTopup.successNoop")
+              : t("finance.modals.superAdminCompanyTopup.success")}
           </p>
           <div className="space-y-1 text-sm text-muted" dir="ltr">
             <p>
-              قبل: {result.balanceBefore} ← بعد: {result.balanceAfter}
+              {t("finance.modals.superAdminCompanyTopup.balanceDelta", {
+                before: result.balanceBefore,
+                after: result.balanceAfter,
+              })}
             </p>
-            <p className="text-xs">ledger: {result.ledgerEntryId}</p>
+            <p className="text-xs">{t("finance.modals.superAdminCompanyTopup.ledgerEntryLine", { id: result.ledgerEntryId })}</p>
           </div>
           <Button type="button" onClick={onClose}>
-            إغلاق
+            {t("finance.modals.common.close")}
           </Button>
         </div>
       ) : (
@@ -131,20 +136,21 @@ export function SuperAdminCompanyTopupModal({ open, onClose, companyId, companyN
           <p className="text-sm text-muted">
             {companyName ? (
               <>
-                الشركة: <span className="font-medium text-foreground">{companyName}</span>
+                {t("finance.modals.superAdminCompanyTopup.companyLine", { name: companyName })}
               </>
             ) : companyId ? (
               <>
-                معرّف الشركة: <span className="font-mono text-xs" dir="ltr">
+                {t("finance.modals.superAdminCompanyTopup.companyIdLine")}{" "}
+                <span className="font-mono text-xs" dir="ltr">
                   {companyId}
                 </span>
               </>
             ) : (
-              "لم تُختر شركة — أغلق واختر شركة من التبويب أولاً."
+              t("finance.modals.superAdminCompanyTopup.noCompanySelected")
             )}
           </p>
           <div className="space-y-2">
-            <Label htmlFor="co-topup-amount">المبلغ</Label>
+            <Label htmlFor="co-topup-amount">{t("finance.modals.common.amount")}</Label>
             <Input
               id="co-topup-amount"
               name="amount"
@@ -154,23 +160,23 @@ export function SuperAdminCompanyTopupModal({ open, onClose, companyId, companyN
               className="font-mono"
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
-              placeholder="مثال: 100 أو 10.50"
+              placeholder={t("finance.modals.companyAdminStoreTopup.amountPlaceholder")}
             />
-            <p className="text-xs text-muted">لا يتجاوز رقمان عشريان.</p>
+            <p className="text-xs text-muted">{t("finance.modals.common.decimalsHint")}</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="co-topup-reason">السبب</Label>
+            <Label htmlFor="co-topup-reason">{t("finance.modals.common.reason")}</Label>
             <Input
               id="co-topup-reason"
               name="reason"
               autoComplete="off"
               value={reasonInput}
               onChange={(e) => setReasonInput(e.target.value)}
-              placeholder="مثال: تمويل رصيد طلبات"
+              placeholder={t("finance.modals.superAdminCompanyTopup.reasonPlaceholder")}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="co-topup-currency">العملة (اختياري، 3 أحرف)</Label>
+            <Label htmlFor="co-topup-currency">{t("finance.modals.superAdminCompanyTopup.currencyOptional")}</Label>
             <Input
               id="co-topup-currency"
               name="currency"
@@ -179,17 +185,17 @@ export function SuperAdminCompanyTopupModal({ open, onClose, companyId, companyN
               className="font-mono"
               value={currencyInput}
               onChange={(e) => setCurrencyInput(e.target.value.toUpperCase())}
-              placeholder="SAR (افتراضي الخادم إن وُجد)"
+              placeholder={t("finance.modals.superAdminCompanyTopup.currencyPlaceholder")}
             />
           </div>
           {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
           {serverError ? <p className="text-sm text-red-600">{serverError}</p> : null}
           <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="secondary" onClick={onClose}>
-              إلغاء
+              {t("finance.modals.common.cancel")}
             </Button>
             <Button type="submit" disabled={topUp.isPending || !idempotencyKey || !companyId}>
-              {topUp.isPending ? "جارٍ الإرسال…" : "تأكيد الشحن"}
+              {topUp.isPending ? t("finance.modals.common.sending") : t("finance.modals.superAdminCompanyTopup.confirm")}
             </Button>
           </div>
         </form>

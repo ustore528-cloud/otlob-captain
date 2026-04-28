@@ -1,11 +1,14 @@
 import type { ActiveMapCaptain } from "@/types/api";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { getLocalizedText } from "@/i18n/localize-dynamic-text";
 
 type Props = {
   captain: ActiveMapCaptain;
   pending?: boolean;
   onDropOrderOnCaptain: (orderId: string, captainId: string) => void;
   activeDragOrderId: string | null;
+  onClick?: (captainId: string) => void;
   dropAllow?: (orderId: string, captainId: string) => boolean;
   onDropRejectedByGuard?: () => void;
 };
@@ -23,17 +26,43 @@ function cardTone(c: ActiveMapCaptain): string {
   return "border-slate-300";
 }
 
-function statusLabel(c: ActiveMapCaptain): string {
-  if (c.activeOrders > 0) return "مشغول";
-  if (c.waitingOffers > 0) return "بانتظار الرد";
-  if (c.availabilityStatus === "AVAILABLE") return "متاح";
-  return "بعيد";
+function statusLabel(c: ActiveMapCaptain, t: (k: string) => string): string {
+  if (c.activeOrders > 0) return t("distribution.captainCard.busy");
+  if (c.waitingOffers > 0) return t("distribution.captainCard.waiting");
+  if (c.availabilityStatus === "AVAILABLE") return t("distribution.captainCard.available");
+  return t("distribution.captainCard.far");
 }
 
-export function CaptainMiniCard({ captain, pending, onDropOrderOnCaptain, activeDragOrderId, dropAllow, onDropRejectedByGuard }: Props) {
+export function CaptainMiniCard({
+  captain,
+  pending,
+  onDropOrderOnCaptain,
+  activeDragOrderId,
+  onClick,
+  dropAllow,
+  onDropRejectedByGuard,
+}: Props) {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage ?? i18n.language;
+  const displayName = getLocalizedText(captain.user.fullName, {
+    lang,
+    valueTranslations: captain.user.displayI18n?.fullName,
+    mode: "generic",
+  });
+  const areaLabel = getLocalizedText(captain.area, {
+    lang,
+    valueTranslations: captain.displayI18n?.area,
+    mode: "place",
+  });
   return (
     <div
-      className={cn("rounded-xl border bg-white p-2 shadow-sm transition", cardTone(captain), pending && "opacity-60")}
+      className={cn(
+        "rounded-xl border bg-white p-2 shadow-sm transition",
+        cardTone(captain),
+        pending && "opacity-60",
+        onClick ? "cursor-pointer hover:bg-slate-50" : "",
+      )}
+      onClick={() => onClick?.(captain.id)}
       onDragOver={(e) => {
         e.preventDefault();
         const orderId = (e.dataTransfer.getData("application/x-order-id") || e.dataTransfer.getData("text/plain") || activeDragOrderId || "").trim();
@@ -52,12 +81,12 @@ export function CaptainMiniCard({ captain, pending, onDropOrderOnCaptain, active
       }}
     >
       <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-xs font-bold">
-        {initials(captain.user.fullName)}
+        {initials(displayName || captain.user.fullName)}
       </div>
-      <p className="truncate text-xs font-semibold">{captain.user.fullName}</p>
-      <p className="truncate text-[10px] text-muted">{captain.area || "—"}</p>
-      <p className="text-[10px] text-muted">{captain.lastLocation ? "قريب" : "—"}</p>
-      <p className="mt-1 text-[10px] font-semibold">{statusLabel(captain)}</p>
+      <p className="truncate text-xs font-semibold">{displayName}</p>
+      <p className="truncate text-[10px] text-muted">{areaLabel.trim() || "—"}</p>
+      <p className="text-[10px] text-muted">{captain.lastLocation ? t("distribution.captainCard.near") : "—"}</p>
+      <p className="mt-1 text-[10px] font-semibold">{statusLabel(captain, t)}</p>
     </div>
   );
 }

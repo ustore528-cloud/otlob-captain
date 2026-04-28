@@ -1,20 +1,12 @@
+import i18n from "@/i18n/i18n";
 import { getLedgerActivityReport } from "@/lib/api/services/finance";
 import type { FinanceLedgerEntryReadDto, FinanceLedgerEntryType } from "@/types/api";
 
 const PAGE = 20;
 
-const ENTRY_TYPE_LABEL_AR: Record<FinanceLedgerEntryType, string> = {
-  SUPER_ADMIN_TOP_UP: "شحن (مدير)",
-  WALLET_TRANSFER: "تحويل",
-  ORDER_DELIVERED_STORE_DEBIT: "خصم طلب (متجر)",
-  ORDER_DELIVERED_CAPTAIN_DEDUCTION: "خصم تسليم (كابتن)",
-  ADJUSTMENT: "تسوية",
-  CAPTAIN_PREPAID_CHARGE: "شحن باقة كابتن",
-  CAPTAIN_PREPAID_ADJUSTMENT: "تسوية باقة كابتن",
-};
-
-function entryTypeLabelAr(t: FinanceLedgerEntryType): string {
-  return ENTRY_TYPE_LABEL_AR[t] ?? t;
+function entryTypeLabelCsv(entryType: FinanceLedgerEntryType): string {
+  const key = `finance.csv.${entryType}`;
+  return i18n.exists(key) ? String(i18n.t(key)) : String(i18n.t(`finance.transactionTypes.${entryType}`, { defaultValue: entryType }));
 }
 
 /** CSV field per RFC 4180-style (quote if needed). */
@@ -39,7 +31,7 @@ const HEADER = [
   "id",
   "createdAt",
   "entryType",
-  "entryTypeLabelAr",
+  "entryTypeLabel",
   "amount",
   "currency",
   "orderId",
@@ -63,7 +55,7 @@ function rowToLine(row: FinanceLedgerEntryReadDto): string {
     cell(row.id),
     cell(row.createdAt),
     cell(row.entryType),
-    cell(entryTypeLabelAr(row.entryType)),
+    cell(entryTypeLabelCsv(row.entryType)),
     cell(row.amount),
     cell(row.currency),
     cell(row.orderId),

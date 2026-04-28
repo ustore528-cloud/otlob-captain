@@ -46,6 +46,7 @@ const ROLE_CAPABILITIES: Record<AppRole, Set<Capability>> = {
     "captains.read",
     "captains.charge",
     "orders.list",
+    "incubator.access",
     /** لوحة التوزيع / الخريطة — يُقيد الخادم بالشركة (Phase 3.2.1). */
     "dispatch.access",
     /** محفظة الشركة (قراءة فقط) — `GET /finance/company-wallet/me` */

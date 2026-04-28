@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,7 @@ import { ADMIN_OVERRIDE_TARGET_STATUSES, type AdminOverrideTargetStatus } from "
 import { formatOrderDisplayLabel } from "@captain/shared";
 import type { OrderListItem, OrderStatus } from "@/types/api";
 import { OrderFinancialStrip } from "@/features/orders/components/order-financial-strip";
+import { useLocalizedOrderListItem } from "@/i18n/use-localized-order-display";
 
 function canArchiveOrderStatus(status: OrderStatus): boolean {
   return !["ACCEPTED", "PICKED_UP", "IN_TRANSIT"].includes(status);
@@ -41,9 +43,9 @@ type Props = {
   autoPendingOrderId: string | null;
   resendPendingOrderId: string | null;
   cancelPendingOrderId: string | null;
-  /** تعطيل زر «إعادة تعيين» فقط للصف الذي يُنفَّذ عليه الطلب */
+  /** Disable the reassign button only for the row where the request is in flight */
   reassignPendingOrderId: string | null;
-  /** تعطيل زر «إزالة من القائمة» فقط للصف الذي يُنفَّذ عليه الطلب */
+  /** Disable the remove-from-list button only for the row where the request is in flight */
   archivePendingOrderId: string | null;
   onArchive?: (order: OrderListItem) => void;
   archiveConfirmOrder: OrderListItem | null;
@@ -56,12 +58,213 @@ type Props = {
   onAdminOverrideClose: () => void;
   onAdminOverrideConfirm: () => void;
   adminOverridePending: boolean;
-  /** تعطيل زر «تعديل الحالة» في الجدول فقط للصف الذي يُنفَّذ عليه الطلب */
+  /** Disable the table “edit status” button only for the row where the request is in flight */
   adminOverrideRowPendingOrderId: string | null;
   onOpenDetail?: (order: OrderListItem) => void;
   /** Company Admin: hide store column and neutral financial wording */
   hideStoreContext?: boolean;
 };
+
+type OrderListTableRowProps = {
+  o: OrderListItem;
+  t: TFunction;
+  dateLocale: string;
+} & Pick<
+  Props,
+  | "hideStoreContext"
+  | "canDispatch"
+  | "onOpenDetail"
+  | "onAuto"
+  | "onManual"
+  | "onResend"
+  | "onReassign"
+  | "onCancelCaptain"
+  | "autoPendingOrderId"
+  | "resendPendingOrderId"
+  | "cancelPendingOrderId"
+  | "reassignPendingOrderId"
+  | "onArchive"
+  | "archivePendingOrderId"
+  | "onAdminOverrideOpen"
+  | "adminOverrideRowPendingOrderId"
+>;
+
+function OrderListTableRow({
+  o,
+  t,
+  dateLocale,
+  hideStoreContext,
+  canDispatch,
+  onOpenDetail,
+  onAuto,
+  onManual,
+  onResend,
+  onReassign,
+  onCancelCaptain,
+  autoPendingOrderId,
+  resendPendingOrderId,
+  cancelPendingOrderId,
+  reassignPendingOrderId,
+  onArchive,
+  archivePendingOrderId,
+  onAdminOverrideOpen,
+  adminOverrideRowPendingOrderId,
+}: OrderListTableRowProps) {
+  const loc = useLocalizedOrderListItem(o);
+  return (
+    <tr className="hover:bg-accent/40">
+      <td
+        className="border-b border-card-border px-3 py-3 align-top text-sm tabular-nums"
+        dir="ltr"
+        title={o.orderNumber}
+      >
+        {formatOrderDisplayLabel(o.displayOrderNo ?? null, o.orderNumber)}
+      </td>
+      <td className="border-b border-card-border px-3 py-3 align-top min-w-[200px] max-w-[260px]">
+        <OrderFinancialStrip
+          amount={o.amount}
+          cashCollection={o.cashCollection}
+          deliveryFee={o.deliveryFee ?? null}
+          variant="list"
+          amountLineKey={hideStoreContext ? "orderAmount" : "storeAmount"}
+        />
+      </td>
+      <td className="border-b border-card-border px-3 py-3 align-top">
+        <Badge variant={orderStatusBadgeVariant(o.status)}>{orderStatusLabel(o.status)}</Badge>
+      </td>
+      <td className="border-b border-card-border px-3 py-3 align-top">
+        <div className="font-medium">{loc.customerName}</div>
+        <div className="text-xs text-muted" dir="ltr">
+          {o.customerPhone}
+        </div>
+      </td>
+      {hideStoreContext ? null : (
+        <td className="border-b border-card-border px-3 py-3 align-top text-xs">
+          <div className="font-medium text-foreground">{loc.storeName}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <Badge variant="muted" className="font-normal">
+              {storeSubscriptionLabel(o.store.subscriptionType)}
+            </Badge>
+            <span className="font-mono text-[10px] text-muted" dir="ltr">
+              {o.store.subscriptionType}
+            </span>
+          </div>
+          <div className="mt-1 text-[11px] text-muted">
+            {t("orders.list.supervisor")}:{" "}
+            {o.store.supervisorUser ? (
+              <>
+                {loc.supervisorName}
+                <span className="mx-0.5">·</span>
+                <span dir="ltr">{o.store.supervisorUser.phone}</span>
+              </>
+            ) : (
+              t("orders.list.noSupervisor")
+            )}
+          </div>
+          <div className="mt-0.5 text-[11px] text-muted">
+            {t("orders.list.region")}:{" "}
+            {o.store.primaryRegion ? (
+              <>
+                {loc.primaryRegionName}
+                <span className="mx-0.5 font-mono text-[10px]" dir="ltr">
+                  ({o.store.primaryRegion.code})
+                </span>
+              </>
+            ) : (
+              "—"
+            )}
+          </div>
+        </td>
+      )}
+      <td className="border-b border-card-border px-3 py-3 align-top text-xs">{loc.area}</td>
+      <td className="border-b border-card-border px-3 py-3 align-top text-xs text-muted" dir="ltr">
+        {new Date(o.createdAt).toLocaleString(dateLocale, { hour12: false })}
+      </td>
+      <td className="border-b border-card-border px-3 py-3 align-top">
+        <div className="flex flex-wrap gap-2">
+          {onOpenDetail ? (
+            <Button type="button" size="sm" variant="secondary" onClick={() => onOpenDetail(o)}>
+              {t("orders.list.detail")}
+            </Button>
+          ) : null}
+          {canDispatch && (o.status === "PENDING" || o.status === "CONFIRMED") ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={autoPendingOrderId === o.id}
+              onClick={() => onAuto(o.id)}
+            >
+              {t("orders.list.autoDist")}
+            </Button>
+          ) : null}
+          {canDispatch ? (
+            <Button size="sm" variant="secondary" onClick={() => onManual(o)}>
+              {t("orders.list.manualAssign")}
+            </Button>
+          ) : null}
+          {canDispatch && o.status !== "DELIVERED" && o.status !== "CANCELLED" ? (
+            <Button
+              size="sm"
+              variant="default"
+              disabled={resendPendingOrderId === o.id}
+              onClick={() => onResend(o.id)}
+            >
+              {t("orders.list.redistribute")}
+            </Button>
+          ) : null}
+          {canDispatch &&
+          o.assignedCaptain &&
+          (o.status === "ASSIGNED" || o.status === "ACCEPTED" || o.status === "PICKED_UP") ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={reassignPendingOrderId === o.id}
+              onClick={() => onReassign(o)}
+            >
+              {t("orders.list.reassign")}
+            </Button>
+          ) : null}
+          {canDispatch &&
+          o.assignedCaptain &&
+          (o.status === "ASSIGNED" || o.status === "ACCEPTED" || o.status === "PICKED_UP") ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={cancelPendingOrderId === o.id}
+              onClick={() => onCancelCaptain(o.id)}
+            >
+              {t("orders.list.cancelForCaptain")}
+            </Button>
+          ) : null}
+          {canDispatch ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="border-amber-200/80 text-amber-950 hover:bg-amber-50"
+              disabled={adminOverrideRowPendingOrderId === o.id}
+              onClick={() => onAdminOverrideOpen(o)}
+            >
+              {t("orders.list.adminOverride")}
+            </Button>
+          ) : null}
+          {canDispatch && onArchive && canArchiveOrderStatus(o.status) ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="border-red-200 text-red-800 hover:bg-red-50"
+              disabled={archivePendingOrderId === o.id}
+              onClick={() => onArchive(o)}
+            >
+              {t("orders.list.removeFromList")}
+            </Button>
+          ) : null}
+        </div>
+      </td>
+    </tr>
+  );
+}
 
 export function OrdersListSection({
   search,
@@ -221,157 +424,28 @@ export function OrdersListSection({
             </thead>
             <tbody>
               {rows.map((o) => (
-                <tr key={o.id} className="hover:bg-accent/40">
-                  <td
-                    className="border-b border-card-border px-3 py-3 align-top text-sm tabular-nums"
-                    dir="ltr"
-                    title={o.orderNumber}
-                  >
-                    {formatOrderDisplayLabel(o.displayOrderNo ?? null, o.orderNumber)}
-                  </td>
-                  <td className="border-b border-card-border px-3 py-3 align-top min-w-[200px] max-w-[260px]">
-                    <OrderFinancialStrip
-                      amount={o.amount}
-                      cashCollection={o.cashCollection}
-                      deliveryFee={o.deliveryFee ?? null}
-                      variant="list"
-                      amountLineKey={hideStoreContext ? "orderAmount" : "storeAmount"}
-                    />
-                  </td>
-                  <td className="border-b border-card-border px-3 py-3 align-top">
-                    <Badge variant={orderStatusBadgeVariant(o.status)}>{orderStatusLabel(o.status)}</Badge>
-                  </td>
-                  <td className="border-b border-card-border px-3 py-3 align-top">
-                    <div className="font-medium">{o.customerName}</div>
-                    <div className="text-xs text-muted" dir="ltr">
-                      {o.customerPhone}
-                    </div>
-                  </td>
-                  {hideStoreContext ? null : (
-                    <td className="border-b border-card-border px-3 py-3 align-top text-xs">
-                      <div className="font-medium text-foreground">{o.store.name}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <Badge variant="muted" className="font-normal">
-                          {storeSubscriptionLabel(o.store.subscriptionType)}
-                        </Badge>
-                        <span className="font-mono text-[10px] text-muted" dir="ltr">
-                          {o.store.subscriptionType}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-[11px] text-muted">
-                        {t("orders.list.supervisor")}:{" "}
-                        {o.store.supervisorUser ? (
-                          <>
-                            {o.store.supervisorUser.fullName}
-                            <span className="mx-0.5">·</span>
-                            <span dir="ltr">{o.store.supervisorUser.phone}</span>
-                          </>
-                        ) : (
-                          t("orders.list.noSupervisor")
-                        )}
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-muted">
-                        {t("orders.list.region")}:{" "}
-                        {o.store.primaryRegion ? (
-                          <>
-                            {o.store.primaryRegion.name}
-                            <span className="mx-0.5 font-mono text-[10px]" dir="ltr">
-                              ({o.store.primaryRegion.code})
-                            </span>
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </div>
-                    </td>
-                  )}
-                  <td className="border-b border-card-border px-3 py-3 align-top text-xs">{o.area}</td>
-                  <td className="border-b border-card-border px-3 py-3 align-top text-xs text-muted" dir="ltr">
-                    {new Date(o.createdAt).toLocaleString(dateLocale, { hour12: false })}
-                  </td>
-                  <td className="border-b border-card-border px-3 py-3 align-top">
-                    <div className="flex flex-wrap gap-2">
-                      {onOpenDetail ? (
-                        <Button type="button" size="sm" variant="secondary" onClick={() => onOpenDetail(o)}>
-                          {t("orders.list.detail")}
-                        </Button>
-                      ) : null}
-                      {canDispatch && (o.status === "PENDING" || o.status === "CONFIRMED") ? (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={autoPendingOrderId === o.id}
-                          onClick={() => onAuto(o.id)}
-                        >
-                          {t("orders.list.autoDist")}
-                        </Button>
-                      ) : null}
-                      {canDispatch ? (
-                        <Button size="sm" variant="secondary" onClick={() => onManual(o)}>
-                          {t("orders.list.manualAssign")}
-                        </Button>
-                      ) : null}
-                      {canDispatch && o.status !== "DELIVERED" && o.status !== "CANCELLED" ? (
-                        <Button
-                          size="sm"
-                          variant="default"
-                          disabled={resendPendingOrderId === o.id}
-                          onClick={() => onResend(o.id)}
-                        >
-                          {t("orders.list.redistribute")}
-                        </Button>
-                      ) : null}
-                      {canDispatch &&
-                      o.assignedCaptain &&
-                      (o.status === "ASSIGNED" || o.status === "ACCEPTED" || o.status === "PICKED_UP") ? (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={reassignPendingOrderId === o.id}
-                          onClick={() => onReassign(o)}
-                        >
-                          {t("orders.list.reassign")}
-                        </Button>
-                      ) : null}
-                      {canDispatch &&
-                      o.assignedCaptain &&
-                      (o.status === "ASSIGNED" || o.status === "ACCEPTED" || o.status === "PICKED_UP") ? (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={cancelPendingOrderId === o.id}
-                          onClick={() => onCancelCaptain(o.id)}
-                        >
-                          إلغاء الطلب للكابتن
-                        </Button>
-                      ) : null}
-                      {canDispatch ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          className="border-amber-200/80 text-amber-950 hover:bg-amber-50"
-                          disabled={adminOverrideRowPendingOrderId === o.id}
-                          onClick={() => onAdminOverrideOpen(o)}
-                        >
-                          {t("orders.list.adminOverride")}
-                        </Button>
-                      ) : null}
-                      {canDispatch && onArchive && canArchiveOrderStatus(o.status) ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          className="border-red-200 text-red-800 hover:bg-red-50"
-                          disabled={archivePendingOrderId === o.id}
-                          onClick={() => onArchive(o)}
-                        >
-                          {t("orders.list.removeFromList")}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
+                <OrderListTableRow
+                  key={o.id}
+                  o={o}
+                  t={t}
+                  dateLocale={dateLocale}
+                  hideStoreContext={hideStoreContext}
+                  canDispatch={canDispatch}
+                  onOpenDetail={onOpenDetail}
+                  onAuto={onAuto}
+                  onManual={onManual}
+                  onResend={onResend}
+                  onReassign={onReassign}
+                  onCancelCaptain={onCancelCaptain}
+                  autoPendingOrderId={autoPendingOrderId}
+                  resendPendingOrderId={resendPendingOrderId}
+                  cancelPendingOrderId={cancelPendingOrderId}
+                  reassignPendingOrderId={reassignPendingOrderId}
+                  onArchive={onArchive}
+                  archivePendingOrderId={archivePendingOrderId}
+                  onAdminOverrideOpen={onAdminOverrideOpen}
+                  adminOverrideRowPendingOrderId={adminOverrideRowPendingOrderId}
+                />
               ))}
             </tbody>
           </table>

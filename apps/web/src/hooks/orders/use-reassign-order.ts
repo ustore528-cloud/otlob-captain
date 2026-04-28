@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import i18n from "@/i18n/i18n";
 import { invalidateOrderDistributionDomain } from "@/lib/invalidate-order-domain";
 import { api } from "@/lib/api/singleton";
 import { toastApiError, toastSuccess } from "@/lib/toast";
@@ -13,9 +14,9 @@ export function useReassignOrder() {
   return useMutation({
     mutationFn: ({ orderId, captainId }: ReassignVariables) => api.orders.distributionReassign(orderId, captainId),
     onSuccess: async () => {
-      toastSuccess("تمت إعادة التعيين");
+      toastSuccess(String(i18n.t("mutationToasts.orderReassigned")));
       await invalidateOrderDistributionDomain(qc);
     },
-    onError: (e) => toastApiError(e, "تعذرت إعادة التعيين"),
+    onError: (e) => toastApiError(e, String(i18n.t("mutationToasts.orderReassignFailed"))),
   });
 }

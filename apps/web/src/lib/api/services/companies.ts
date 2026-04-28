@@ -1,6 +1,20 @@
 import { apiFetch, paths } from "@/lib/api/http";
 
-export type CompanyListItem = { id: string; name: string };
+import type { ValueTranslations } from "@/types/api";
+
+export type CompanyListItem = {
+  id: string;
+  name: string;
+  incubatorMotherName?: string | null;
+  deliveryPricing: {
+    mode: "FIXED" | "DISTANCE_BASED";
+    fixedDeliveryFee: string | null;
+    baseDeliveryFee: string | null;
+    pricePerKm: string | null;
+    roundingMode: "CEIL" | "ROUND" | "NONE";
+  };
+  displayI18n?: { name?: ValueTranslations };
+};
 
 export type CompanyDeletePreview = {
   companyId: string;
@@ -38,9 +52,44 @@ export function listCompanies(token: string): Promise<CompanyListItem[]> {
   return apiFetch<CompanyListItem[]>(paths.companies.root, { token });
 }
 
-export function createCompany(token: string, body: { name: string }): Promise<CompanyListItem> {
+export function createCompany(
+  token: string,
+  body: {
+    name: string;
+    incubatorMotherName?: string;
+    deliveryPricing: {
+      deliveryPricingMode: "FIXED" | "DISTANCE_BASED";
+      fixedDeliveryFee?: number;
+      baseDeliveryFee?: number;
+      pricePerKm?: number;
+      deliveryFeeRoundingMode?: "CEIL" | "ROUND" | "NONE";
+    };
+  },
+): Promise<CompanyListItem> {
   return apiFetch<CompanyListItem>(paths.companies.root, {
     method: "POST",
+    body: JSON.stringify(body),
+    token,
+  });
+}
+
+export function updateCompany(
+  token: string,
+  companyId: string,
+  body: {
+    name?: string;
+    incubatorMotherName?: string | null;
+    deliveryPricing?: {
+      deliveryPricingMode: "FIXED" | "DISTANCE_BASED";
+      fixedDeliveryFee?: number;
+      baseDeliveryFee?: number;
+      pricePerKm?: number;
+      deliveryFeeRoundingMode?: "CEIL" | "ROUND" | "NONE";
+    };
+  },
+): Promise<CompanyListItem> {
+  return apiFetch<CompanyListItem>(`${paths.companies.root}/${companyId}`, {
+    method: "PATCH",
     body: JSON.stringify(body),
     token,
   });

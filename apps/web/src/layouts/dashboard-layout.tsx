@@ -13,8 +13,12 @@ import {
   isDispatchRole,
 } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
+import { useTranslation } from "react-i18next";
+import { getLocalizedText } from "@/i18n/localize-dynamic-text";
 
 export function DashboardLayout() {
+  const { i18n } = useTranslation();
+  const lang = i18n.resolvedLanguage ?? i18n.language;
   const navigate = useNavigate();
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
@@ -53,10 +57,15 @@ export function DashboardLayout() {
 
   if (!token) return null;
 
+  const userLabel =
+    user?.fullName != null && String(user.fullName).trim() !== ""
+      ? getLocalizedText(user.fullName, { lang, mode: "generic" })
+      : user?.phone ?? "";
+
   return (
     <div className="min-h-dvh bg-background lg:grid lg:grid-cols-[280px_1fr]">
       <DashboardSidebar
-        userLabel={user?.fullName ?? user?.phone ?? ""}
+        userLabel={userLabel}
         nav={nav}
         onLogout={() => {
           clear();

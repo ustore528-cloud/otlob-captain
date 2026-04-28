@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useCreateOrder } from "@/hooks";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import "leaflet/dist/leaflet.css";
 import { clampLatLng, clampLatLngPair, ISRAEL_LEAFLET_MAX_BOUNDS, ISRAEL_MAP_DEFAULT_CENTER, ISRAEL_MAP_DEFAULT_ZOOM } from "@/lib/israel-map-bounds";
 
 export function NewOrderForm() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const [includeMapPin, setIncludeMapPin] = useState(false);
@@ -88,37 +90,39 @@ export function NewOrderForm() {
     const deliveryFee = deliveryFeeRaw ? Number(deliveryFeeRaw) : 0;
     const locationLink = String(form.get("locationLink") ?? "").trim();
 
-    if (!customerName) next.customerName = "اسم العميل مطلوب.";
-    if (!customerPhone) next.customerPhone = "هاتف العميل مطلوب.";
+    if (!customerName) next.customerName = t("newOrder.form.errors.customerName");
+    if (!customerPhone) next.customerPhone = t("newOrder.form.errors.customerPhone");
     else if (!/^[\d+\s()-]{5,}$/.test(customerPhone)) {
-      next.customerPhone = "صيغة رقم الهاتف غير صحيحة.";
+      next.customerPhone = t("newOrder.form.errors.phoneFormat");
     }
     if (!pickupAddress) {
-      next.pickupAddress = isCompanyAdmin ? "نقطة الاستلام مطلوبة." : "عنوان الاستلام مطلوب.";
+      next.pickupAddress = isCompanyAdmin
+        ? t("newOrder.form.errors.pickupCompany")
+        : t("newOrder.form.errors.pickup");
     }
     if (!dropoffAddress) {
-      next.dropoffAddress = isCompanyAdmin ? "تفاصيل التسليم مطلوبة." : "عنوان التسليم مطلوب.";
+      next.dropoffAddress = isCompanyAdmin
+        ? t("newOrder.form.errors.dropoffCompany")
+        : t("newOrder.form.errors.dropoff");
     }
-    if (!area) next.area = "المنطقة مطلوبة.";
+    if (!area) next.area = t("newOrder.form.errors.area");
     if (!Number.isFinite(amount) || amount <= 0) {
-      next.amount = isCompanyAdmin
-        ? "مبلغ الطلب يجب أن يكون أكبر من صفر."
-        : "مبلغ المتجر يجب أن يكون أكبر من صفر.";
+      next.amount = isCompanyAdmin ? t("newOrder.form.errors.amountCompany") : t("newOrder.form.errors.amount");
     }
     if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
-      next.deliveryFee = "رسوم التوصيل يجب أن تكون رقمًا موجبًا أو صفر.";
+      next.deliveryFee = t("newOrder.form.errors.deliveryFee");
     }
     if (includeMapPin && !dropoffCoords) {
-      next.dropoffCoords = "فعّلت خيار الخريطة — اضغط على الخريطة لتحديد موقع التسليم.";
+      next.dropoffCoords = t("newOrder.form.errors.mapRequired");
     }
     if (locationLink) {
       try {
         const u = new URL(locationLink);
         if (u.protocol !== "http:" && u.protocol !== "https:") {
-          next.locationLink = "الرابط يجب أن يبدأ بـ http أو https.";
+          next.locationLink = t("newOrder.form.errors.linkScheme");
         }
       } catch {
-        next.locationLink = "صيغة الرابط غير صحيحة — الصق الرابط كاملاً.";
+        next.locationLink = t("newOrder.form.errors.linkInvalid");
       }
     }
     return next;
@@ -134,11 +138,8 @@ export function NewOrderForm() {
     const sid = lockedStoreId ?? undefined;
     const baseNotes = String(form.get("notes") ?? "").trim();
     const locationLink = String(form.get("locationLink") ?? "").trim();
-    const linkNote = locationLink ? `[رابط موقع] ${locationLink}` : "";
-    const noMapNote =
-      !includeMapPin || !dropoffCoords
-        ? "[بدون إحداثيات خريطة — يؤكد الكابتن موقع التسليم من التطبيق عند الحاجة]"
-        : "";
+    const linkNote = locationLink ? t("newOrder.form.notesLine.locationLink", { link: locationLink }) : "";
+    const noMapNote = !includeMapPin || !dropoffCoords ? t("newOrder.form.notesLine.noMap") : "";
     const notesJoined = [baseNotes, linkNote, noMapNote].filter(Boolean).join("\n");
 
     create.mutate(
@@ -173,12 +174,12 @@ export function NewOrderForm() {
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2 sm:col-span-2">
-          <Label htmlFor="customerName">اسم العميل</Label>
+          <Label htmlFor="customerName">{t("newOrder.form.customerName")}</Label>
           <Input id="customerName" name="customerName" required maxLength={200} className={errorClass("customerName")} />
           {errors.customerName ? <p className="text-xs text-red-600">{errors.customerName}</p> : null}
         </div>
         <div className="grid gap-2 sm:col-span-2">
-          <Label htmlFor="customerPhone">هاتف العميل</Label>
+          <Label htmlFor="customerPhone">{t("newOrder.form.customerPhone")}</Label>
           <Input
             id="customerPhone"
             name="customerPhone"
@@ -189,19 +190,23 @@ export function NewOrderForm() {
           {errors.customerPhone ? <p className="text-xs text-red-600">{errors.customerPhone}</p> : null}
         </div>
         <div className="grid gap-2 sm:col-span-2">
-          <Label htmlFor="pickupAddress">{isCompanyAdmin ? "نقطة الاستلام" : "عنوان الاستلام"}</Label>
+          <Label htmlFor="pickupAddress">
+            {isCompanyAdmin ? t("newOrder.form.pickupAddressCompany") : t("newOrder.form.pickupAddress")}
+          </Label>
           <Input
             id="pickupAddress"
             name="pickupAddress"
             required
             maxLength={500}
             className={errorClass("pickupAddress")}
-            placeholder={isCompanyAdmin ? "مثال: المستودع / المحل / عنوان الجمع" : undefined}
+            placeholder={isCompanyAdmin ? t("newOrder.form.pickupPlaceholderCompany") : undefined}
           />
           {errors.pickupAddress ? <p className="text-xs text-red-600">{errors.pickupAddress}</p> : null}
         </div>
         <div className="grid gap-2 sm:col-span-2">
-          <Label htmlFor="dropoffAddress">{isCompanyAdmin ? "تفاصيل التسليم" : "عنوان التسليم"}</Label>
+          <Label htmlFor="dropoffAddress">
+            {isCompanyAdmin ? t("newOrder.form.dropoffAddressCompany") : t("newOrder.form.dropoffAddress")}
+          </Label>
           <Input
             id="dropoffAddress"
             name="dropoffAddress"
@@ -212,7 +217,7 @@ export function NewOrderForm() {
           {errors.dropoffAddress ? <p className="text-xs text-red-600">{errors.dropoffAddress}</p> : null}
         </div>
         <div className="grid gap-2 sm:col-span-2">
-          <Label htmlFor="locationLink">لصق رابط الموقع (اختياري)</Label>
+          <Label htmlFor="locationLink">{t("newOrder.form.locationLink")}</Label>
           <Input
             id="locationLink"
             name="locationLink"
@@ -225,17 +230,17 @@ export function NewOrderForm() {
             className={`text-left ${errorClass("locationLink")}`}
           />
           {errors.locationLink ? <p className="text-xs text-red-600">{errors.locationLink}</p> : null}
-          <p className="text-xs text-muted">
-            الصق رابط المشاركة من خرائط جوجل أو أي رابط https يوضح موقع التسليم؛ يُحفظ مع الملاحظات للكابتن.
-          </p>
+          <p className="text-xs text-muted">{t("newOrder.form.locationLinkHelp")}</p>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="area">المنطقة</Label>
+          <Label htmlFor="area">{t("newOrder.form.area")}</Label>
           <Input id="area" name="area" required maxLength={200} className={errorClass("area")} />
           {errors.area ? <p className="text-xs text-red-600">{errors.area}</p> : null}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="amount">{isCompanyAdmin ? "مبلغ الطلب" : "مبلغ المتجر"}</Label>
+          <Label htmlFor="amount">
+            {isCompanyAdmin ? t("newOrder.form.amountCompany") : t("newOrder.form.amount")}
+          </Label>
           <Input
             id="amount"
             name="amount"
@@ -249,7 +254,7 @@ export function NewOrderForm() {
           {errors.amount ? <p className="text-xs text-red-600">{errors.amount}</p> : null}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="deliveryFee">رسوم التوصيل</Label>
+          <Label htmlFor="deliveryFee">{t("newOrder.form.deliveryFee")}</Label>
           <Input
             id="deliveryFee"
             name="deliveryFee"
@@ -261,8 +266,9 @@ export function NewOrderForm() {
           />
           {errors.deliveryFee ? <p className="text-xs text-red-600">{errors.deliveryFee}</p> : null}
           <p className="text-xs text-muted">
-            اترك 0 للتوصيل المجاني. إجمالي التحصيل من العميل يُحسب على الخادم (
-            {isCompanyAdmin ? "مبلغ الطلب" : "مبلغ المتجر"} + الرسوم).
+            {t("newOrder.form.deliveryFeeHelp", {
+              amountLabel: isCompanyAdmin ? t("newOrder.form.amountCompany") : t("newOrder.form.amount"),
+            })}
           </p>
         </div>
 
@@ -272,11 +278,8 @@ export function NewOrderForm() {
               className="rounded-xl border border-dashed border-amber-600/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/35 dark:bg-amber-500/15 dark:text-amber-100"
               role="status"
             >
-              <p className="font-medium">لم يُحدَّد موقع على الخريطة</p>
-              <p className="mt-1 text-xs opacity-90">
-                يمكن للكابتن تأكيد أو ضبط موقع التسليم من تطبيق الكابتن عند استلام الطلب. لتثبيت موقع الآن، فعّل الخيار
-                أدناه.
-              </p>
+              <p className="font-medium">{t("newOrder.form.mapNoneTitle")}</p>
+              <p className="mt-1 text-xs opacity-90">{t("newOrder.form.mapNoneBody")}</p>
             </div>
           ) : null}
 
@@ -295,22 +298,20 @@ export function NewOrderForm() {
                 });
               }}
             />
-            <span className="text-sm leading-snug">
-              <span className="font-medium">إضافة موقع التسليم على الخريطة (اختياري)</span>
-              <span className="mt-0.5 block text-xs text-muted">
-                عند التفعيل، اضغط على الخريطة لتثبيت نقطة التسليم وإرسال الإحداثيات مع الطلب.
-              </span>
+              <span className="text-sm leading-snug">
+              <span className="font-medium">{t("newOrder.form.mapToggleTitle")}</span>
+              <span className="mt-0.5 block text-xs text-muted">{t("newOrder.form.mapToggleBody")}</span>
             </span>
           </label>
 
           {includeMapPin ? (
             <div className="grid gap-2">
-              <Label className="text-muted-foreground">خريطة تثبيت موقع التسليم</Label>
+              <Label className="text-muted-foreground">{t("newOrder.form.mapLabel")}</Label>
               <div
                 ref={mapHostRef}
                 className={`h-72 w-full overflow-hidden rounded-xl border ${errors.dropoffCoords ? "border-red-500" : "border-card-border"}`}
               />
-              <p className="text-xs text-muted">اضغط على الخريطة لتثبيت موقع التسليم (دقة 6 منازل عشرية).</p>
+              <p className="text-xs text-muted">{t("newOrder.form.mapHint")}</p>
               {errors.dropoffCoords ? <p className="text-xs text-red-600">{errors.dropoffCoords}</p> : null}
               {dropoffCoords ? (
                 <div dir="ltr" className="text-xs font-mono text-muted">
@@ -322,7 +323,7 @@ export function NewOrderForm() {
         </div>
 
         <div className="grid gap-2 sm:col-span-2">
-          <Label htmlFor="notes">ملاحظات</Label>
+          <Label htmlFor="notes">{t("newOrder.form.notes")}</Label>
           <Textarea id="notes" name="notes" maxLength={2000} rows={3} />
         </div>
       </div>
@@ -331,10 +332,10 @@ export function NewOrderForm() {
 
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="secondary" onClick={() => void navigate(-1)}>
-          رجوع
+          {t("newOrder.form.back")}
         </Button>
         <Button type="submit" disabled={create.isPending}>
-          {create.isPending ? "جارٍ الإنشاء…" : "إنشاء الطلب"}
+          {create.isPending ? t("newOrder.form.creating") : t("newOrder.form.submit")}
         </Button>
       </div>
     </form>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { FORM_CONTROL_CLASS } from "@/components/ui/form-field-classes";
 import { InlineAlert } from "@/components/ui/inline-alert";
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export function CaptainBalanceAdjustmentModal({ open, captainLabel, isPending, onClose, onSubmit }: Props) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>("increase");
   const [amountRaw, setAmountRaw] = useState("");
   const [note, setNote] = useState("");
@@ -34,11 +36,11 @@ export function CaptainBalanceAdjustmentModal({ open, captainLabel, isPending, o
     setError(null);
     const amount = Number(amountRaw.replace(",", "."));
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError("أدخل مبلغاً صحيحاً أكبر من صفر.");
+      setError(t("captains.balanceAdjustment.errors.invalidAmount"));
       return;
     }
     if (!note.trim()) {
-      setError("سبب التعديل مطلوب.");
+      setError(t("captains.balanceAdjustment.errors.noteRequired"));
       return;
     }
     onSubmit({
@@ -48,22 +50,22 @@ export function CaptainBalanceAdjustmentModal({ open, captainLabel, isPending, o
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="تعديل رصيد الكابتن" description={`الكابتن: ${captainLabel}`}>
+    <Modal open={open} onClose={onClose} title={t("captains.balanceAdjustment.title")} description={t("captains.balanceAdjustment.captainLabel", { name: captainLabel })}>
       <div className="grid gap-3">
         <div className="grid gap-2">
-          <Label>نوع العملية</Label>
+          <Label>{t("captains.balanceAdjustment.operationType")}</Label>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" variant={mode === "increase" ? "default" : "secondary"} onClick={() => setMode("increase")}>
-              زيادة (+)
+              {t("captains.balanceAdjustment.increase")}
             </Button>
             <Button type="button" size="sm" variant={mode === "decrease" ? "default" : "secondary"} onClick={() => setMode("decrease")}>
-              خصم (-)
+              {t("captains.balanceAdjustment.decrease")}
             </Button>
           </div>
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="captain-adjust-amount">المبلغ</Label>
+          <Label htmlFor="captain-adjust-amount">{t("captains.balanceAdjustment.amount")}</Label>
           <Input
             id="captain-adjust-amount"
             dir="ltr"
@@ -76,14 +78,14 @@ export function CaptainBalanceAdjustmentModal({ open, captainLabel, isPending, o
         </div>
 
         <div className="grid gap-2">
-          <Label htmlFor="captain-adjust-note">سبب التعديل</Label>
+          <Label htmlFor="captain-adjust-note">{t("captains.balanceAdjustment.note")}</Label>
           <textarea
             id="captain-adjust-note"
             className={FORM_CONTROL_CLASS}
             rows={3}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="اكتب سبباً واضحاً للتدقيق لاحقاً"
+            placeholder={t("captains.balanceAdjustment.notePlaceholder")}
           />
         </div>
 
@@ -91,10 +93,10 @@ export function CaptainBalanceAdjustmentModal({ open, captainLabel, isPending, o
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            إلغاء
+            {t("common.cancel")}
           </Button>
           <Button type="button" disabled={isPending} onClick={submit}>
-            {isPending ? "جارٍ الحفظ…" : "تأكيد التعديل"}
+            {isPending ? t("common.saving") : t("captains.balanceAdjustment.confirm")}
           </Button>
         </div>
       </div>

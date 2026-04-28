@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ import {
 } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { CompanyWalletReadDto, WalletBalanceReadDto } from "@/types/api";
+import { captainOptionLabel, storeOptionLabel } from "@/i18n/localize-entity-labels";
 
 type FinanceTab = "supervisor" | "store" | "captain" | "company";
 const ILS_CODE = "ILS";
@@ -46,29 +48,21 @@ function currencyLabel(currency: string): string {
   return currency === ILS_CODE ? `${ILS_SYMBOL} ${ILS_CODE}` : currency;
 }
 
-function companyLedgerTypeLabel(t: string): string {
-  const map: Record<string, string> = {
-    SUPER_ADMIN_TOP_UP: "شحن (مدير النظام)",
-    WALLET_TRANSFER: "تحويل",
-    ADJUSTMENT: "تسوية",
-  };
-  return map[t] ?? t;
-}
-
 function BalanceCard({ sub, data, isLoading, error }: {
   sub: string;
   data: WalletBalanceReadDto | undefined;
   isLoading: boolean;
   error: Error | null;
 }) {
+  const { t } = useTranslation();
   if (isLoading) {
-    return <LoadingBlock message="جارٍ تحميل الرصيد…" compact />;
+    return <LoadingBlock message={t("finance.balance.balanceCard.loading")} compact />;
   }
   if (error) {
     return <InlineAlert variant="error">{error.message}</InlineAlert>;
   }
   if (!data) {
-    return <p className="text-sm text-muted">لا بيانات</p>;
+    return <p className="text-sm text-muted">{t("finance.balance.noData")}</p>;
   }
   return (
     <div className="space-y-2">
@@ -77,9 +71,9 @@ function BalanceCard({ sub, data, isLoading, error }: {
           {data.balanceCached} <span className="text-base font-normal text-muted">{currencyLabel(data.currency)}</span>
         </div>
         {data.exists ? (
-          <StatusBadge tone="positive">محفظة نشطة</StatusBadge>
+          <StatusBadge tone="positive">{t("finance.balance.balanceCard.activeWallet")}</StatusBadge>
         ) : (
-          <StatusBadge tone="neutral">لا سجل محفظة بعد</StatusBadge>
+          <StatusBadge tone="neutral">{t("finance.balance.balanceCard.noWalletYet")}</StatusBadge>
         )}
       </div>
       <p className="text-xs text-muted">{sub}</p>
@@ -88,6 +82,8 @@ function BalanceCard({ sub, data, isLoading, error }: {
 }
 
 export function FinancePageView() {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   const role = useAuthStore((s) => s.user?.role);
   const token = useAuthStore((s) => s.token);
   const authUserId = useAuthStore((s) => s.user?.id);
@@ -107,17 +103,17 @@ export function FinancePageView() {
 
   const tabs = useMemo((): FinanceTab[] => {
     if (isCompanyAdmin) {
-      const t: FinanceTab[] = [];
-      if (canSeeCompany) t.push("company");
-      if (canSeeCaptain) t.push("captain");
-      return t;
+      const acc: FinanceTab[] = [];
+      if (canSeeCompany) acc.push("company");
+      if (canSeeCaptain) acc.push("captain");
+      return acc;
     }
-    const t: FinanceTab[] = [];
-    if (canSeeSupervisor) t.push("supervisor");
-    if (canSeeStore) t.push("store");
-    if (canSeeCaptain) t.push("captain");
-    if (canSeeCompany) t.push("company");
-    return t;
+    const acc: FinanceTab[] = [];
+    if (canSeeSupervisor) acc.push("supervisor");
+    if (canSeeStore) acc.push("store");
+    if (canSeeCaptain) acc.push("captain");
+    if (canSeeCompany) acc.push("company");
+    return acc;
   }, [isCompanyAdmin, canSeeCaptain, canSeeCompany, canSeeStore, canSeeSupervisor]);
 
   const [tab, setTab] = useState<FinanceTab | null>(null);
@@ -266,14 +262,14 @@ export function FinancePageView() {
   return (
     <div className="grid gap-8 sm:gap-10">
       <PageHeader
-        title="المالية"
+        title={t("finance.page.title")}
         divider
         description={
           isSuperAdmin
-            ? "عرض أرصدة المحافظ وسجل العمليات. شحن متجر أو مشرف من الأعلى، أو شحن محفظة الشركة من تبويب «محفظة الشركة»."
+            ? t("finance.page.descriptionSuperAdmin")
             : isCompanyAdmin
-              ? "عرض رصيد محفظة الشركة (للقراءة فقط) ومحفظة الكابتن وشحن باقة الكابتن عند الحاجة — دون إدارة المتاجر من هنا."
-              : "عرض أرصدة المحافظ وسجل العمليات."
+              ? t("finance.page.descriptionCompanyAdmin")
+              : t("finance.page.descriptionDefault")
         }
         actions={
           <Button
@@ -285,7 +281,7 @@ export function FinancePageView() {
             aria-busy={mainQuery?.isFetching}
           >
             <RefreshCw className="size-4 opacity-80" />
-            تحديث
+            {t("finance.page.refresh")}
           </Button>
         }
       />
@@ -293,15 +289,15 @@ export function FinancePageView() {
       {isSuperAdmin ? (
         <Card className="ring-1 ring-primary/10 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base">أدوات مدير النظام</CardTitle>
-            <CardDescription>شحن محفظة متجر أو شحن أو خصم رصيد المشرف (مشرف فرع/موزع) — POST مع Idempotency-Key.</CardDescription>
+            <CardTitle className="text-base">{t("finance.tools.superAdminTitle")}</CardTitle>
+            <CardDescription>{t("finance.tools.superAdminDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button type="button" onClick={() => setStoreTopupOpen(true)}>
-              شحن محفظة متجر
+              {t("finance.tools.storeTopUp")}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setSupervisorTopupOpen(true)}>
-              تعديل الرصيد
+              {t("finance.tools.supervisorAdjust")}
             </Button>
           </CardContent>
         </Card>
@@ -309,15 +305,12 @@ export function FinancePageView() {
       {isCompanyAdmin ? (
         <Card className="ring-1 ring-primary/10 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base">أدوات مدير الشركة</CardTitle>
-            <CardDescription>
-              شحن رصيد باقة كابتن داخل شركتك فقط. يُطلب مبلغ وسبب، ويُولَّد idempotency تلقائياً. لا يوجد شحن لمحفظة الشركة من
-              هنا.
-            </CardDescription>
+            <CardTitle className="text-base">{t("finance.tools.companyAdminTitle")}</CardTitle>
+            <CardDescription>{t("finance.tools.companyAdminDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" onClick={() => setCaCaptainPrepaidOpen(true)}>
-              شحن رصيد باقة كابتن
+              {t("finance.tools.captainPrepaidTopUp")}
             </Button>
           </CardContent>
         </Card>
@@ -356,7 +349,7 @@ export function FinancePageView() {
       <div
         className="flex flex-wrap gap-2 rounded-xl border border-card-border bg-muted/20 p-2 shadow-inner"
         role="tablist"
-        aria-label="نوع المحفظة"
+        aria-label={t("finance.tabs.ariaLabel")}
       >
         {canSeeSupervisor ? (
           <Button
@@ -366,7 +359,7 @@ export function FinancePageView() {
             onClick={() => setTab("supervisor")}
             aria-pressed={activeTab === "supervisor"}
           >
-            محفظة المشرف
+            {t("finance.tabs.supervisor")}
           </Button>
         ) : null}
         {canSeeStore ? (
@@ -377,7 +370,7 @@ export function FinancePageView() {
             onClick={() => setTab("store")}
             aria-pressed={activeTab === "store"}
           >
-            محفظة المتجر
+            {t("finance.tabs.store")}
           </Button>
         ) : null}
         {canSeeCaptain ? (
@@ -388,7 +381,7 @@ export function FinancePageView() {
             onClick={() => setTab("captain")}
             aria-pressed={activeTab === "captain"}
           >
-            محفظة الكابتن
+            {t("finance.tabs.captain")}
           </Button>
         ) : null}
         {canSeeCompany ? (
@@ -399,29 +392,29 @@ export function FinancePageView() {
             onClick={() => setTab("company")}
             aria-pressed={activeTab === "company"}
           >
-            محفظة الشركة
+            {t("finance.tabs.company")}
           </Button>
         ) : null}
       </div>
 
       <Card className="shadow-sm ring-1 ring-card-border/80">
         <CardHeader>
-          <CardTitle className="text-base">الرصيد</CardTitle>
+          <CardTitle className="text-base">{t("finance.balance.title")}</CardTitle>
           <CardDescription>
             {activeTab === "supervisor"
-              ? "حساب المشرف المرتبط بحسابك في الشركة."
+              ? t("finance.balance.subtitleSupervisor")
               : activeTab === "store"
-                ? "رصيد المتجر المختار."
+                ? t("finance.balance.subtitleStore")
                 : activeTab === "captain"
-                  ? "رصيد الكابتن المختار."
-                  : "رصيد محفظة الشركة (طلبات/تشغيل) — للقراءة فقط."}
+                  ? t("finance.balance.subtitleCaptain")
+                  : t("finance.balance.subtitleCompany")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {activeTab === "company" && isSuperAdmin && canSeeCompany ? (
             <div className="flex max-w-2xl flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
               <label className="flex min-w-[12rem] max-w-md flex-1 flex-col gap-1 text-sm">
-                <span className="text-muted">الشركة (مدير النظام)</span>
+                <span className="text-muted">{t("finance.balance.companyPickerLabel")}</span>
                 <select
                   className={FORM_CONTROL_CLASS}
                   value={saCompanyId ?? ""}
@@ -437,7 +430,7 @@ export function FinancePageView() {
               </label>
               {saCompanyId ? (
                 <Button type="button" onClick={() => setCompanyTopupOpen(true)}>
-                  شحن محفظة الشركة
+                  {t("finance.balance.topUpCompanyWallet")}
                 </Button>
               ) : null}
             </div>
@@ -445,14 +438,14 @@ export function FinancePageView() {
 
           {activeTab === "company" && isCompanyAdmin ? (
             <p className="text-sm text-muted">
-              تُعرض محفظة شركتك المرتبطة بحسابك فقط. لا يمكن اختيار شركة أخرى من هنا.
+              {t("finance.balance.companyAdminScopeNote")}
             </p>
           ) : null}
 
           {activeTab === "store" && canSeeStore ? (
             <div className="flex max-w-2xl flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
               <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
-                <span className="text-muted">المتجر</span>
+                <span className="text-muted">{t("finance.balance.storeLabel")}</span>
                 <select
                   className={FORM_CONTROL_CLASS}
                   value={storeId ?? ""}
@@ -461,7 +454,7 @@ export function FinancePageView() {
                 >
                   {(storesList.data?.items ?? []).map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} — {s.area}
+                      {storeOptionLabel(s, lang)}
                     </option>
                   ))}
                 </select>
@@ -472,7 +465,7 @@ export function FinancePageView() {
           {activeTab === "captain" && canSeeCaptain ? (
             <div className="flex max-w-2xl flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
               <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
-                <span className="text-muted">الكابتن</span>
+                <span className="text-muted">{t("finance.balance.captainLabel")}</span>
                 <select
                   className={FORM_CONTROL_CLASS}
                   value={captainId ?? ""}
@@ -481,14 +474,14 @@ export function FinancePageView() {
                 >
                   {(captainsList.data?.items ?? []).map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.user.fullName} — {c.area}
+                      {captainOptionLabel(c, lang)}
                     </option>
                   ))}
                 </select>
               </label>
               {isCompanyAdmin ? (
                 <Button type="button" size="sm" onClick={() => setCaCaptainPrepaidOpen(true)}>
-                  شحن باقة الكابتن
+                  {t("finance.balance.captainPrepaidCta")}
                 </Button>
               ) : null}
             </div>
@@ -497,7 +490,7 @@ export function FinancePageView() {
           {activeTab === "company" ? (
             <div className="space-y-3">
               {companyWalletQuery.isLoading ? (
-                <LoadingBlock message="جارٍ تحميل رصيد الشركة…" compact />
+                <LoadingBlock message={t("finance.balance.loadingCompany")} compact />
               ) : companyWalletQuery.isError ? (
                 <div className="space-y-2">
                   {companyWalletQuery.error instanceof ApiError &&
@@ -505,8 +498,8 @@ export function FinancePageView() {
                     companyWalletQuery.error.code === "FORBIDDEN") ? (
                     <InlineAlert variant="error">
                       {companyWalletQuery.error.code === "TENANT_SCOPE_REQUIRED"
-                        ? "لا يتوفر نطاق شركة على حسابك (TENANT_SCOPE_REQUIRED). تواصل مع الإدارة."
-                        : "غير مسموح بعرض رصيد المحفظة."}
+                        ? t("finance.balance.errors.tenantScope")
+                        : t("finance.balance.errors.forbidden")}
                     </InlineAlert>
                   ) : (
                     <InlineAlert variant="error">{(companyWalletQuery.error as Error).message}</InlineAlert>
@@ -521,31 +514,31 @@ export function FinancePageView() {
                         {currencyLabel(companyWalletData.currency)}
                       </span>
                     </div>
-                    <StatusBadge tone="neutral">قراءة فقط</StatusBadge>
+                    <StatusBadge tone="neutral">{t("finance.balance.readOnly")}</StatusBadge>
                   </div>
                   <p className="text-xs text-muted">
-                    آخر تحديث للسجل:{" "}
+                    {t("finance.balance.ledgerLastUpdated")}{" "}
                     <span className="tabular-nums" dir="ltr">
                       {new Date(companyWalletData.updatedAt).toLocaleString()}
                     </span>
                   </p>
-                  <p className="text-xs text-muted">معرّف المحفظة: {companyWalletData.walletId}</p>
+                  <p className="text-xs text-muted">{t("finance.balance.walletId")} {companyWalletData.walletId}</p>
                   {companyWalletData.recentLedger.length > 0 ? (
                     <div className="mt-4 space-y-2 border-t border-card-border pt-4">
-                      <p className="text-sm font-medium">آخر الحركات (حتى 5)</p>
+                      <p className="text-sm font-medium">{t("finance.balance.recentMovementsTitle")}</p>
                       <TableShell>
                         <table className="w-full min-w-[520px] border-collapse text-sm">
                           <thead>
                             <tr className="border-b border-card-border bg-muted/30 text-start text-muted">
-                              <th className="px-3 py-2 font-medium">النوع</th>
-                              <th className="px-3 py-2 font-medium">المبلغ</th>
-                              <th className="px-3 py-2 font-medium">التاريخ</th>
+                              <th className="px-3 py-2 font-medium">{t("finance.ledgerTable.colType")}</th>
+                              <th className="px-3 py-2 font-medium">{t("finance.ledgerTable.colAmount")}</th>
+                              <th className="px-3 py-2 font-medium">{t("finance.ledgerTable.colTime")}</th>
                             </tr>
                           </thead>
                           <tbody>
                             {companyWalletData.recentLedger.map((row) => (
                               <tr key={row.id} className="border-b border-card-border/80">
-                                <td className="px-3 py-2">{companyLedgerTypeLabel(row.entryType)}</td>
+                                <td className="px-3 py-2">{t(`finance.transactionTypes.${row.entryType}`, { defaultValue: row.entryType })}</td>
                                 <td className="px-3 py-2 tabular-nums" dir="ltr">
                                   {row.amount} {row.currency}
                                 </td>
@@ -559,11 +552,11 @@ export function FinancePageView() {
                       </TableShell>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted">لا حركات مسجّلة بعد في آخر الدفعة المعروضة.</p>
+                    <p className="text-xs text-muted">{t("finance.balance.noRecentMovements")}</p>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-muted">لا بيانات</p>
+                <p className="text-sm text-muted">{t("finance.balance.noData")}</p>
               )}
             </div>
           ) : (
@@ -571,9 +564,9 @@ export function FinancePageView() {
               sub={
                 balance
                   ? balance.exists
-                    ? "يظهر الرصيد المخزَّن كما في الخادم."
-                    : "لم تُنشأ محفظة بعد — يُعرض صفر حتى أول حركة."
-                  : "—"
+                    ? t("finance.balance.balanceCard.existsNote")
+                    : t("finance.balance.balanceCard.missingNote")
+                  : t("common.none")
               }
               data={balance}
               isLoading={Boolean(mainQuery?.isLoading)}
@@ -586,14 +579,14 @@ export function FinancePageView() {
       {activeTab === "supervisor" && canSeeSupervisor && authUserId ? (
         <Card className="shadow-sm ring-1 ring-card-border/80">
           <CardHeader>
-            <CardTitle className="text-base">تحويل للكابتن</CardTitle>
+            <CardTitle className="text-base">{t("finance.transfer.cardTitle")}</CardTitle>
             <CardDescription>
-              تحويل من محفظة مشرفك إلى محفظة كابتن تشرف عليه. متاح لمشرف الفرع والموزع فقط.
+              {t("finance.transfer.cardDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button type="button" onClick={() => setSupervisorTransferOpen(true)}>
-              تحويل لكابتن
+              {t("finance.transfer.open")}
             </Button>
           </CardContent>
         </Card>
@@ -611,9 +604,9 @@ export function FinancePageView() {
       {activeTab === "company" ? (
         <Card className="shadow-sm ring-1 ring-card-border/80">
           <CardHeader>
-            <CardTitle className="text-base">سجل العمليات</CardTitle>
+            <CardTitle className="text-base">{t("finance.ledger.title")}</CardTitle>
             <CardDescription>
-              لمحفظة الشركة تُعرض أحدث الحركات مع بطاقة الرصيد أعلاه. التصفح الكامل يتطلب دعمًا إضافيًا من الخادم لاحقًا.
+              {t("finance.ledger.companyNote")}
             </CardDescription>
           </CardHeader>
         </Card>
@@ -621,29 +614,29 @@ export function FinancePageView() {
         <>
           <Card className="shadow-sm ring-1 ring-card-border/80">
             <CardHeader>
-              <CardTitle className="text-base">سجل العمليات</CardTitle>
+              <CardTitle className="text-base">{t("finance.ledger.genericTitle")}</CardTitle>
               <CardDescription>
                 {ledgerEnabled
-                  ? "الأحدث أولاً. التحميل الإضافي يجلب الدفعة التالية."
-                  : "لا يوجد أرقام محفظة بعد — لا يُطلب سجل الحركات."}
+                  ? t("finance.ledger.genericDescriptionEnabled")
+                  : t("finance.ledger.genericDescriptionDisabled")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {!ledgerEnabled ? (
                 <EmptyState
-                  title="لا يوجد سجل محفظة"
-                  description="بعد إنشاء المحفظة وظهور أرقامها يمكن عرض الحركات هنا."
+                  title={t("finance.ledger.emptyStateTitle")}
+                  description={t("finance.ledger.emptyStateDescription")}
                 />
               ) : (
                 <FinanceLedgerTable
                   items={ledger.items}
                   isLoading={ledger.isLoading}
                   isError={ledger.isError}
-                  errorMessage={(ledger.error as Error)?.message ?? "تعذّر التحميل"}
+                  errorMessage={(ledger.error as Error)?.message ?? t("finance.ledger.loadErrorFallback")}
                   onLoadMore={() => void ledger.loadMore()}
                   canLoadMore={ledger.canLoadMore}
                   isFetchingFirst={ledger.isFetchingFirst}
-                  emptyMessage="لا حركات بعد."
+                  emptyMessage={t("finance.ledger.emptyMovements")}
                 />
               )}
             </CardContent>

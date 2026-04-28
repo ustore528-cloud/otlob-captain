@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import i18n from "@/i18n/i18n";
 import type { CreateUserPayload } from "@/lib/api/services/users";
 import { queryKeys } from "@/lib/api/query-keys";
 import { api } from "@/lib/api/singleton";
@@ -9,9 +10,9 @@ export function useCreateUser() {
   return useMutation({
     mutationFn: (body: CreateUserPayload) => api.users.create(body),
     onSuccess: async () => {
-      toastSuccess("تم إنشاء المستخدم");
+      toastSuccess(String(i18n.t("mutationToasts.userCreated")));
       await qc.invalidateQueries({ queryKey: queryKeys.users.root });
     },
-    onError: (e) => toastApiError(e, "تعذر إنشاء المستخدم"),
+    onError: (e) => toastApiError(e, String(i18n.t("mutationToasts.userCreateFailed"))),
   });
 }

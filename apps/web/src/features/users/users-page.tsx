@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
@@ -18,6 +19,7 @@ import { USER_ROLE_FILTER_OPTIONS } from "@/features/users/constants";
 import { useAuthStore } from "@/stores/auth-store";
 
 export function UsersPageView() {
+  const { t } = useTranslation();
   const token = useAuthStore((s) => s.token);
   const me = useAuthStore((s) => s.user);
   const setSession = useAuthStore((s) => s.setSession);
@@ -48,8 +50,8 @@ export function UsersPageView() {
   return (
     <div className="grid gap-8">
       <PageHeader
-        title="المستخدمون"
-        description="حسابات الدخول للمنصة (مدير، مشغّل، كابتن، متجر، عميل تطبيق، …). لحساب «عميل» يمكن حفظ عناوين وروابط وأسعار تفضيلية كمرجع؛ الطلبات تُنشأ من «طلب جديد» مع بيانات الطلب."
+        title={t("users.page.title")}
+        description={t("users.page.description")}
         actions={
           <Button
             type="button"
@@ -59,7 +61,7 @@ export function UsersPageView() {
             disabled={users.isFetching}
           >
             <RefreshCw className={`me-2 size-4 ${users.isFetching ? "animate-spin" : ""}`} />
-            تحديث القائمة
+            {t("users.page.refreshList")}
           </Button>
         }
       />
@@ -68,20 +70,20 @@ export function UsersPageView() {
       {canCreateUser ? <SuperAdminCompaniesArchiveSection isSuperAdmin={canCreateUser} /> : null}
       {!canCreateUser ? (
         <InlineAlert variant="info">
-          إنشاء المستخدمين العام متاح فقط لدور SUPER_ADMIN. الدور الحالي: {effectiveRole ?? "غير معروف"}.
+          {t("users.page.superAdminOnly", { role: effectiveRole ?? t("users.page.unknownRole") })}
         </InlineAlert>
       ) : null}
 
       <Card className="border-card-border shadow-sm">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <CardTitle className="text-base">تصفية حسب الدور</CardTitle>
+            <CardTitle className="text-base">{t("users.page.filterTitle")}</CardTitle>
             <CardDescription>
-              صفِّ حسب الدور. حساب «عميل» يعرض قسم بيانات توصيل اختيارية (مثل حقول طلب جديد) للمرجع عند الحاجة.
+              {t("users.page.filterDescription")}
             </CardDescription>
           </div>
           <div className="grid gap-1">
-            <Label className="text-xs text-muted">الدور</Label>
+            <Label className="text-xs text-muted">{t("users.page.roleLabel")}</Label>
             <select
               className="h-10 min-w-[200px] rounded-lg border border-card-border bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               value={role}
@@ -89,7 +91,7 @@ export function UsersPageView() {
             >
               {USER_ROLE_FILTER_OPTIONS.map((r) => (
                 <option key={r || "all"} value={r}>
-                  {r ? userRoleLabel(r) : "الكل"}
+                  {r ? userRoleLabel(r) : t("common.all")}
                 </option>
               ))}
             </select>
@@ -97,7 +99,7 @@ export function UsersPageView() {
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {users.isLoading ? (
-            <p className="text-sm text-muted">جارٍ التحميل…</p>
+            <p className="text-sm text-muted">{t("common.loading")}</p>
           ) : users.isError ? (
             <p className="text-sm text-red-600">{(users.error as Error).message}</p>
           ) : (
