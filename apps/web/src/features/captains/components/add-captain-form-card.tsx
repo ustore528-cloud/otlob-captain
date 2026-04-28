@@ -50,9 +50,7 @@ export function AddCaptainFormCard() {
         !branchesQ.isError &&
         activeBranchCount > 0 &&
         (!needBranchPicker || Boolean(branchId))
-      : branchesQ.isLoading || branchesQ.isError
-        ? false
-        : activeBranchCount > 0 && (!needBranchPicker || Boolean(branchId));
+      : !branchesQ.isLoading && !branchesQ.isError && (!needBranchPicker || Boolean(branchId));
 
   useEffect(() => {
     if (isRegionSupervisor || !branchesQ.isSuccess) return;
@@ -72,9 +70,6 @@ export function AddCaptainFormCard() {
       return;
     }
     if (!isRegionSupervisor) {
-      if (activeBranchCount === 0) {
-        return;
-      }
       if (needBranchPicker && !branchId) {
         setBranchError(t("captains.add.errors.chooseBranch"));
         return;
@@ -194,7 +189,7 @@ export function AddCaptainFormCard() {
               {(branchesQ.error as Error).message}
             </InlineAlert>
           ) : null}
-          {showBranchField && !branchesQ.isLoading && branchesEnabled && activeBranchCount === 0 ? (
+          {showBranchField && isSuper && !branchesQ.isLoading && branchesEnabled && activeBranchCount === 0 ? (
             <InlineAlert variant="warning" className="sm:col-span-2">
               {t("captains.add.errors.noActiveBranch")}
             </InlineAlert>
