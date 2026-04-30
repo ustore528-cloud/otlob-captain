@@ -9,6 +9,7 @@ const captainUserSelectDetail = {
   phone: true,
   email: true,
   isActive: true,
+  displayI18n: true,
 } as const satisfies Prisma.UserSelect;
 
 const captainUserSelectList = {
@@ -16,6 +17,7 @@ const captainUserSelectList = {
   fullName: true,
   phone: true,
   isActive: true,
+  displayI18n: true,
 } as const satisfies Prisma.UserSelect;
 
 /** Read path: `user` + optional `supervisorUser` (same shape as order store supervisor summary). */

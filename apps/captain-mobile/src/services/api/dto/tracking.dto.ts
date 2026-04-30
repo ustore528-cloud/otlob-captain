@@ -1,6 +1,10 @@
 export type UpdateCaptainLocationBody = {
   latitude: number;
   longitude: number;
+  heading?: number | null;
+  speed?: number | null;
+  accuracy?: number | null;
+  timestamp?: string | null;
 };
 
 export type CaptainLocationRecordDto = {

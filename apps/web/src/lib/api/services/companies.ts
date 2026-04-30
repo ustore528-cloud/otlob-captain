@@ -1,6 +1,7 @@
 import { apiFetch, paths } from "@/lib/api/http";
 
 import type { ValueTranslations } from "@/types/api";
+import type { ResolvedPublicPageSettings } from "@/lib/api/services/public-request";
 
 export type CompanyListItem = {
   id: string;
@@ -106,6 +107,26 @@ export function archiveCompany(
 ): Promise<CompanyArchiveResult> {
   return apiFetch<CompanyArchiveResult>(paths.companies.archive(companyId), {
     method: "POST",
+    body: JSON.stringify(body),
+    token,
+  });
+}
+
+/** SUPER_ADMIN — قراءة إعدادات صفحة الطلب العامة لشركة */
+export function getCompanyPublicPageSettingsById(token: string, companyId: string): Promise<ResolvedPublicPageSettings> {
+  return apiFetch<ResolvedPublicPageSettings>(paths.companies.publicPageSettings(companyId), { method: "GET", token });
+}
+
+export type PublicCarouselSlideInput = { id: string; imageUrl: string; alt?: string };
+
+/** SUPER_ADMIN — استبدال سليكر صور صفحة الطلب (روابط HTTPS فقط) */
+export function patchCompanyPublicPageCarousel(
+  token: string,
+  companyId: string,
+  body: { carouselSlides: PublicCarouselSlideInput[] },
+): Promise<ResolvedPublicPageSettings> {
+  return apiFetch<ResolvedPublicPageSettings>(paths.companies.publicPageCarousel(companyId), {
+    method: "PATCH",
     body: JSON.stringify(body),
     token,
   });

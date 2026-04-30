@@ -49,4 +49,5 @@ export const MobileCaptainPushTokenBodySchema = z.object({
   token: z.string().min(20).max(300),
   platform: z.union([z.literal("android"), z.literal("ios")]),
   appVersion: z.string().max(40).nullable().optional(),
+  language: z.union([z.literal("ar"), z.literal("en"), z.literal("he")]).nullable().optional(),
 });

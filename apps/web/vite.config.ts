@@ -71,14 +71,15 @@ export default defineConfig(({ mode }) => {
       /** `true` → listen on `0.0.0.0` / `::` so both `http://127.0.0.1:5173` and `http://localhost:5173` work on Windows. */
       host: true,
       port: 5173,
-      strictPort: true,
+      /** If 5173 (or preview 4173) is taken, Vite picks the next free port — avoids "Port already in use" failed starts. */
+      strictPort: false,
       proxy,
     },
     /** `vite preview` does not inherit `server.proxy` — repeat so `/api` still reaches the local API. */
     preview: {
       host: true,
       port: 4173,
-      strictPort: true,
+      strictPort: false,
       proxy,
     },
   };

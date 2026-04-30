@@ -32,7 +32,13 @@ import {
 } from "./tenant-scope.service.js";
 import { resolveOrCreateOperationalStoreId } from "./operational-store.service.js";
 import { assertSupervisorReadAccessForOrder, resolveSupervisorReadScopeForList } from "../lib/supervisor-order-read-scope.js";
-import { isCaptainRole, isOrderOperatorRole, isStoreAdminRole, type AppRole } from "../lib/rbac-roles.js";
+import {
+  isCaptainRole,
+  isOrderOperatorRole,
+  isStoreAdminRole,
+  isSupportedPlatformActorRole,
+  type AppRole,
+} from "../lib/rbac-roles.js";
 import { resolveCanonicalOrderMoneyOnCreate } from "../domain/order-canonical-money.js";
 import { toOrderDetailDto, toOrderListItemDto } from "../dto/order.dto.js";
 
@@ -87,6 +93,8 @@ export const ordersService = {
       customerUserId?: string;
       /** منطقة اختيارية (ضمن شركة المتجر) — لا توسّع نطاق الأمان */
       zoneId?: string;
+      /** رمز تتبّع عميل صفحة الطلب العام فقط */
+      publicTrackingToken?: string;
     },
     actor: {
       userId: string;
@@ -212,6 +220,7 @@ export const ordersService = {
         ...(ownerConnect ? { ownerUser: ownerConnect } : {}),
         ...(orderPublicOwnerCode ? { orderPublicOwnerCode } : {}),
         ...(zoneConnect ? { zone: zoneConnect } : {}),
+        ...(input.publicTrackingToken ? { publicTrackingToken: input.publicTrackingToken } : {}),
       },
       store.companyId,
     );
@@ -238,28 +247,49 @@ export const ordersService = {
       branchId: string | null;
     },
   ) {
+    if (!isSupportedPlatformActorRole(actor.role)) {
+      throw new AppError(
+        403,
+        "This role is not supported for listing orders.",
+        "ROLE_NOT_SUPPORTED",
+      );
+    }
+
     const filters: Parameters<typeof orderRepository.list>[0] = { ...params };
-    if (isStoreAdminRole(actor.role)) {
-      if (!actor.storeId) throw new AppError(400, "Store scope missing", "BAD_REQUEST");
-      filters.storeId = actor.storeId;
+
+    if (isCaptainRole(actor.role)) {
+      const cap = await captainRepository.findByUserId(actor.userId);
+      if (!cap) {
+        throw new AppError(403, "Captain profile not found.", "FORBIDDEN");
+      }
+      filters.captainVisibilityScopeId = cap.id;
+      const [total, items] = await orderRepository.list(filters);
+      return {
+        total,
+        items: items.map((o) => toOrderListItemDto(o)),
+      };
     }
-    if (isOrderOperatorRole(actor.role)) {
-      const tenant = await resolveStaffTenantOrderListFilter({
-        userId: actor.userId,
-        role: actor.role,
-        companyId: actor.companyId ?? null,
-        branchId: actor.branchId ?? null,
-      });
-      if (tenant.companyId) filters.companyId = tenant.companyId;
-      if (tenant.branchId) filters.branchId = tenant.branchId;
-      const supRead = await resolveSupervisorReadScopeForList({
-        userId: actor.userId,
-        role: actor.role,
-        companyId: actor.companyId ?? null,
-        branchId: actor.branchId ?? null,
-      });
-      if (supRead) filters.supervisorReadOr = supRead;
+
+    // SUPER_ADMIN + COMPANY_ADMIN: tenant-scoped operational list (empty scope for super-admin = global).
+    if (!isOrderOperatorRole(actor.role)) {
+      throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
+    const tenant = await resolveStaffTenantOrderListFilter({
+      userId: actor.userId,
+      role: actor.role,
+      companyId: actor.companyId ?? null,
+      branchId: actor.branchId ?? null,
+    });
+    if (tenant.companyId) filters.companyId = tenant.companyId;
+    if (tenant.branchId) filters.branchId = tenant.branchId;
+    const supRead = await resolveSupervisorReadScopeForList({
+      userId: actor.userId,
+      role: actor.role,
+      companyId: actor.companyId ?? null,
+      branchId: actor.branchId ?? null,
+    });
+    if (supRead) filters.supervisorReadOr = supRead;
+
     const [total, items] = await orderRepository.list(filters);
     return {
       total,
@@ -358,8 +388,17 @@ export const ordersService = {
         { companyId: existing.companyId, branchId: existing.branchId },
         { companyId: captain.companyId, branchId: captain.branchId },
       );
-      if (existing.assignedCaptainId !== captain.id) {
-        throw new AppError(403, "Only the assigned captain can update delivery status", "FORBIDDEN");
+      const hasAssignmentHistory = existing.assignmentLogs.some((l) => l.captainId === captain.id);
+      const isAssignedToMe = existing.assignedCaptainId === captain.id;
+      if (!isAssignedToMe && !hasAssignmentHistory) {
+        throw new AppError(403, "You are not associated with this order.", "FORBIDDEN");
+      }
+      if (!isAssignedToMe) {
+        throw new AppError(
+          403,
+          "Only the assigned captain can update delivery status. Use accept or reject for open offers.",
+          "CAPTAIN_NOT_ASSIGNED",
+        );
       }
       assertCaptainOrderStatusTransition(existing.status, status);
     }

@@ -40,6 +40,12 @@ export function emitOrderCreated(payload: unknown, scope: DispatcherTenantScope)
 }
 
 export function emitCaptainLocation(payload: unknown, scope: DispatcherTenantScope): void {
+  // eslint-disable-next-line no-console
+  console.info("[socket-location] emitted", {
+    event: "captain:location",
+    companyId: scope.companyId,
+    branchId: scope.branchId ?? null,
+  });
   emitToDispatchers("captain:location", payload, scope);
 }
 

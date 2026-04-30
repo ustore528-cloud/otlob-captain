@@ -3,6 +3,7 @@ import { authRequest, authRequestWithMeta, type AuthRequestMeta } from "../clien
 import type {
   AssignmentOverflowResponse,
   CaptainPrepaidSummaryDto,
+  CaptainPushLocale,
   CurrentAssignmentResponse,
   MeResponse,
   UpdateAvailabilityRequest,
@@ -40,7 +41,12 @@ export const captainService = {
     });
   },
 
-  registerPushToken(body: { token: string; platform: "android" | "ios"; appVersion?: string | null }): Promise<{
+  registerPushToken(body: {
+    token: string;
+    platform: "android" | "ios";
+    appVersion?: string | null;
+    language?: CaptainPushLocale;
+  }): Promise<{
     registered: boolean;
   }> {
     return authRequest(paths.mobileCaptain.pushToken, {
@@ -50,7 +56,12 @@ export const captainService = {
   },
 
   registerPushTokenWithMeta(
-    body: { token: string; platform: "android" | "ios"; appVersion?: string | null },
+    body: {
+      token: string;
+      platform: "android" | "ios";
+      appVersion?: string | null;
+      language?: CaptainPushLocale;
+    },
   ): Promise<AuthRequestMeta<{ registered: boolean }>> {
     return authRequestWithMeta(paths.mobileCaptain.pushToken, {
       method: "POST",

@@ -12,7 +12,6 @@ import { pushNotificationService } from "../push-notification.service.js";
 import { assertStaffCanAccessCaptain, assertStaffCanAccessOrder } from "../tenant-scope.service.js";
 import {
   isCompanyAdminRole,
-  isLegacyAdminRole,
   isSuperAdminRole,
   type AppRole,
 } from "../../lib/rbac-roles.js";
@@ -40,7 +39,7 @@ function mergeEngineCtx(
   return {
     ...ctx,
     bypassSupervisorLinkScope: actorScope
-      ? isSuperAdminRole(actorScope.role) || isCompanyAdminRole(actorScope.role) || isLegacyAdminRole(actorScope.role)
+      ? isSuperAdminRole(actorScope.role) || isCompanyAdminRole(actorScope.role)
       : false,
     bypassOrderOwnerCaptainFleetForCompanyAdmin: actorScope
       ? isCompanyAdminRole(actorScope.role)

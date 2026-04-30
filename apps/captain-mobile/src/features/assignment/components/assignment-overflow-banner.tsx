@@ -5,6 +5,7 @@ import { homeTheme } from "@/features/home/theme";
 import type { AssignmentOverflowItemDto } from "@/services/api/dto";
 import { routes } from "@/navigation/routes";
 import { formatOrderSerial } from "@/lib/order-serial";
+import { isRtlLng } from "@/i18n/i18n";
 
 type Props = {
   items: AssignmentOverflowItemDto[];
@@ -16,35 +17,38 @@ type Props = {
  * Option C: visible notice when assignable or in-flight orders exist beyond the primary live card.
  */
 export function AssignmentOverflowBanner({ items, warningVisible = false, onRetryWarning }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const rtl = isRtlLng(i18n.resolvedLanguage ?? i18n.language);
   const router = useRouter();
   if (items.length === 0 && !warningVisible) return null;
 
   const n = items.length;
   const label = n === 1 ? t("overflow.titleOne") : t("overflow.titleMany", { count: n });
+  const alignEnd = rtl ? "right" : "left";
+  const alignItemsEnd = rtl ? "flex-end" : "flex-start";
 
   return (
-    <View style={styles.wrap} accessibilityRole="summary">
+    <View style={[styles.wrap, { alignItems: alignItemsEnd }]} accessibilityRole="summary">
       {warningVisible ? (
-        <View style={styles.warningWrap}>
-          <Text style={styles.warningTitle}>تعذّر التحقق من الطلبات الإضافية الآن</Text>
-          <Text style={styles.warningHint}>قد تكون هناك طلبات ثانوية غير معروضة حالياً.</Text>
+        <View style={[styles.warningWrap, { alignItems: alignItemsEnd }]}>
+          <Text style={[styles.warningTitle, { textAlign: alignEnd }]}>{t("overflow.warningTitle")}</Text>
+          <Text style={[styles.warningHint, { textAlign: alignEnd }]}>{t("overflow.warningHint")}</Text>
           {onRetryWarning ? (
             <Pressable
               onPress={onRetryWarning}
               style={({ pressed }) => [styles.warningRetry, pressed && styles.rowPressed]}
               accessibilityRole="button"
-              accessibilityLabel="إعادة محاولة جلب الطلبات الإضافية"
+              accessibilityLabel={t("overflow.retryA11y")}
             >
-              <Text style={styles.warningRetryText}>إعادة المحاولة</Text>
+              <Text style={[styles.warningRetryText, { textAlign: alignEnd }]}>{t("overflow.retry")}</Text>
             </Pressable>
           ) : null}
         </View>
       ) : null}
       {items.length > 0 ? (
         <>
-      <Text style={styles.title}>{label}</Text>
-      <Text style={styles.hint}>{t("overflow.detailsHint")}</Text>
+      <Text style={[styles.title, { textAlign: alignEnd }]}>{label}</Text>
+      <Text style={[styles.hint, { textAlign: alignEnd }]}>{t("overflow.detailsHint")}</Text>
       {items.map((it) => (
         <Pressable
           key={it.orderId}
@@ -79,7 +83,6 @@ const styles = StyleSheet.create({
     backgroundColor: homeTheme.accentSoft,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: homeTheme.accent,
-    alignItems: "flex-end",
     gap: 6,
   },
   warningWrap: {
@@ -90,20 +93,19 @@ const styles = StyleSheet.create({
     borderColor: homeTheme.goldMuted,
     padding: 10,
     marginBottom: 2,
-    alignItems: "flex-end",
     gap: 4,
   },
   warningTitle: {
     color: homeTheme.text,
     fontSize: 12,
     fontWeight: "800",
-    textAlign: "right",
+    alignSelf: "stretch",
   },
   warningHint: {
     color: homeTheme.textSubtle,
     fontSize: 11,
     lineHeight: 15,
-    textAlign: "right",
+    alignSelf: "stretch",
   },
   warningRetry: {
     marginTop: 2,
@@ -143,7 +145,7 @@ const styles = StyleSheet.create({
     color: homeTheme.text,
     fontSize: 14,
     fontWeight: "700",
-    textAlign: "right",
+    alignSelf: "stretch",
   },
   badge: {
     color: homeTheme.accent,

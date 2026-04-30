@@ -53,8 +53,11 @@ export function CaptainRealtimeSync() {
           const displayNo = typeof p?.displayOrderNo === "number" ? p.displayOrderNo : null;
           showBanner({
             kind: "order",
-            title: "طلب جديد وصل",
-            message: displayNo != null ? `طلب #${displayNo} بانتظار قبولك` : "لديك طلب جديد بانتظار القبول",
+            title: i18n.t("realtime.newOrderTitle"),
+            message:
+              displayNo != null
+                ? i18n.t("realtime.newOrderMessage", { serial: displayNo })
+                : i18n.t("realtime.newOrderMessageFallback"),
           });
           return;
         }

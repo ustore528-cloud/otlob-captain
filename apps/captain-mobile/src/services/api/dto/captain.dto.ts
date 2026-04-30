@@ -6,6 +6,8 @@ export type CaptainAvailabilityStatus =
   | "BUSY"
   | "ON_DELIVERY";
 
+export type CaptainPushLocale = "ar" | "en" | "he";
+
 export type CaptainProfileDto = {
   id: string;
   vehicleType: string;

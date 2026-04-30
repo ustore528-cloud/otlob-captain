@@ -95,6 +95,7 @@ export const captainsController = {
         q: q.q,
         area: q.area,
         status: q.status as never,
+        currentOnly: q.currentOnly === "true",
       },
       staffActor(req),
     );

@@ -7,15 +7,16 @@ import { AppError } from "../utils/errors.js";
 
 export const supervisorCaptainTransferController = {
   transferToMyCaptain: async (req: Request, res: Response) => {
-    if (req.user!.companyId == null) {
+    const role = req.user!.role as UserRole;
+    if (role !== UserRole.SUPER_ADMIN && req.user!.companyId == null) {
       throw new AppError(400, "Company scope is required", "COMPANY_SCOPE_REQUIRED");
     }
     const idempotencyKey = requireIdempotencyKeyHeader(req);
     const body = req.body as { captainId: string; amount: string; currency?: string };
     const data = await transferSupervisorWalletToMyCaptain({
       actorUserId: req.user!.id,
-      actorRole: req.user!.role as UserRole,
-      actorCompanyId: req.user!.companyId,
+      actorRole: role,
+      actorCompanyId: req.user!.companyId ?? null,
       captainId: body.captainId,
       amount: body.amount,
       idempotencyKey,

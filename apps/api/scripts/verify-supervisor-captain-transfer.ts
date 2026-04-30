@@ -1,6 +1,8 @@
 /**
- * Service-level checks for supervisor → captain transfer (Slice 4). Requires DB.
+ * Service-level checks for supervisor → captain transfer. Requires DB.
  * Run: `npm run verify:supervisor-captain-transfer` from `apps/api`
+ *
+ * يستخدم COMPANY_ADMIN كمشرف محفظة (DISPATCHER غير معتمد).
  */
 import "dotenv/config";
 import { LedgerEntryType, UserRole, WalletOwnerType } from "@prisma/client";
@@ -16,43 +18,43 @@ function assertAppError(e: unknown, code: string): void {
 }
 
 async function main() {
-  const dispatcher = await prisma.user.findFirst({
-    where: { role: UserRole.DISPATCHER, isActive: true, companyId: { not: null } },
+  const companyAdmin = await prisma.user.findFirst({
+    where: { role: UserRole.COMPANY_ADMIN, isActive: true, companyId: { not: null } },
   });
-  if (!dispatcher?.companyId) {
-    throw new Error("Need an active DISPATCHER with companyId (run seed).");
+  if (!companyAdmin?.companyId) {
+    throw new Error("Need an active COMPANY_ADMIN with companyId (run seed).");
   }
 
   const captain = await prisma.captain.findFirst({
-    where: { companyId: dispatcher.companyId },
+    where: { companyId: companyAdmin.companyId },
   });
   if (!captain) {
-    throw new Error("Need a captain in the same company as the dispatcher.");
+    throw new Error("Need a captain in the same company as the company admin.");
   }
 
   await prisma.captain.update({
     where: { id: captain.id },
-    data: { supervisorUserId: dispatcher.id },
+    data: { supervisorUserId: companyAdmin.id },
   });
 
   const supWallet = await ensureWalletAccount({
     ownerType: WalletOwnerType.SUPERVISOR_USER,
-    ownerId: dispatcher.id,
-    companyId: dispatcher.companyId,
+    ownerId: companyAdmin.id,
+    companyId: companyAdmin.companyId,
   });
   await appendLedgerEntry({
     walletAccountId: supWallet.id,
     entryType: LedgerEntryType.ADJUSTMENT,
     amount: "100.00",
     idempotencyKey: `verify-sc-fund-${Date.now()}`,
-    createdByUserId: dispatcher.id,
+    createdByUserId: companyAdmin.id,
   });
 
   const key = `verify-sc-tx-${Date.now()}`;
   const t1 = await transferSupervisorWalletToMyCaptain({
-    actorUserId: dispatcher.id,
-    actorRole: UserRole.DISPATCHER,
-    actorCompanyId: dispatcher.companyId,
+    actorUserId: companyAdmin.id,
+    actorRole: UserRole.COMPANY_ADMIN,
+    actorCompanyId: companyAdmin.companyId,
     captainId: captain.id,
     amount: "12.50",
     idempotencyKey: key,
@@ -62,9 +64,9 @@ async function main() {
   }
 
   const t2 = await transferSupervisorWalletToMyCaptain({
-    actorUserId: dispatcher.id,
-    actorRole: UserRole.DISPATCHER,
-    actorCompanyId: dispatcher.companyId,
+    actorUserId: companyAdmin.id,
+    actorRole: UserRole.COMPANY_ADMIN,
+    actorCompanyId: companyAdmin.companyId,
     captainId: captain.id,
     amount: "12.50",
     idempotencyKey: key,
@@ -75,9 +77,9 @@ async function main() {
 
   try {
     await transferSupervisorWalletToMyCaptain({
-      actorUserId: dispatcher.id,
-      actorRole: UserRole.DISPATCHER,
-      actorCompanyId: dispatcher.companyId,
+      actorUserId: companyAdmin.id,
+      actorRole: UserRole.COMPANY_ADMIN,
+      actorCompanyId: companyAdmin.companyId,
       captainId: captain.id,
       amount: "999999.99",
       idempotencyKey: `verify-sc-broke-${Date.now()}`,
@@ -93,9 +95,9 @@ async function main() {
   });
   try {
     await transferSupervisorWalletToMyCaptain({
-      actorUserId: dispatcher.id,
-      actorRole: UserRole.DISPATCHER,
-      actorCompanyId: dispatcher.companyId,
+      actorUserId: companyAdmin.id,
+      actorRole: UserRole.COMPANY_ADMIN,
+      actorCompanyId: companyAdmin.companyId,
       captainId: captain.id,
       amount: "1.00",
       idempotencyKey: `verify-sc-ns-${Date.now()}`,
@@ -106,8 +108,22 @@ async function main() {
   } finally {
     await prisma.captain.update({
       where: { id: captain.id },
-      data: { supervisorUserId: dispatcher.id },
+      data: { supervisorUserId: companyAdmin.id },
     });
+  }
+
+  try {
+    await transferSupervisorWalletToMyCaptain({
+      actorUserId: companyAdmin.id,
+      actorRole: UserRole.DISPATCHER,
+      actorCompanyId: companyAdmin.companyId,
+      captainId: captain.id,
+      amount: "1.00",
+      idempotencyKey: `verify-sc-role-${Date.now()}`,
+    });
+    throw new Error("expected DISPATCHER rejected");
+  } catch (e) {
+    assertAppError(e, "ROLE_NOT_SUPPORTED");
   }
 
   // eslint-disable-next-line no-console

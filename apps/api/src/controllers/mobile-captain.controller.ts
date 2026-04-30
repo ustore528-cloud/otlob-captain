@@ -6,6 +6,7 @@ import { captainMobileService } from "../services/captain-mobile.service.js";
 import { toOrderDetailDto } from "../dto/order.dto.js";
 import { notificationService } from "../services/notifications.service.js";
 import { pushNotificationService } from "../services/push-notification.service.js";
+import { prisma } from "../lib/prisma.js";
 
 export const mobileCaptainController = {
   login: async (req: Request, res: Response) => {
@@ -66,12 +67,24 @@ export const mobileCaptainController = {
   },
 
   registerPushToken: async (req: Request, res: Response) => {
-    const body = req.body as { token: string; platform: "android" | "ios"; appVersion?: string | null };
+    const body = req.body as {
+      token: string;
+      platform: "android" | "ios";
+      appVersion?: string | null;
+      language?: "ar" | "en" | "he" | null;
+    };
+    const captain = await prisma.captain.findFirst({
+      where: { userId: req.user!.id },
+      select: { id: true, companyId: true },
+    });
     // eslint-disable-next-line no-console
     console.info("[mobileCaptainController.registerPushToken] request_received", {
       userId: req.user!.id,
+      captainId: captain?.id ?? null,
+      companyId: captain?.companyId ?? null,
       platform: body.platform,
       appVersion: body.appVersion ?? null,
+      language: body.language ?? null,
       token: body.token ? `${body.token.slice(0, 18)}...${body.token.slice(-6)}` : null,
     });
     const data = await pushNotificationService.registerCaptainPushToken({
@@ -79,10 +92,12 @@ export const mobileCaptainController = {
       token: body.token,
       platform: body.platform,
       appVersion: body.appVersion ?? null,
+      locale: body.language ?? null,
     });
     // eslint-disable-next-line no-console
     console.info("[mobileCaptainController.registerPushToken] response_ready", {
       userId: req.user!.id,
+      captainId: captain?.id ?? null,
       registered: data.registered,
     });
     return res.json(ok(data));
@@ -109,8 +124,20 @@ export const mobileCaptainController = {
   },
 
   updateLocation: async (req: Request, res: Response) => {
-    const body = req.body as { latitude: number; longitude: number };
-    const loc = await captainMobileService.updateLocation(req.user!.id, body.latitude, body.longitude);
+    const body = req.body as {
+      latitude: number;
+      longitude: number;
+      heading?: number | null;
+      speed?: number | null;
+      accuracy?: number | null;
+      timestamp?: string | null;
+    };
+    const loc = await captainMobileService.updateLocation(req.user!.id, body.latitude, body.longitude, {
+      heading: body.heading ?? null,
+      speed: body.speed ?? null,
+      accuracy: body.accuracy ?? null,
+      timestamp: body.timestamp ?? null,
+    });
     return res.json(
       ok({
         id: loc.id,

@@ -8,6 +8,7 @@ export type AppRole = UserRole | TransitionalUserRole | LegacyUserRole;
 export const ROLE_GROUPS = {
   superAdmins: ["SUPER_ADMIN"] as const,
   companyAdmins: ["COMPANY_ADMIN"] as const,
+  // Legacy groups below are intentionally kept for compatibility reads/migrations only.
   branchManagers: ["BRANCH_MANAGER"] as const,
   storeAdmins: ["STORE_ADMIN", "STORE_USER"] as const,
   storeUsers: ["STORE_USER"] as const,
@@ -35,6 +36,7 @@ export function isBranchManagerRole(role: AppRole): role is "BRANCH_MANAGER" {
 }
 
 export function isStoreAdminRole(role: AppRole): role is "STORE_ADMIN" | "STORE" | "STORE_USER" {
+  // Legacy helper: store roles are not supported platform actors, but old rows/tokens may still exist.
   return role === "STORE_ADMIN" || role === "STORE" || role === "STORE_USER";
 }
 
@@ -50,20 +52,27 @@ export function isCustomerRole(role: AppRole): role is "CUSTOMER" {
   return role === "CUSTOMER";
 }
 
-export function isLegacyAdminRole(role: AppRole): role is "ADMIN" {
-  return role === "ADMIN";
-}
-
 export function isManagementAdminRole(role: AppRole): boolean {
-  return isSuperAdminRole(role) || isCompanyAdminRole(role) || isLegacyAdminRole(role);
+  return isSuperAdminRole(role) || isCompanyAdminRole(role);
 }
 
-export function isScopedStaffRole(role: AppRole): boolean {
-  return isCompanyAdminRole(role) || isLegacyAdminRole(role);
-}
-
+/**
+ * شركة + سوبر يديران قوائم الطلب والتوزيع بعزل شركة (ولا يشمل ذلك أدوارًا قديمة مثل ADMIN).
+ */
 export function isOrderOperatorRole(role: AppRole): boolean {
-  return isSuperAdminRole(role) || isScopedStaffRole(role);
+  return isSuperAdminRole(role) || isCompanyAdminRole(role);
+}
+
+const SUPPORTED_PLATFORM_ACTORS = new Set<AppRole>(["SUPER_ADMIN", "COMPANY_ADMIN", "CAPTAIN"]);
+
+/** الأدوار المعتمدة لمنصة 2in: سوبر منصة، مدير شركة، كابتن فقط — الباقي legacy. */
+export function isSupportedPlatformActorRole(role: AppRole): boolean {
+  return SUPPORTED_PLATFORM_ACTORS.has(role);
+}
+
+/** حساب لوحة شركة أو سوبر (ليست دور كابتن). */
+export function isAdminPanelStaffRole(role: AppRole): boolean {
+  return isSuperAdminRole(role) || isCompanyAdminRole(role);
 }
 
 export function canManageCaptains(role: AppRole): boolean {

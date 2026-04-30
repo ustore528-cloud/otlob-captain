@@ -1,6 +1,15 @@
 import type { ActiveMapCaptain } from "@/types/api";
 
 export type CaptainMapVisualLabelKey = "WAITING_ACCEPT" | "ACTIVE_DELIVERY" | "RECENT_REJECT" | "AVAILABLE";
+export const CAPTAIN_LOCATION_STALE_MS = 60_000;
+
+export function isCaptainLocationStale(c: ActiveMapCaptain): boolean {
+  const recordedAt = c.lastLocation?.recordedAt;
+  if (!recordedAt) return true;
+  const ts = new Date(recordedAt).getTime();
+  if (!Number.isFinite(ts)) return true;
+  return Date.now() - ts > CAPTAIN_LOCATION_STALE_MS;
+}
 
 /** Priority for distribution map: waiting to accept → active delivery → recent reject → available */
 export function captainMapVisual(c: ActiveMapCaptain): {

@@ -63,4 +63,5 @@ export const UpdateStoreBodySchema = StoreCreateFieldsSchema.partial()
 export const ListStoresQuerySchema = PaginationQuerySchema.extend({
   area: z.string().optional(),
   isActive: z.coerce.boolean().optional(),
+  companyId: z.string().cuid().optional(),
 });

@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { homeTheme } from "@/features/home/theme";
+import { captainSpacing, captainUiTheme } from "@/theme/captain-ui-theme";
 
 type Props = {
   label: string;
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   wrap: {
     paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: homeTheme.border,
+    borderTopColor: captainUiTheme.border,
   },
   wrapCompact: {
     paddingVertical: 6,
@@ -94,9 +94,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: homeTheme.border,
-    backgroundColor: homeTheme.neutralSoft,
-    paddingHorizontal: 10,
+    borderColor: captainUiTheme.border,
+    backgroundColor: captainUiTheme.neutralSoft,
+    paddingHorizontal: captainSpacing.sm - 2,
     marginTop: 4,
   },
   wrapAddressCompact: {
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
   },
   label: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 12,
     textAlign: "right",
     marginBottom: 4,
@@ -116,11 +116,11 @@ const styles = StyleSheet.create({
   labelAddress: {
     fontWeight: "800",
     fontSize: 12,
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     marginBottom: 3,
   },
   hint: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 11,
     textAlign: "right",
     marginBottom: 4,
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   value: {
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     fontSize: 15,
     fontWeight: "600",
     textAlign: "right",
@@ -156,9 +156,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   valueLink: {
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
     textDecorationLine: "underline",
-    textDecorationColor: homeTheme.accentMuted,
+    textDecorationColor: captainUiTheme.accentMuted,
   },
   valuePressable: {
     alignSelf: "stretch",

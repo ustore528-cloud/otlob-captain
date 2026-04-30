@@ -2,6 +2,7 @@ import type { ActiveMapCaptain } from "@/types/api";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getLocalizedText } from "@/i18n/localize-dynamic-text";
+import { isCaptainLocationStale } from "@/features/distribution/captain-map-visual";
 
 type Props = {
   captain: ActiveMapCaptain;
@@ -27,6 +28,7 @@ function cardTone(c: ActiveMapCaptain): string {
 }
 
 function statusLabel(c: ActiveMapCaptain, t: (k: string) => string): string {
+  if (isCaptainLocationStale(c)) return "موقع قديم";
   if (c.activeOrders > 0) return t("distribution.captainCard.busy");
   if (c.waitingOffers > 0) return t("distribution.captainCard.waiting");
   if (c.availabilityStatus === "AVAILABLE") return t("distribution.captainCard.available");
@@ -85,7 +87,9 @@ export function CaptainMiniCard({
       </div>
       <p className="truncate text-xs font-semibold">{displayName}</p>
       <p className="truncate text-[10px] text-muted">{areaLabel.trim() || "—"}</p>
-      <p className="text-[10px] text-muted">{captain.lastLocation ? t("distribution.captainCard.near") : "—"}</p>
+      <p className="text-[10px] text-muted">
+        {captain.lastLocation ? (isCaptainLocationStale(captain) ? "موقع قديم" : t("distribution.captainCard.near")) : "—"}
+      </p>
       <p className="mt-1 text-[10px] font-semibold">{statusLabel(captain, t)}</p>
     </div>
   );

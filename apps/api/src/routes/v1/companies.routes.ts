@@ -9,18 +9,38 @@ import {
   CompanyArchiveBodySchema,
   CompanyIdParamSchema,
   CreateCompanyBodySchema,
+  UpdateCompanyBodySchema,
 } from "../../validators/companies.schemas.js";
+import { PublicPageCarouselSlidesPatchSchema } from "../../services/public-page-settings.js";
 
 const router = Router();
 
 router.use(authMiddleware);
 router.use(requireRoles(...ROLE_GROUPS.superAdmins));
 
+router.get(
+  "/:companyId/public-page-settings",
+  validate("params", CompanyIdParamSchema),
+  asyncHandler(companiesController.publicPageSettings.bind(companiesController)),
+);
+router.patch(
+  "/:companyId/public-page-carousel",
+  validate("params", CompanyIdParamSchema),
+  validate("body", PublicPageCarouselSlidesPatchSchema),
+  asyncHandler(companiesController.patchPublicPageCarousel.bind(companiesController)),
+);
+
 router.get("/", asyncHandler(companiesController.list.bind(companiesController)));
 router.post(
   "/",
   validate("body", CreateCompanyBodySchema),
   asyncHandler(companiesController.create.bind(companiesController)),
+);
+router.patch(
+  "/:companyId",
+  validate("params", CompanyIdParamSchema),
+  validate("body", UpdateCompanyBodySchema),
+  asyncHandler(companiesController.update.bind(companiesController)),
 );
 
 router.get(

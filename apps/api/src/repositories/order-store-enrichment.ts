@@ -12,6 +12,7 @@ export const orderStoreSupervisorUserSelect = {
   role: true,
   companyId: true,
   branchId: true,
+  displayI18n: true,
 } as const satisfies Prisma.UserSelect;
 
 /** Phase A completion — `primaryRegion` summary on order-embedded store (and shared with standalone store API). */
@@ -20,6 +21,7 @@ export const storePrimaryRegionSummarySelect = {
   code: true,
   name: true,
   isActive: true,
+  displayI18n: true,
 } as const satisfies Prisma.RegionSelect;
 
 /** `store: { include: ... }` for findUnique/create/update (all store scalars + supervisor) */
@@ -36,6 +38,7 @@ export const orderStoreListSelect: Prisma.StoreSelect = {
   name: true,
   area: true,
   subscriptionType: true,
+  displayI18n: true,
   supervisorUser: { select: orderStoreSupervisorUserSelect },
   primaryRegion: { select: storePrimaryRegionSummarySelect },
 };

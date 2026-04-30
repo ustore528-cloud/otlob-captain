@@ -10,13 +10,12 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { QueryErrorState } from "@/components/ui/query-error-state";
-import { homeTheme } from "@/features/home/theme";
+import { EmptyState, ScreenContainer } from "@/components/ui";
 import { formatUnknownError } from "@/lib/error-format";
-import { screenStyles } from "@/theme/screen-styles";
+import { captainRadius, captainSpacing, captainTypography, captainUiTheme } from "@/theme/captain-ui-theme";
 import { useCaptainOrderMutations } from "@/features/assignment/hooks/use-captain-order-mutations";
 import { useOrderHistoryInfinite, type OrderHistoryFilters } from "@/hooks/api/use-order-history-infinite";
 import { routes } from "@/navigation/routes";
@@ -342,15 +341,13 @@ export function OrderHistoryScreen({
     [archiveMode, listHeaderTop, listHeader, minimalChrome, inlineAssignmentBar, t],
   );
 
-  const safeStyle = screenStyles.safe;
-
   if (query.isLoading) {
     return (
-      <SafeAreaView style={safeStyle} edges={["top", "left", "right"]}>
+      <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
         <View
           style={{
             flex: 1,
-            backgroundColor: minimalChrome ? homeTheme.bgSubtle : undefined,
+            backgroundColor: minimalChrome ? captainUiTheme.bgSubtle : undefined,
           }}
         >
           <WorkStatusBanner />
@@ -358,7 +355,7 @@ export function OrderHistoryScreen({
             <>
               {listHeaderMain}
               <View style={[styles.listScrollShell, styles.center, styles.centerMinimal]}>
-                <ActivityIndicator size="small" color={homeTheme.accent} />
+                <ActivityIndicator size="small" color={captainUiTheme.accent} />
                 <Text style={styles.muted}>{t("ordersHistory.loading")}</Text>
               </View>
             </>
@@ -373,24 +370,24 @@ export function OrderHistoryScreen({
                 </View>
               )}
               <View style={styles.center}>
-                <ActivityIndicator size="large" color={homeTheme.accent} />
+                <ActivityIndicator size="large" color={captainUiTheme.accent} />
                 <Text style={styles.muted}>{t("ordersHistory.loading")}</Text>
               </View>
             </>
           )}
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   if (query.isError) {
     const errMsg = formatUnknownError(query.error, t("ordersHistory.loadError"));
     return (
-      <SafeAreaView style={safeStyle} edges={["top", "left", "right"]}>
+      <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
         <View
           style={{
             flex: 1,
-            backgroundColor: minimalChrome ? homeTheme.bgSubtle : undefined,
+            backgroundColor: minimalChrome ? captainUiTheme.bgSubtle : undefined,
           }}
         >
           <WorkStatusBanner />
@@ -420,13 +417,13 @@ export function OrderHistoryScreen({
             </>
           )}
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   return (
-    <SafeAreaView style={safeStyle} edges={["top", "left", "right"]}>
-      <View style={{ flex: 1, backgroundColor: minimalChrome ? homeTheme.bgSubtle : undefined }}>
+    <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: minimalChrome ? captainUiTheme.bgSubtle : undefined }}>
         <WorkStatusBanner />
         <FlatList
           style={{ flex: 1 }}
@@ -447,9 +444,9 @@ export function OrderHistoryScreen({
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => void onRefresh()}
-              tintColor={homeTheme.accent}
-              colors={[homeTheme.accent]}
-              progressBackgroundColor={homeTheme.cardWhite}
+              tintColor={captainUiTheme.accent}
+              colors={[captainUiTheme.accent]}
+              progressBackgroundColor={captainUiTheme.surfaceElevated}
             />
           }
           onEndReached={loadMore}
@@ -457,38 +454,46 @@ export function OrderHistoryScreen({
           ListFooterComponent={
             query.isFetchingNextPage ? (
               <View style={styles.footerLoad}>
-                <ActivityIndicator color={homeTheme.accent} />
+                <ActivityIndicator color={captainUiTheme.accent} />
                 <Text style={styles.muted}>{t("ordersHistory.loadMore")}</Text>
               </View>
             ) : (
-              <View style={{ height: 16 }} />
+              <View style={{ height: captainSpacing.md }} />
             )
           }
           ListEmptyComponent={
             minimalChrome ? (
               <Text style={styles.emptyMinimal}>{t("ordersHistory.emptyMinimal")}</Text>
             ) : archiveMode ? (
-              <View style={styles.emptyWrap}>
-                <View style={styles.emptyIcon}>
-                  <Ionicons name="archive-outline" size={48} color={homeTheme.textSubtle} />
-                </View>
-                <Text style={styles.emptyTitle}>{t("ordersHistory.emptyArchiveTitle")}</Text>
-                <Text style={styles.emptyBody}>{t("ordersHistory.emptyArchiveBody")}</Text>
-              </View>
+              <EmptyState
+                icon={
+                  <View style={styles.emptyIconBubble}>
+                    <Ionicons name="archive-outline" size={48} color={captainUiTheme.textSubtle} />
+                  </View>
+                }
+                title={t("ordersHistory.emptyArchiveTitle")}
+                body={t("ordersHistory.emptyArchiveBody")}
+                minHeight={220}
+                style={styles.emptyStateSlot}
+              />
             ) : (
-              <View style={styles.emptyWrap}>
-                <View style={styles.emptyIcon}>
-                  <Ionicons name="receipt-outline" size={48} color={homeTheme.textSubtle} />
-                </View>
-                <Text style={styles.emptyTitle}>{t("ordersHistory.emptyListTitle")}</Text>
-                <Text style={styles.emptyBody}>{t("ordersHistory.emptyListBody")}</Text>
-              </View>
+              <EmptyState
+                icon={
+                  <View style={styles.emptyIconBubble}>
+                    <Ionicons name="receipt-outline" size={48} color={captainUiTheme.textSubtle} />
+                  </View>
+                }
+                title={t("ordersHistory.emptyListTitle")}
+                body={t("ordersHistory.emptyListBody")}
+                minHeight={220}
+                style={styles.emptyStateSlot}
+              />
             )
           }
         />
         {fixedFooter}
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
@@ -504,21 +509,21 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   minimalScreenTitleText: {
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     fontSize: 22,
     fontWeight: "900",
     textAlign: "right",
     letterSpacing: -0.35,
   },
   minimalScreenTitleTextDense: {
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     fontSize: 20,
     fontWeight: "900",
     textAlign: "right",
     letterSpacing: -0.35,
   },
   minimalScreenSubtitle: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 12,
     lineHeight: 18,
     textAlign: "right",
@@ -530,15 +535,15 @@ const styles = StyleSheet.create({
   assignmentSectionLabel: {
     fontSize: 12,
     fontWeight: "800",
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     textAlign: "right",
     marginBottom: 6,
   },
   assignmentSectionCard: {
-    borderRadius: 12,
+    borderRadius: captainUiTheme.radiusMd,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: homeTheme.borderStrong,
-    backgroundColor: homeTheme.cardWhite,
+    borderColor: captainUiTheme.borderStrong,
+    backgroundColor: captainUiTheme.surfaceElevated,
     overflow: "hidden",
   },
   minimalListSectionHeader: {
@@ -549,43 +554,42 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: homeTheme.border,
+    borderTopColor: captainUiTheme.border,
   },
   minimalListSectionTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     textAlign: "right",
   },
   minimalListSectionHint: {
     fontSize: 11,
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     textAlign: "right",
     marginTop: 4,
     lineHeight: 16,
   },
   hero: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 4,
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingTop: captainSpacing.sm,
+    paddingBottom: captainSpacing.xs,
   },
   title: {
-    color: homeTheme.text,
-    fontSize: 26,
-    fontWeight: "900",
+    ...captainTypography.screenTitle,
+    color: captainUiTheme.text,
     textAlign: "right",
     letterSpacing: -0.3,
   },
   sub: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 14,
     lineHeight: 22,
     textAlign: "right",
     marginTop: 6,
   },
   filtersBlock: {
-    paddingHorizontal: 20,
-    marginBottom: 4,
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    marginBottom: captainSpacing.xs,
   },
   filtersBlockMinimal: {
     paddingTop: 4,
@@ -599,7 +603,7 @@ const styles = StyleSheet.create({
   filterLabelMinimal: {
     marginTop: 4,
     fontWeight: "700",
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
   },
   filterLabelDenseFirst: {
     marginTop: 4,
@@ -621,7 +625,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   chipMinimal: {
-    backgroundColor: homeTheme.cardWhite,
+    backgroundColor: captainUiTheme.surfaceElevated,
   },
   countLineMinimal: {
     marginTop: 6,
@@ -651,19 +655,19 @@ const styles = StyleSheet.create({
   otherOrdersHintText: {
     fontSize: 11,
     fontWeight: "700",
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     textAlign: "right",
   },
   otherOrdersHintTextDense: {
     fontSize: 10,
     fontWeight: "700",
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     textAlign: "right",
     lineHeight: 14,
   },
   emptyMinimal: {
     textAlign: "right",
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 13,
     paddingVertical: 20,
     paddingHorizontal: 4,
@@ -678,13 +682,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   historyInlineError: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    gap: 10,
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingTop: captainSpacing.md,
+    gap: captainSpacing.sm + 2,
     alignItems: "flex-end",
   },
   historyInlineErrorText: {
-    color: homeTheme.dangerText,
+    color: captainUiTheme.dangerText,
     fontSize: 13,
     textAlign: "right",
     lineHeight: 20,
@@ -693,7 +697,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   historyInlineRetryText: {
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
     fontWeight: "800",
     fontSize: 14,
   },
@@ -702,22 +706,22 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingBottom: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: homeTheme.border,
+    borderBottomColor: captainUiTheme.border,
   },
   registryLabel: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 15,
     fontWeight: "800",
     textAlign: "right",
   },
   registryHint: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 11,
     textAlign: "right",
     marginTop: 2,
   },
   filterLabel: {
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     fontSize: 12,
     fontWeight: "800",
     textAlign: "right",
@@ -733,61 +737,55 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   chip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 999,
+    paddingVertical: captainSpacing.sm - 2,
+    paddingHorizontal: captainSpacing.md,
+    borderRadius: captainRadius.pill,
     borderWidth: 1,
-    borderColor: homeTheme.border,
-    backgroundColor: homeTheme.surface,
+    borderColor: captainUiTheme.border,
+    backgroundColor: captainUiTheme.surface,
   },
   chipActive: {
-    borderColor: homeTheme.borderStrong,
-    backgroundColor: homeTheme.accentSoft,
+    borderColor: captainUiTheme.borderStrong,
+    backgroundColor: captainUiTheme.accentSoft,
   },
   chipText: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 12,
     fontWeight: "600",
   },
   chipTextActive: {
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
     fontWeight: "800",
   },
   countLine: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 11,
     textAlign: "right",
     marginTop: 8,
     marginBottom: 4,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 28,
+    paddingHorizontal: captainSpacing.screenHorizontal - 4,
+    paddingBottom: captainSpacing.screenBottom,
     flexGrow: 1,
   },
   center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 14 },
-  muted: { color: homeTheme.textMuted, fontSize: 14 },
-  footerLoad: { paddingVertical: 20, alignItems: "center", gap: 8 },
-  emptyWrap: {
+  muted: { color: captainUiTheme.textMuted, fontSize: 14 },
+  footerLoad: {
+    paddingVertical: captainSpacing.lg + 4,
     alignItems: "center",
-    paddingVertical: 48,
-    paddingHorizontal: 12,
+    gap: captainSpacing.sm,
   },
-  emptyIcon: {
+  emptyStateSlot: {
+    paddingVertical: captainSpacing.sm,
+    paddingHorizontal: captainSpacing.xs,
+  },
+  emptyIconBubble: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: homeTheme.neutralSoft,
+    backgroundColor: captainUiTheme.neutralSoft,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
-  },
-  emptyTitle: { color: homeTheme.text, fontSize: 18, fontWeight: "800", marginBottom: 8 },
-  emptyBody: {
-    color: homeTheme.textMuted,
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 22,
-    maxWidth: 300,
   },
 });

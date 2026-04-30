@@ -13,7 +13,11 @@
     "reverse": "adb reverse tcp:8081 tcp:8081",
     "build:android:preview": "eas build -p android --profile preview",
     "build:android:production": "eas build -p android --profile production",
-    "validate:financial-logic": "tsx scripts/validate-financial-logic.ts"
+    "assemble:android:debug": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/assemble-debug-android.ps1",
+    "assemble:android:release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/assemble-release-android.ps1",
+    "prepare:eas:fcm-v1-upload": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/prepare-eas-fcm-v1-upload.ps1",
+    "validate:financial-logic": "tsx scripts/validate-financial-logic.ts",
+    "verify:phone-whatsapp-normalize": "tsx scripts/verify-phone-whatsapp-normalize.ts"
   },
   "dependencies": {
     "@captain/shared": "0.1.0",
@@ -29,6 +33,7 @@
     "expo": "~52.0.35",
     "expo-application": "~6.0.2",
     "expo-asset": "~11.0.5",
+    "expo-av": "~15.0.2",
     "expo-constants": "~17.0.5",
     "expo-font": "~13.0.4",
     "expo-linking": "~7.0.4",

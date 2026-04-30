@@ -451,8 +451,13 @@ export const captainMobileService = {
     });
   },
 
-  updateLocation(userId: string, latitude: number, longitude: number) {
-    return trackingService.updateLocation(userId, latitude, longitude);
+  updateLocation(
+    userId: string,
+    latitude: number,
+    longitude: number,
+    meta?: { heading?: number | null; speed?: number | null; accuracy?: number | null; timestamp?: string | null },
+  ) {
+    return trackingService.updateLocation(userId, latitude, longitude, meta);
   },
 
   async orderHistory(

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "installCommand": "npm install",
+  "buildCommand": "npm run build -w @captain/shared && npm run build -w @captain/web",
+  "outputDirectory": "apps/web/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

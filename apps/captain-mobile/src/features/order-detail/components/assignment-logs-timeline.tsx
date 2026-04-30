@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { AssignmentLogEntryDto } from "@/services/api/dto";
 import { formatLogTime } from "@/lib/order-timestamps";
 import { assignmentResponseLabel } from "@/lib/assignment-log-i18n";
-import { homeTheme } from "@/features/home/theme";
+import { captainSpacing, captainTypography, captainUiTheme } from "@/theme/captain-ui-theme";
+import { SectionCard } from "@/components/ui";
 
 type Props = {
   logs: AssignmentLogEntryDto[] | undefined;
@@ -20,8 +21,7 @@ export function AssignmentLogsTimeline({ logs, compact }: Props) {
   const slice = sorted.slice(0, compact ? 5 : 8);
 
   return (
-    <View style={[styles.wrap, compact && styles.wrapCompact]}>
-      <Text style={[styles.title, compact && styles.titleCompact]}>{t("assignmentLog.title")}</Text>
+    <SectionCard title={t("assignmentLog.title")} icon="layers-outline" compact>
       {slice.map((log, index) => {
         const when = formatLogTime(log.assignedAt);
         const exp = log.expiredAt ? formatLogTime(log.expiredAt) : null;
@@ -39,55 +39,33 @@ export function AssignmentLogsTimeline({ logs, compact }: Props) {
           </View>
         );
       })}
-    </View>
+    </SectionCard>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    backgroundColor: homeTheme.surfaceElevated,
-    borderRadius: homeTheme.radiusLg,
-    borderWidth: 1,
-    borderColor: homeTheme.border,
-    padding: 16,
-  },
-  wrapCompact: {
-    padding: 10,
-    borderRadius: homeTheme.radiusMd,
-  },
-  title: {
-    color: homeTheme.text,
-    fontSize: 15,
-    fontWeight: "800",
-    textAlign: "right",
-    marginBottom: 12,
-  },
-  titleCompact: {
-    fontSize: 12,
-    marginBottom: 8,
-  },
   row: {
     flexDirection: "row-reverse",
     alignItems: "flex-start",
-    gap: 10,
-    paddingVertical: 8,
+    gap: captainSpacing.sm + 2,
+    paddingVertical: captainSpacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: homeTheme.border,
+    borderTopColor: captainUiTheme.border,
   },
   rowCompact: {
     paddingVertical: 5,
-    gap: 6,
+    gap: captainSpacing.sm - 2,
   },
   rowFirst: {
     borderTopWidth: 0,
-    paddingTop: 0,
+    paddingTop: 2,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     marginTop: 6,
-    backgroundColor: homeTheme.accentMuted,
+    backgroundColor: captainUiTheme.accentMuted,
   },
   dotCompact: {
     width: 6,
@@ -96,23 +74,24 @@ const styles = StyleSheet.create({
   },
   textCol: { flex: 1, minWidth: 0 },
   status: {
-    color: homeTheme.text,
+    ...captainTypography.bodyStrong,
     fontSize: 14,
+    color: captainUiTheme.text,
     fontWeight: "800",
     textAlign: "right",
   },
   statusCompact: { fontSize: 12 },
   meta: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 12,
     marginTop: 2,
     textAlign: "right",
   },
   metaCompact: { fontSize: 10 },
   notes: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 12,
-    marginTop: 4,
+    marginTop: captainSpacing.xs,
     textAlign: "right",
     lineHeight: 18,
   },

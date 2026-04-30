@@ -5,7 +5,7 @@ import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
 import { resolveBranchIdForStaffOperation, resolveStaffTenantOrderListFilter } from "./tenant-scope.service.js";
-import { isManagementAdminRole, isOrderOperatorRole, isStoreAdminRole, type AppRole } from "../lib/rbac-roles.js";
+import { isManagementAdminRole, isOrderOperatorRole, isStoreAdminRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
 
 export const storesService = {
   async create(
@@ -154,7 +154,7 @@ export const storesService = {
   },
 
   async list(
-    params: { area?: string; isActive?: boolean; page: number; pageSize: number },
+    params: { area?: string; isActive?: boolean; companyId?: string; page: number; pageSize: number },
     opts: {
       role: AppRole;
       userId: string;
@@ -172,9 +172,10 @@ export const storesService = {
         companyId: opts.companyId ?? null,
         branchId: opts.branchId ?? null,
       });
+      const superAdminCompanyId = isSuperAdminRole(opts.role) ? params.companyId : undefined;
       return storeRepository.list({
         ...params,
-        companyId: tenant.companyId,
+        companyId: superAdminCompanyId ?? tenant.companyId,
         branchId: tenant.branchId,
       });
     }

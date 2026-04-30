@@ -1,40 +1,43 @@
 import { Text, View, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
-import type { CaptainProfileDto, SessionUserDto } from "@/services/api/dto";
-import { homeTheme } from "../theme";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import type { CaptainAvailabilityStatus, CaptainPrepaidSummaryDto, CaptainProfileDto, SessionUserDto } from "@/services/api/dto";
+import { captainSpacing, captainTypography, captainUiTheme } from "@/theme/captain-ui-theme";
 import { parseAvailabilityStatus } from "../labels";
 import { availabilityLabelT } from "@/lib/availability-text";
 import { formatLogTime } from "@/lib/order-timestamps";
+import { MetricCard, SectionCard, StatusBadge, type StatusBadgeVariant } from "@/components/ui";
+import { formatOrderAmountAr } from "@/lib/order-currency";
 
 type Props = {
   user: SessionUserDto;
   captain: CaptainProfileDto;
+  prepaidBalance?: CaptainPrepaidSummaryDto | null;
 };
 
-const statusTone: Record<string, { bg: string; border: string; text: string }> = {
-  AVAILABLE: {
-    bg: homeTheme.successSoft,
-    border: homeTheme.successBorder,
-    text: homeTheme.successText,
-  },
-  OFFLINE: { bg: homeTheme.neutralSoft, border: homeTheme.border, text: homeTheme.textMuted },
-  BUSY: { bg: homeTheme.goldSoft, border: homeTheme.goldMuted, text: homeTheme.gold },
-  ON_DELIVERY: {
-    bg: homeTheme.accentSoft,
-    border: homeTheme.borderStrong,
-    text: homeTheme.accent,
-  },
-};
+function mapAvailabilityToBadgeVariant(av: CaptainAvailabilityStatus): StatusBadgeVariant {
+  switch (av) {
+    case "AVAILABLE":
+      return "AVAILABLE";
+    case "OFFLINE":
+      return "OFFLINE";
+    case "BUSY":
+      return "BUSY";
+    case "ON_DELIVERY":
+      return "ON_DELIVERY";
+    default:
+      return "OFFLINE";
+  }
+}
 
-export function CaptainSummaryCard({ user, captain }: Props) {
+export function CaptainSummaryCard({ user, captain, prepaidBalance }: Props) {
   const { t } = useTranslation();
   const av = parseAvailabilityStatus(captain.availabilityStatus) ?? "OFFLINE";
-  const tone = statusTone[av] ?? statusTone.OFFLINE;
   const initial = user.fullName.trim().charAt(0) || t("common.placeholderInitial");
   const lastSeen = formatLogTime(captain.lastSeenAt);
 
   return (
-    <View style={styles.card}>
+    <SectionCard title={t("profile.title")} subtitle={t("profile.sub")} icon="person-outline" compact>
       <View style={styles.row}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initial}</Text>
@@ -43,11 +46,44 @@ export function CaptainSummaryCard({ user, captain }: Props) {
           <Text style={styles.name} numberOfLines={1}>
             {user.fullName}
           </Text>
-          <View style={[styles.badge, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-            <Text style={[styles.badgeText, { color: tone.text }]}>{availabilityLabelT(av, t)}</Text>
+          <View style={styles.badgeWrap}>
+            <StatusBadge variant={mapAvailabilityToBadgeVariant(av)} label={availabilityLabelT(av, t)} compact />
           </View>
         </View>
       </View>
+
+      {prepaidBalance ? (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.metricGrid}>
+            <MetricCard
+              dense
+              style={styles.metricCell}
+              title={t("prepaid.labelRemaining")}
+              value={formatOrderAmountAr(prepaidBalance.readAlignment?.displayBalance ?? prepaidBalance.currentBalance)}
+              accessory={<Ionicons name="wallet-outline" size={18} color={captainUiTheme.accent} />}
+            />
+            <MetricCard
+              dense
+              style={styles.metricCell}
+              title={t("prepaid.metricCommission")}
+              value={`${prepaidBalance.commissionPercent}%`}
+              accessory={<Ionicons name="pie-chart-outline" size={18} color={captainUiTheme.gold} />}
+            />
+            <MetricCard
+              dense
+              style={styles.metricCell}
+              title={t("prepaid.metricEstimatedOrders")}
+              value={
+                prepaidBalance.estimatedRemainingOrders == null
+                  ? t("prepaid.estimatedByFees")
+                  : String(prepaidBalance.estimatedRemainingOrders)
+              }
+              accessory={<Ionicons name="layers-outline" size={18} color={captainUiTheme.gold} />}
+            />
+          </View>
+        </>
+      ) : null}
 
       <View style={styles.divider} />
 
@@ -67,69 +103,74 @@ export function CaptainSummaryCard({ user, captain }: Props) {
           <Text style={styles.lineValue}>{lastSeen}</Text>
         </View>
       ) : null}
-    </View>
+    </SectionCard>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: homeTheme.surfaceElevated,
-    borderRadius: homeTheme.radiusLg,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: homeTheme.border,
-    ...homeTheme.cardShadow,
+  sectionShell: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    overflow: "visible",
   },
   row: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 14,
+    gap: captainSpacing.md - 2,
+    paddingHorizontal: captainSpacing.md,
+    paddingTop: captainSpacing.md,
   },
   avatar: {
     width: 56,
     height: 56,
-    borderRadius: 18,
-    backgroundColor: homeTheme.accentSoft,
+    borderRadius: captainUiTheme.radiusMd + 4,
+    backgroundColor: captainUiTheme.accentSoft,
     borderWidth: 1,
-    borderColor: homeTheme.borderStrong,
+    borderColor: captainUiTheme.borderStrong,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
     fontSize: 22,
     fontWeight: "800",
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
   },
-  meta: { flex: 1, alignItems: "flex-end", gap: 8 },
+  meta: { flex: 1, alignItems: "flex-end", gap: captainSpacing.sm },
   name: {
-    color: homeTheme.text,
-    fontSize: 20,
-    fontWeight: "800",
+    ...captainTypography.sectionTitle,
+    color: captainUiTheme.text,
     textAlign: "right",
     width: "100%",
   },
-  badge: {
+  badgeWrap: {
     alignSelf: "flex-end",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 999,
-    borderWidth: 1,
   },
-  badgeText: { fontSize: 13, fontWeight: "700" },
   divider: {
-    height: 1,
-    backgroundColor: homeTheme.border,
-    marginVertical: 14,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: captainUiTheme.border,
+    marginVertical: captainSpacing.md,
   },
-  lines: { marginBottom: 10 },
+  metricGrid: {
+    flexDirection: "row-reverse",
+    flexWrap: "wrap",
+    gap: captainSpacing.sm,
+    justifyContent: "flex-end",
+  },
+  metricCell: {
+    flexGrow: 1,
+    flexBasis: "28%",
+    minWidth: 104,
+    maxWidth: "100%",
+  },
+  lines: { marginBottom: captainSpacing.sm + 2 },
   lineMuted: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 12,
     textAlign: "right",
-    marginBottom: 2,
+    marginBottom: captainSpacing.xs,
   },
   lineValue: {
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     fontSize: 15,
     fontWeight: "600",
     textAlign: "right",

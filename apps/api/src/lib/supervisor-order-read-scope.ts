@@ -5,7 +5,6 @@ import {
   isBranchManagerRole,
   isCompanyAdminRole,
   isDispatcherRole,
-  isLegacyAdminRole,
   isOrderOperatorRole,
   isSuperAdminRole,
   type AppRole,
@@ -24,7 +23,6 @@ import {
 function bypassesSupervisorReadNarrowing(role: AppRole): boolean {
   if (isSuperAdminRole(role)) return true;
   if (isCompanyAdminRole(role)) return true;
-  if (isLegacyAdminRole(role)) return true;
   return false;
 }
 

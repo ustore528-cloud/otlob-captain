@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { OrderStatusDto } from "@/services/api/dto";
 import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
-import { homeTheme } from "@/features/home/theme";
+import { OrderTimeline, type OrderTimelineStep } from "@/components/ui";
+import { captainSpacing, captainTypography, captainUiTheme } from "@/theme/captain-ui-theme";
 
 const DELIVERY_CHAIN: { status: OrderStatusDto; labelKey: string }[] = [
   { status: "ACCEPTED", labelKey: "orderStatusProgress.stepAccepted" },
@@ -31,68 +32,36 @@ export function OrderStatusProgress({ status, compact }: Props) {
   if (status === "CANCELLED") {
     return (
       <View style={[styles.bannerDanger, compact && styles.bannerDangerCompact]}>
-        <Ionicons name="close-circle" size={compact ? 18 : 22} color={homeTheme.danger} />
-        <Text style={[styles.bannerDangerText, compact && styles.bannerDangerTextCompact]}>
-          {t("orderStatusProgress.cancelledBanner")}
-        </Text>
+        <Ionicons name="close-circle" size={compact ? 18 : 22} color={captainUiTheme.danger} />
+        <Text style={[styles.bannerDangerText, compact && styles.bannerDangerTextCompact]}>{t("orderStatusProgress.cancelledBanner")}</Text>
       </View>
     );
   }
 
   const di = deliveryStepIndex(status);
   if (di >= 0) {
+    const steps: OrderTimelineStep[] = DELIVERY_CHAIN.map((step, idx) => {
+      const done = status === "DELIVERED" || idx < di;
+      const current = !done && idx === di;
+      const state: OrderTimelineStep["state"] = done ? "done" : current ? "current" : "upcoming";
+      return {
+        key: step.status,
+        title: t(step.labelKey),
+        subtitle: current ? t("orderStatusProgress.currentStep") : undefined,
+        state,
+      };
+    });
     return (
-      <View style={[styles.card, compact && styles.cardCompact]}>
-        <Text style={[styles.sectionTitle, compact && styles.sectionTitleCompact]}>{t("orderStatusProgress.title")}</Text>
-        <View style={styles.steps}>
-          {DELIVERY_CHAIN.map((step, idx) => {
-            const done = status === "DELIVERED" || idx < di;
-            const current = !done && idx === di;
-            return (
-              <View key={step.status} style={styles.stepRow}>
-                <View style={styles.stepIconCol}>
-                  <View
-                    style={[
-                      styles.dot,
-                      done && styles.dotDone,
-                      current && !done && styles.dotCurrent,
-                    ]}
-                  >
-                    {done ? (
-                      <Ionicons name="checkmark" size={14} color={homeTheme.onAccent} />
-                    ) : current ? (
-                      <View style={styles.dotInner} />
-                    ) : null}
-                  </View>
-                  {idx < DELIVERY_CHAIN.length - 1 ? (
-                    <View style={[styles.vline, done && styles.vlineDone]} />
-                  ) : null}
-                </View>
-                <View style={[styles.stepTextCol, compact && styles.stepTextColCompact]}>
-                  <Text
-                    style={[
-                      styles.stepLabel,
-                      compact && styles.stepLabelCompact,
-                      (done || current) && styles.stepLabelActive,
-                    ]}
-                  >
-                    {t(step.labelKey)}
-                  </Text>
-                  {current ? (
-                    <Text style={[styles.stepSub, compact && styles.stepSubCompact]}>{t("orderStatusProgress.currentStep")}</Text>
-                  ) : null}
-                </View>
-              </View>
-            );
-          })}
-        </View>
+      <View style={[styles.timelineWrap, compact && styles.timelineWrapCompact]}>
+        <Text style={[styles.timelineTitle, compact && styles.timelineTitleCompact]}>{t("orderStatusProgress.title")}</Text>
+        <OrderTimeline steps={steps} />
       </View>
     );
   }
 
   return (
     <View style={[styles.bannerInfo, compact && styles.bannerInfoCompact]}>
-      <Ionicons name="information-circle-outline" size={compact ? 18 : 22} color={homeTheme.warning} />
+      <Ionicons name="information-circle-outline" size={compact ? 18 : 22} color={captainUiTheme.warning} />
       <View style={{ flex: 1 }}>
         <Text style={[styles.bannerInfoTitle, compact && styles.bannerInfoTitleCompact]}>{t("orderStatusProgress.beforeDeliveryTitle")}</Text>
         <Text style={[styles.bannerInfoBody, compact && styles.bannerInfoBodyCompact]}>
@@ -105,125 +74,44 @@ export function OrderStatusProgress({ status, compact }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: homeTheme.surfaceElevated,
-    borderRadius: homeTheme.radiusLg,
-    borderWidth: 1,
-    borderColor: homeTheme.border,
-    padding: 16,
+  timelineWrap: {
+    marginTop: captainSpacing.sm,
   },
-  cardCompact: {
-    padding: 10,
-    borderRadius: homeTheme.radiusMd,
-    marginTop: 8,
+  timelineWrapCompact: {
+    marginTop: captainSpacing.xs,
   },
-  sectionTitle: {
-    color: homeTheme.text,
+  timelineTitle: {
+    ...captainTypography.bodyStrong,
     fontSize: 15,
-    fontWeight: "800",
+    color: captainUiTheme.text,
     textAlign: "right",
-    marginBottom: 12,
+    marginBottom: captainSpacing.xs,
   },
-  sectionTitleCompact: {
+  timelineTitleCompact: {
     fontSize: 12,
-    marginBottom: 8,
-  },
-  steps: { gap: 0 },
-  stepRow: {
-    flexDirection: "row-reverse",
-    alignItems: "stretch",
-  },
-  stepIconCol: {
-    width: 28,
-    alignItems: "center",
-  },
-  dot: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 2,
-    borderColor: homeTheme.borderStrong,
-    backgroundColor: "transparent",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dotDone: {
-    backgroundColor: homeTheme.accent,
-    borderColor: homeTheme.accent,
-  },
-  dotCurrent: {
-    borderColor: homeTheme.accent,
-    backgroundColor: homeTheme.accentSoft,
-  },
-  dotInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: homeTheme.accent,
-  },
-  vline: {
-    width: 2,
-    flex: 1,
-    minHeight: 12,
-    backgroundColor: homeTheme.border,
-    marginVertical: 2,
-  },
-  vlineDone: {
-    backgroundColor: homeTheme.accentMuted,
-  },
-  stepTextCol: {
-    flex: 1,
-    paddingRight: 12,
-    paddingBottom: 16,
-  },
-  stepTextColCompact: {
-    paddingBottom: 10,
-    paddingRight: 8,
-  },
-  stepLabel: {
-    color: homeTheme.textMuted,
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "right",
-  },
-  stepLabelCompact: {
-    fontSize: 12,
-  },
-  stepLabelActive: {
-    color: homeTheme.text,
-  },
-  stepSub: {
-    color: homeTheme.accent,
-    fontSize: 12,
-    marginTop: 4,
-    textAlign: "right",
-    fontWeight: "700",
-  },
-  stepSubCompact: {
-    fontSize: 10,
-    marginTop: 2,
+    marginBottom: 2,
   },
   bannerDanger: {
     flexDirection: "row-reverse",
     alignItems: "flex-start",
-    gap: 10,
-    padding: 14,
-    borderRadius: homeTheme.radiusMd,
-    backgroundColor: homeTheme.dangerSoft,
+    gap: captainSpacing.sm + 2,
+    padding: captainSpacing.sm + 2,
+    borderRadius: captainUiTheme.radiusMd,
+    backgroundColor: captainUiTheme.dangerSoft,
     borderWidth: 1,
-    borderColor: homeTheme.dangerBorder,
+    borderColor: captainUiTheme.dangerBorder,
   },
   bannerDangerText: {
     flex: 1,
-    color: homeTheme.dangerText,
+    color: captainUiTheme.dangerText,
     fontSize: 14,
     lineHeight: 22,
     textAlign: "right",
     fontWeight: "600",
   },
   bannerDangerCompact: {
-    padding: 10,
-    gap: 8,
+    padding: captainSpacing.sm,
+    gap: captainSpacing.sm,
   },
   bannerDangerTextCompact: {
     fontSize: 12,
@@ -232,44 +120,44 @@ const styles = StyleSheet.create({
   bannerInfo: {
     flexDirection: "row-reverse",
     alignItems: "flex-start",
-    gap: 10,
-    padding: 14,
-    borderRadius: homeTheme.radiusMd,
-    backgroundColor: homeTheme.goldSoft,
+    gap: captainSpacing.sm + 2,
+    padding: captainSpacing.sm + 2,
+    borderRadius: captainUiTheme.radiusMd,
+    backgroundColor: captainUiTheme.goldSoft,
     borderWidth: 1,
-    borderColor: homeTheme.goldMuted,
+    borderColor: captainUiTheme.goldMuted,
   },
   bannerInfoTitle: {
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     fontSize: 15,
     fontWeight: "800",
     textAlign: "right",
   },
   bannerInfoBody: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 14,
-    marginTop: 6,
+    marginTop: captainSpacing.sm - 2,
     textAlign: "right",
     lineHeight: 22,
   },
   bannerInfoHint: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 12,
-    marginTop: 8,
+    marginTop: captainSpacing.sm,
     textAlign: "right",
     lineHeight: 20,
   },
   bannerInfoCompact: {
-    padding: 10,
-    gap: 8,
-    marginTop: 8,
+    padding: captainSpacing.sm,
+    gap: captainSpacing.sm,
+    marginTop: captainSpacing.sm,
   },
   bannerInfoTitleCompact: {
     fontSize: 12,
   },
   bannerInfoBodyCompact: {
     fontSize: 11,
-    marginTop: 4,
+    marginTop: captainSpacing.xs,
     lineHeight: 17,
   },
 });

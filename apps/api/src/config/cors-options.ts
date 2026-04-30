@@ -44,6 +44,7 @@ export function isPrivateLanDevOrigin(origin: string): boolean {
 export function resolveCorsOrigin(): boolean | string[] {
   const origins = env.CORS_ORIGIN.split(",").map((s) => s.trim()).filter(Boolean);
   if (origins.includes("*")) return true;
-  const merged = [...origins, WEB_DASHBOARD_ORIGIN, ...EXPO_AND_LOCAL_DEV_ORIGINS];
+  const extras = env.CORS_EXTRA_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean);
+  const merged = [...origins, WEB_DASHBOARD_ORIGIN, ...extras, ...EXPO_AND_LOCAL_DEV_ORIGINS];
   return [...new Set(merged)];
 }

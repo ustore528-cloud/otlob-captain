@@ -1,15 +1,19 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter, type Href } from "expo-router";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import * as Linking from "expo-linking";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { ScreenContainer, SectionCard } from "@/components/ui";
 import { ScreenHeader } from "@/components/screen-header";
 import { WorkStatusBanner } from "@/features/work-status";
-import { homeTheme } from "@/features/home/theme";
-import { screenStyles } from "@/theme/screen-styles";
 import i18n, { type CaptainLang, isRtlLng, persistCaptainLanguage, SUPPORTED_LANGS } from "@/i18n/i18n";
+import {
+  captainRadius,
+  captainSpacing,
+  captainTypography,
+  captainUiTheme,
+} from "@/theme/captain-ui-theme";
 
 type Row = {
   href?: Href;
@@ -21,22 +25,80 @@ type Row = {
   disabled?: boolean;
 };
 
-function SettingsSection({ title, rows }: { title: string; rows: Row[] }) {
+const BODY_BLEED = -captainSpacing.md;
+
+function SettingsSurface({ title, rtl, children }: { title: string; rtl: boolean; children: ReactNode }) {
+  return (
+    <View style={styles.surface}>
+      <Text style={[styles.surfaceTitle, { textAlign: rtl ? "right" : "left" }]}>{title}</Text>
+      <SectionCard compact>{children}</SectionCard>
+    </View>
+  );
+}
+
+function SettingsRows({ rows, rtl }: { rows: Row[]; rtl: boolean }) {
   const router = useRouter();
 
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.card}>
-        {rows.map((row, i) => (
+    <View style={[styles.rowsBleed, { marginHorizontal: BODY_BLEED }]}>
+      {rows.map((row, i) => {
+        const logoutRow = row.icon === "log-out-outline";
+        const chevron = (
+          <Ionicons
+            name={rtl ? "chevron-back" : "chevron-forward"}
+            size={20}
+            color={captainUiTheme.textSubtle}
+            style={row.disabled ? styles.iconDisabled : undefined}
+          />
+        );
+        const textBlock = (
+          <View style={[styles.rowText, rtl ? styles.rowTextRtl : styles.rowTextLtr]}>
+            <Text
+              style={[
+                styles.rowLabel,
+                { textAlign: rtl ? "right" : "left" },
+                row.disabled && styles.rowLabelMuted,
+                logoutRow && styles.rowLabelLogout,
+              ]}
+            >
+              {row.label}
+            </Text>
+            <Text style={[styles.rowHint, { textAlign: rtl ? "right" : "left" }]}>{row.hint}</Text>
+          </View>
+        );
+        const bubble = (
+          <View
+            style={[
+              styles.iconBubble,
+              logoutRow ? styles.iconBubbleLogout : null,
+              row.disabled && styles.iconBubbleMuted,
+            ]}
+          >
+            <Ionicons
+              name={row.icon}
+              size={22}
+              color={
+                row.disabled
+                  ? captainUiTheme.textSubtle
+                  : logoutRow
+                    ? captainUiTheme.danger
+                    : captainUiTheme.accent
+              }
+            />
+          </View>
+        );
+        return (
           <Pressable
             key={row.label}
             disabled={row.disabled || (!row.href && !row.onPress)}
+            accessibilityRole={(row.href || row.onPress) && !row.disabled ? "button" : undefined}
             style={({ pressed }) => [
-              styles.row,
-              i < rows.length - 1 && styles.rowBorder,
+              styles.rowBase,
+              { flexDirection: rtl ? "row-reverse" : "row" },
+              i < rows.length - 1 && styles.rowDivider,
               pressed && (row.href || row.onPress) && !row.disabled && styles.rowPressed,
               row.disabled && styles.rowDisabled,
+              logoutRow && styles.rowLogout,
             ]}
             onPress={() => {
               if (row.disabled) return;
@@ -47,21 +109,22 @@ function SettingsSection({ title, rows }: { title: string; rows: Row[] }) {
               row.onPress?.();
             }}
           >
-            <Ionicons
-              name="chevron-back"
-              size={20}
-              color={row.disabled ? homeTheme.textSubtle : homeTheme.textSubtle}
-            />
-            <View style={styles.rowText}>
-              <Text style={[styles.rowLabel, row.disabled && styles.rowLabelMuted]}>{row.label}</Text>
-              <Text style={styles.rowHint}>{row.hint}</Text>
-            </View>
-            <View style={[styles.iconBubble, row.disabled && styles.iconBubbleMuted]}>
-              <Ionicons name={row.icon} size={22} color={row.disabled ? homeTheme.textSubtle : homeTheme.accent} />
-            </View>
+            {rtl ? (
+              <>
+                {chevron}
+                {textBlock}
+                {bubble}
+              </>
+            ) : (
+              <>
+                {bubble}
+                {textBlock}
+                {chevron}
+              </>
+            )}
           </Pressable>
-        ))}
-      </View>
+        );
+      })}
     </View>
   );
 }
@@ -72,18 +135,16 @@ const LANG_CHIPS: { code: CaptainLang; labelKey: "settings.langEn" | "settings.l
   { code: "he", labelKey: "settings.langHe" },
 ];
 
-function LanguagePickerSection() {
+function LanguagePickerSection({ rtl }: { rtl: boolean }) {
   const { t, i18n: i18nInstance } = useTranslation();
   const raw = (i18nInstance.resolvedLanguage ?? i18nInstance.language).split("-")[0];
   const current: CaptainLang = SUPPORTED_LANGS.includes(raw as CaptainLang) ? (raw as CaptainLang) : "en";
-  const rtl = isRtlLng(i18nInstance.resolvedLanguage ?? i18nInstance.language);
 
   return (
-    <View style={styles.section}>
-      <Text style={[styles.sectionTitle, { textAlign: rtl ? "right" : "left" }]}>{t("settings.language")}</Text>
-      <View style={styles.card}>
+    <SettingsSurface title={t("settings.language")} rtl={rtl}>
+      <View style={[styles.rowsBleed, { marginHorizontal: BODY_BLEED, paddingBottom: captainSpacing.sm }]}>
         <Text style={[styles.langHint, { textAlign: rtl ? "right" : "left" }]}>{t("settings.languageHint")}</Text>
-        <View style={[styles.langRow, !rtl && styles.langRowLtr]}>
+        <View style={[styles.langRow, rtl ? styles.langRowRtl : styles.langRowLtr]}>
           {LANG_CHIPS.map(({ code, labelKey }) => {
             const active = current === code;
             return (
@@ -97,8 +158,9 @@ function LanguagePickerSection() {
                 }}
                 style={({ pressed }) => [
                   styles.langChip,
+                  rtl ? styles.langChipRtl : styles.langChipLtr,
                   active && styles.langChipActive,
-                  pressed && styles.rowPressed,
+                  pressed && styles.langChipPressed,
                 ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
@@ -107,12 +169,13 @@ function LanguagePickerSection() {
                 <Text style={[styles.langChipText, active && styles.langChipTextActive]} numberOfLines={1}>
                   {t(labelKey)}
                 </Text>
+                {active ? <View style={styles.langChipDot} /> : null}
               </Pressable>
             );
           })}
         </View>
       </View>
-    </View>
+    </SettingsSurface>
   );
 }
 
@@ -186,126 +249,172 @@ export function SettingsHubScreen() {
   }, [t]);
 
   return (
-    <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+    <ScreenContainer edges={["top", "left", "right"]} contentStyle={styles.screenInner}>
       <WorkStatusBanner />
       <ScreenHeader title={t("settings.title")} />
-      <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollFlex}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={[styles.sub, { textAlign: rtl ? "right" : "left" }]}>{t("settings.hubSub")}</Text>
 
-        <LanguagePickerSection />
-        <SettingsSection title={t("settings.hubSectionAccount")} rows={accountRows} />
-        <SettingsSection title={t("settings.hubSectionTools")} rows={toolsRows} />
-        <SettingsSection title={t("settings.hubSectionApp")} rows={appRows} />
-        <SettingsSection title={t("settings.hubSectionExtra")} rows={extraRows} />
+        <LanguagePickerSection rtl={rtl} />
+        <SettingsSurface title={t("settings.hubSectionAccount")} rtl={rtl}>
+          <SettingsRows rows={accountRows} rtl={rtl} />
+        </SettingsSurface>
+        <SettingsSurface title={t("settings.hubSectionTools")} rtl={rtl}>
+          <SettingsRows rows={toolsRows} rtl={rtl} />
+        </SettingsSurface>
+        <SettingsSurface title={t("settings.hubSectionApp")} rtl={rtl}>
+          <SettingsRows rows={appRows} rtl={rtl} />
+        </SettingsSurface>
+        <SettingsSurface title={t("settings.hubSectionExtra")} rtl={rtl}>
+          <SettingsRows rows={extraRows} rtl={rtl} />
+        </SettingsSurface>
 
-        <View style={{ height: 24 }} />
+        <View style={styles.scrollPadBottom} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  screenInner: { flex: 1 },
   scrollFlex: { flex: 1 },
-  scroll: { paddingHorizontal: 20, paddingBottom: 32, paddingTop: 8 },
+  scroll: {
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingBottom: captainSpacing.xxxl,
+    paddingTop: captainSpacing.sm,
+  },
+  scrollPadBottom: { height: captainSpacing.lg },
   sub: {
-    color: homeTheme.textSubtle,
+    ...captainTypography.body,
+    color: captainUiTheme.textSubtle,
     fontSize: 14,
-    textAlign: "right",
-    marginBottom: 20,
     lineHeight: 22,
+    marginBottom: captainSpacing.lg,
+  },
+  surface: { marginBottom: captainSpacing.lg },
+  surfaceTitle: {
+    ...captainTypography.caption,
+    color: captainUiTheme.textMuted,
+    marginBottom: captainSpacing.sm,
   },
   langHint: {
-    color: homeTheme.textSubtle,
+    ...captainTypography.body,
+    color: captainUiTheme.textSubtle,
     fontSize: 13,
-    textAlign: "right",
     lineHeight: 20,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingHorizontal: captainSpacing.md,
+    paddingTop: captainSpacing.md,
+    paddingBottom: captainSpacing.sm,
   },
   langRow: {
-    flexDirection: "row-reverse",
     flexWrap: "wrap",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingBottom: 14,
+    gap: captainSpacing.sm,
+    paddingHorizontal: captainSpacing.md,
+    paddingBottom: captainSpacing.sm,
+    paddingTop: 2,
+    alignItems: "center",
+  },
+  langRowRtl: {
+    flexDirection: "row-reverse",
+    justifyContent: "flex-end",
   },
   langRowLtr: {
     flexDirection: "row",
+    justifyContent: "flex-start",
   },
   langChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+    alignItems: "center",
+    gap: captainSpacing.xs,
+    paddingVertical: captainSpacing.sm,
+    paddingHorizontal: captainSpacing.md,
+    borderRadius: captainRadius.pill,
     borderWidth: 1,
-    borderColor: homeTheme.border,
-    backgroundColor: homeTheme.neutralSoft,
+    borderColor: captainUiTheme.border,
+    backgroundColor: captainUiTheme.neutralSoft,
+  },
+  langChipLtr: {
+    flexDirection: "row",
+  },
+  langChipRtl: {
+    flexDirection: "row-reverse",
   },
   langChipActive: {
-    borderColor: homeTheme.accent,
-    backgroundColor: homeTheme.accentSoft,
+    borderColor: captainUiTheme.borderStrong,
+    backgroundColor: captainUiTheme.accentSoft,
+    borderWidth: 1.5,
   },
+  langChipPressed: { opacity: 0.94 },
   langChipText: {
+    ...captainTypography.bodyStrong,
     fontSize: 14,
-    fontWeight: "700",
-    color: homeTheme.text,
+    color: captainUiTheme.text,
   },
   langChipTextActive: {
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
   },
-  section: { marginBottom: 18 },
-  sectionTitle: {
-    color: homeTheme.textMuted,
-    fontSize: 12,
-    fontWeight: "800",
-    textAlign: "right",
-    marginBottom: 8,
+  langChipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: captainUiTheme.accent,
   },
-  card: {
-    backgroundColor: homeTheme.surfaceElevated,
-    borderRadius: homeTheme.radiusLg,
-    borderWidth: 1,
-    borderColor: homeTheme.border,
-    overflow: "hidden",
-  },
-  row: {
-    flexDirection: "row-reverse",
+  rowsBleed: {},
+  rowBase: {
     alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    gap: 12,
+    paddingVertical: captainSpacing.md + 2,
+    paddingHorizontal: captainSpacing.md,
+    gap: captainSpacing.md,
+    minHeight: 56,
   },
-  rowBorder: {
+  rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: homeTheme.border,
+    borderBottomColor: captainUiTheme.border,
   },
   rowPressed: { opacity: 0.92 },
   rowDisabled: { opacity: 0.75 },
-  rowText: { flex: 1, alignItems: "flex-end" },
+  rowLogout: {
+    backgroundColor: captainUiTheme.dangerSoft,
+  },
+  rowText: { flex: 1 },
+  rowTextRtl: { alignItems: "flex-end" },
+  rowTextLtr: { alignItems: "flex-start" },
   rowLabel: {
-    color: homeTheme.text,
+    ...captainTypography.cardTitle,
     fontSize: 16,
-    fontWeight: "700",
-    textAlign: "right",
+    color: captainUiTheme.text,
   },
   rowLabelMuted: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
+  },
+  rowLabelLogout: {
+    color: captainUiTheme.dangerText,
   },
   rowHint: {
-    color: homeTheme.textSubtle,
+    ...captainTypography.caption,
+    fontWeight: "500",
+    color: captainUiTheme.textSubtle,
     fontSize: 12,
-    textAlign: "right",
-    marginTop: 2,
+    marginTop: captainSpacing.xs / 2,
   },
   iconBubble: {
     width: 44,
     height: 44,
-    borderRadius: 14,
-    backgroundColor: homeTheme.accentSoft,
+    borderRadius: captainRadius.sm + 4,
+    backgroundColor: captainUiTheme.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },
   iconBubbleMuted: {
-    backgroundColor: homeTheme.neutralSoft,
+    backgroundColor: captainUiTheme.neutralSoft,
   },
+  iconBubbleLogout: {
+    backgroundColor: captainUiTheme.dangerSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: captainUiTheme.dangerBorder,
+  },
+  iconDisabled: { opacity: 0.7 },
 });

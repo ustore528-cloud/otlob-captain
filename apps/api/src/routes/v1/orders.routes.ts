@@ -3,7 +3,7 @@ import { asyncHandler } from "../../utils/async-handler.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { requireRoles } from "../../middlewares/rbac.middleware.js";
-import { ROLE_GROUPS } from "../../lib/rbac-roles.js";
+import { ROLE_GROUPS, type AppRole } from "../../lib/rbac-roles.js";
 import { rolesWithCapability } from "../../rbac/permissions.js";
 import {
   CreateOrderBodySchema,
@@ -22,6 +22,9 @@ const router = Router();
 const ordersReadRoles = rolesWithCapability("orders.read");
 const ordersCreateRoles = rolesWithCapability("orders.create");
 const ordersDispatchRoles = rolesWithCapability("orders.dispatch");
+/** PATCH حالة الطلب لا يعتمد ضمنياً على `orders.read` (الكابتن ليس إدارياً؛ صراحية أدوار فقط). */
+const orderStatusPatchRoles = ["SUPER_ADMIN", "COMPANY_ADMIN", "CAPTAIN"] as const satisfies readonly AppRole[];
+
 router.use(authMiddleware);
 
 router.post(
@@ -79,7 +82,7 @@ router.get(
 
 router.patch(
   "/:id/status",
-  requireRoles(...ordersReadRoles),
+  requireRoles(...orderStatusPatchRoles),
   validate("params", OrderIdParamSchema),
   validate("body", UpdateOrderStatusBodySchema),
   asyncHandler(ordersController.updateStatus.bind(ordersController)),

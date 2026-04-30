@@ -4,6 +4,7 @@ import { notificationRepository } from "../repositories/notification.repository.
 import { activityService } from "./activity.service.js";
 import { isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
 import { AppError } from "../utils/errors.js";
+import { notificationDisplayI18nFromJson } from "../lib/display-i18n.js";
 
 export type QuickStatusCode = "PRESSURE" | "LOW_ACTIVITY" | "RAISE_READINESS" | "ON_FIRE";
 
@@ -44,8 +45,16 @@ export const notificationService = {
     });
   },
 
-  list(userId: string, params: { isRead?: boolean; page: number; pageSize: number }) {
-    return notificationRepository.listForUser(userId, params);
+  async list(userId: string, params: { isRead?: boolean; page: number; pageSize: number }) {
+    const [total, rows] = await notificationRepository.listForUser(userId, params);
+    const items = rows.map((row) => {
+      const displayI18n = notificationDisplayI18nFromJson(row.displayI18n ?? undefined);
+      return {
+        ...row,
+        ...(displayI18n ? { displayI18n } : {}),
+      };
+    });
+    return [total, items] as const;
   },
 
   markRead(id: string, userId: string) {

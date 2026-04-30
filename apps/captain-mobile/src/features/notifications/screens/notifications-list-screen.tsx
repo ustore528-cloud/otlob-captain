@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import {
   ActivityIndicator,
+  Alert,
+  Platform,
   Pressable,
   RefreshControl,
   SectionList,
@@ -10,17 +12,34 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { formatNotificationSectionDateLabel, formatNotificationTime } from "@/features/home/utils/format";
 import { QueryErrorState } from "@/components/ui/query-error-state";
-import { homeTheme } from "@/features/home/theme";
-import { screenStyles } from "@/theme/screen-styles";
+import { EmptyState, ScreenContainer, SecondaryButton } from "@/components/ui";
 import { WorkStatusBanner } from "@/features/work-status";
 import { useNotificationsList } from "@/hooks/api/use-notifications";
 import { routes } from "@/navigation/routes";
 import type { NotificationItemDto } from "@/services/api/dto";
+import { captainService } from "@/services/api/services/captain.service";
+import { env } from "@/utils/env";
+import { resolveCaptainPushLanguage } from "@/i18n/i18n";
+import { captainRadius, captainSpacing, captainTypography, captainUiTheme } from "@/theme/captain-ui-theme";
+
+const ANDROID_CHANNEL_ID = "captain-orders-v9-strong";
+const ORDER_NOTIFICATION_SOUND = "new_order_strong_alert";
+const NOTIFICATION_VIBRATION_PATTERN = [0, 280, 120, 280, 120, 360] as const;
+
+function resolveProjectId(): string | null {
+  const fromEas = (Constants.easConfig as { projectId?: string } | null)?.projectId;
+  if (fromEas) return fromEas;
+  const fromExpoExtra = (
+    Constants.expoConfig as { extra?: { eas?: { projectId?: string } } } | null
+  )?.extra?.eas?.projectId;
+  return fromExpoExtra ?? null;
+}
 
 type Section = { title: string; data: NotificationItemDto[] };
 
@@ -53,10 +72,11 @@ function buildSections(items: NotificationItemDto[], now: Date, tr: TFunction): 
 }
 
 export function NotificationsListScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const query = useNotificationsList({ page: 1, pageSize: 50 });
   const [refreshing, setRefreshing] = useState(false);
+  const [retryingPush, setRetryingPush] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -72,6 +92,58 @@ export function NotificationsListScreen() {
       router.push(routes.app.order(item.orderId));
     }
   };
+
+  const retryPushRegistration = useCallback(async () => {
+    if (retryingPush) return;
+    setRetryingPush(true);
+    try {
+      if (Platform.OS === "android") {
+        await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+          name: t("push.androidChannelName"),
+          importance: Notifications.AndroidImportance.MAX,
+          sound: ORDER_NOTIFICATION_SOUND,
+          vibrationPattern: [...NOTIFICATION_VIBRATION_PATTERN],
+          enableVibrate: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+        });
+      }
+      const currentPerm = await Notifications.getPermissionsAsync();
+      const finalPerm =
+        currentPerm.status === "granted" ? currentPerm : await Notifications.requestPermissionsAsync();
+      if (finalPerm.status !== "granted") {
+        Alert.alert(t("notifications.retryPushDeniedTitle"), t("notifications.retryPushDeniedBody"));
+        return;
+      }
+      const projectId = resolveProjectId();
+      if (!projectId) {
+        Alert.alert(t("notifications.retryPushNoProjectTitle"), t("notifications.retryPushNoProjectBody"));
+        return;
+      }
+      const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+      const language = await resolveCaptainPushLanguage(i18n.resolvedLanguage ?? i18n.language);
+      const result = await captainService.registerPushToken({
+        token,
+        platform: Platform.OS === "ios" ? "ios" : "android",
+        appVersion: Constants.expoConfig?.version,
+        language,
+      });
+      Alert.alert(
+        result.registered ? t("notifications.retryPushOkTitle") : t("notifications.retryPushFailTitle"),
+        result.registered
+          ? `${t("notifications.retryPushOkBody")}\n${t("notifications.apiLine", { url: env.apiUrl })}`
+          : `${t("notifications.retryPushRejectedBody")}\n${t("notifications.apiLine", { url: env.apiUrl })}`,
+      );
+    } catch (error) {
+      Alert.alert(
+        t("notifications.retryPushErrorTitle"),
+        t("notifications.retryPushErrorBody", {
+          message: error instanceof Error ? error.message : t("errors.unexpected"),
+        }),
+      );
+    } finally {
+      setRetryingPush(false);
+    }
+  }, [i18n.language, i18n.resolvedLanguage, retryingPush, t]);
 
   const sections = useMemo(() => {
     const items = query.data?.items ?? [];
@@ -100,7 +172,7 @@ export function NotificationsListScreen() {
             )}
             {item.orderId ? (
               <View style={styles.orderBadge}>
-                <Ionicons name="receipt-outline" size={14} color={homeTheme.accent} />
+                <Ionicons name="receipt-outline" size={14} color={captainUiTheme.accent} />
                 <Text style={styles.orderBadgeText}>{t("notifications.orderLinked")}</Text>
               </View>
             ) : (
@@ -130,38 +202,48 @@ export function NotificationsListScreen() {
 
   if (query.isLoading) {
     return (
-      <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+      <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
         <WorkStatusBanner />
         <View style={styles.screenHead}>
           <Text style={styles.title}>{t("notifications.title")}</Text>
           <Text style={styles.sub}>{t("notifications.subLoading")}</Text>
         </View>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={homeTheme.accent} />
+          <ActivityIndicator size="large" color={captainUiTheme.accent} />
           <Text style={styles.muted}>{t("common.loading")}</Text>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   if (query.isError) {
     return (
-      <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+      <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
         <WorkStatusBanner />
         <View style={styles.screenHead}>
           <Text style={styles.title}>{t("notifications.title")}</Text>
+          <Text style={styles.sub}>{t("notifications.sub")}</Text>
         </View>
         <QueryErrorState error={query.error} onRetry={() => void query.refetch()} />
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   return (
-    <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+    <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
       <WorkStatusBanner />
       <View style={styles.screenHead}>
         <Text style={styles.title}>{t("notifications.title")}</Text>
         <Text style={styles.sub}>{t("notifications.sub")}</Text>
+        <SecondaryButton
+          compact
+          label={retryingPush ? t("notifications.retryPushProgress") : t("notifications.retryPushCta")}
+          onPress={() => void retryPushRegistration()}
+          disabled={retryingPush}
+          icon="notifications-outline"
+          style={styles.retrySecondary}
+        />
+        <Text style={styles.apiHint}>{t("notifications.apiLine", { url: env.apiUrl })}</Text>
       </View>
       <SectionList
         sections={sections}
@@ -171,125 +253,184 @@ export function NotificationsListScreen() {
         contentContainerStyle={styles.list}
         stickySectionHeadersEnabled={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={homeTheme.accent} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={captainUiTheme.accent}
+            colors={[captainUiTheme.accent]}
+            progressBackgroundColor={captainUiTheme.surfaceElevated}
+          />
         }
-        ListEmptyComponent={<Text style={styles.empty}>{t("notifications.empty")}</Text>}
+        ListEmptyComponent={
+          <EmptyState
+            icon={
+              <View style={styles.emptyIconBubble}>
+                <Ionicons name="notifications-off-outline" size={44} color={captainUiTheme.textSubtle} />
+              </View>
+            }
+            title={t("notifications.empty")}
+            minHeight={220}
+          />
+        }
       />
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   screenHead: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    marginBottom: 8,
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingTop: captainSpacing.sm,
+    marginBottom: captainSpacing.sm,
   },
   title: {
-    color: homeTheme.text,
-    fontSize: 24,
-    fontWeight: "900",
+    ...captainTypography.screenTitle,
+    color: captainUiTheme.text,
     textAlign: "right",
+    fontSize: 22,
+    lineHeight: 30,
   },
   sub: {
-    color: homeTheme.textSubtle,
+    ...captainTypography.body,
+    color: captainUiTheme.textSubtle,
     fontSize: 13,
     textAlign: "right",
-    marginTop: 6,
+    marginTop: captainSpacing.sm - 2,
     lineHeight: 20,
   },
+  retrySecondary: {
+    alignSelf: "flex-end",
+    marginTop: captainSpacing.sm + 2,
+  },
+  apiHint: {
+    marginTop: captainSpacing.sm - 2,
+    color: captainUiTheme.textMuted,
+    fontSize: 11,
+    textAlign: "right",
+  },
   sectionHeader: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: homeTheme.surface,
+    paddingHorizontal: captainSpacing.xs,
+    paddingVertical: captainSpacing.sm + 2,
+    backgroundColor: captainUiTheme.bgSubtle,
+    borderRadius: captainRadius.sm,
+    marginBottom: captainSpacing.sm,
   },
   sectionTitle: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 13,
     fontWeight: "800",
     textAlign: "right",
   },
-  list: { paddingHorizontal: 20, paddingBottom: 32, gap: 0 },
-  card: {
-    backgroundColor: homeTheme.surfaceElevated,
-    borderRadius: homeTheme.radiusLg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: homeTheme.border,
-    marginBottom: 12,
+  list: {
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingBottom: captainSpacing.screenBottom + 8,
+    flexGrow: 1,
+    gap: 0,
   },
-  cardPressed: { opacity: 0.9 },
+  card: {
+    backgroundColor: captainUiTheme.surfaceElevated,
+    borderRadius: captainUiTheme.radiusLg,
+    padding: captainSpacing.md,
+    borderWidth: 1,
+    borderColor: captainUiTheme.border,
+    marginBottom: captainSpacing.sm + 4,
+    ...captainUiTheme.cardShadow,
+  },
+  cardPressed: { opacity: 0.92 },
   cardTop: {
     flexDirection: "row-reverse",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 10,
-    gap: 8,
+    marginBottom: captainSpacing.sm + 2,
+    gap: captainSpacing.sm,
   },
   metaRow: {
     flexDirection: "row-reverse",
     flexWrap: "wrap",
-    gap: 8,
+    gap: captainSpacing.sm,
     flex: 1,
     justifyContent: "flex-end",
   },
-  time: { color: homeTheme.textMuted, fontSize: 12, textAlign: "left" },
+  time: { color: captainUiTheme.textMuted, fontSize: 12, textAlign: "right" },
   unreadBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: homeTheme.accentSoft,
-    borderWidth: 1,
-    borderColor: homeTheme.borderStrong,
+    paddingHorizontal: captainSpacing.sm,
+    paddingVertical: captainSpacing.xs,
+    borderRadius: captainRadius.sm,
+    backgroundColor: captainUiTheme.accentSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: captainUiTheme.borderStrong,
   },
   unreadBadgeText: {
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
     fontSize: 11,
     fontWeight: "800",
   },
   readBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: homeTheme.neutralSoft,
+    paddingHorizontal: captainSpacing.sm,
+    paddingVertical: captainSpacing.xs,
+    borderRadius: captainRadius.sm,
+    backgroundColor: captainUiTheme.neutralSoft,
   },
   readBadgeText: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 11,
     fontWeight: "600",
   },
   orderBadge: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: homeTheme.goldSoft,
-    borderWidth: 1,
-    borderColor: homeTheme.goldMuted,
+    gap: captainSpacing.xs,
+    paddingHorizontal: captainSpacing.sm,
+    paddingVertical: captainSpacing.xs,
+    borderRadius: captainRadius.sm,
+    backgroundColor: captainUiTheme.goldSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: captainUiTheme.goldMuted,
   },
   orderBadgeText: {
-    color: homeTheme.gold,
+    color: captainUiTheme.gold,
     fontSize: 11,
     fontWeight: "800",
   },
   infoBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: homeTheme.neutralSoft,
+    paddingHorizontal: captainSpacing.sm,
+    paddingVertical: captainSpacing.xs,
+    borderRadius: captainRadius.sm,
+    backgroundColor: captainUiTheme.neutralSoft,
   },
   infoBadgeText: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 11,
     fontWeight: "600",
   },
-  cardTitle: { color: homeTheme.text, fontSize: 16, fontWeight: "800", textAlign: "right" },
-  cardBody: { color: homeTheme.textMuted, fontSize: 14, marginTop: 6, textAlign: "right", lineHeight: 22 },
-  hint: { color: homeTheme.accent, fontSize: 12, marginTop: 10, fontWeight: "700", textAlign: "right" },
-  mutedHint: { color: homeTheme.textSubtle, fontSize: 12, marginTop: 10, textAlign: "right" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
-  muted: { color: homeTheme.textMuted },
-  empty: { color: homeTheme.textMuted, textAlign: "center", marginTop: 40, paddingHorizontal: 20 },
+  cardTitle: {
+    ...captainTypography.cardTitle,
+    color: captainUiTheme.text,
+    textAlign: "right",
+  },
+  cardBody: {
+    color: captainUiTheme.textMuted,
+    fontSize: 14,
+    marginTop: captainSpacing.sm - 2,
+    textAlign: "right",
+    lineHeight: 22,
+  },
+  hint: {
+    color: captainUiTheme.accent,
+    fontSize: 12,
+    marginTop: captainSpacing.sm + 2,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  mutedHint: { color: captainUiTheme.textSubtle, fontSize: 12, marginTop: captainSpacing.sm + 2, textAlign: "right" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", gap: captainSpacing.md },
+  muted: { color: captainUiTheme.textMuted },
+  emptyIconBubble: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: captainUiTheme.neutralSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

@@ -15,18 +15,10 @@ export type SupervisorCaptainTransferResult = {
   idempotent: boolean;
 };
 
-function assertActor(input: { role: UserRole; companyId: string | null }): asserts input is { role: UserRole; companyId: string } {
-  if (input.companyId == null || input.companyId === "") {
-    throw new AppError(400, "Company scope is required", "COMPANY_SCOPE_REQUIRED");
-  }
-  if (input.role !== UserRole.BRANCH_MANAGER && input.role !== UserRole.DISPATCHER) {
-    throw new AppError(403, "Only branch managers and dispatchers can transfer", "FORBIDDEN");
-  }
-}
-
 /**
  * Supervisor (`SUPERVISOR_USER` wallet) → captain (`CAPTAIN` wallet) transfer.
  * Only when `Captain.supervisorUserId` is the actor. Enforces non-negative supervisor balance (first attempt only).
+ * الأدوار المعتمدة: COMPANY_ADMIN (ضمن شركة) أو SUPER_ADMIN (يستخدم شركة الكابتن للمحافظ).
  */
 export async function transferSupervisorWalletToMyCaptain(input: {
   actorUserId: string;
@@ -37,19 +29,34 @@ export async function transferSupervisorWalletToMyCaptain(input: {
   idempotencyKey: string;
   currency?: string;
 }): Promise<SupervisorCaptainTransferResult> {
-  assertActor({ role: input.actorRole, companyId: input.actorCompanyId });
-  const actorCompanyId = input.actorCompanyId;
+  const allowedRoles = new Set<UserRole>([UserRole.COMPANY_ADMIN, UserRole.SUPER_ADMIN]);
+  if (!allowedRoles.has(input.actorRole)) {
+    throw new AppError(403, "This account role is not supported for supervisor transfers.", "ROLE_NOT_SUPPORTED");
+  }
 
   const captain = await prisma.captain.findUnique({ where: { id: input.captainId } });
   if (!captain) {
     throw new AppError(404, "Captain not found", "CAPTAIN_NOT_FOUND");
   }
-  if (captain.companyId !== actorCompanyId) {
-    throw new AppError(403, "Captain is not in your company", "CAPTAIN_COMPANY_MISMATCH");
+
+  let actorCompanyForWallets: string;
+  if (input.actorRole === UserRole.SUPER_ADMIN) {
+    actorCompanyForWallets = captain.companyId;
+  } else {
+    if (input.actorCompanyId == null || input.actorCompanyId === "") {
+      throw new AppError(400, "Company scope is required", "COMPANY_SCOPE_REQUIRED");
+    }
+    if (captain.companyId !== input.actorCompanyId) {
+      throw new AppError(403, "Captain is not in your company", "CAPTAIN_COMPANY_MISMATCH");
+    }
+    actorCompanyForWallets = input.actorCompanyId;
   }
+
   if (captain.supervisorUserId !== input.actorUserId) {
     throw new AppError(403, "You can only transfer to captains you supervise", "CAPTAIN_NOT_SUPERVISED");
   }
+
+  const actorCompanyId = actorCompanyForWallets;
 
   const amountAbs = money(input.amount);
 

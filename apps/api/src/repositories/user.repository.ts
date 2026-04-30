@@ -12,6 +12,7 @@ const userPublicSelect = {
   companyId: true,
   branchId: true,
   isActive: true,
+  displayI18n: true,
   createdAt: true,
   updatedAt: true,
   customerPickupAddress: true,

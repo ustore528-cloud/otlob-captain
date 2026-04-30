@@ -395,6 +395,7 @@ export const captainsService = {
       q?: string;
       area?: string;
       status?: OrderStatusT;
+      currentOnly?: boolean;
     },
     actor: { userId: string; role: AppRole; companyId: string | null; branchId: string | null },
   ) {
@@ -411,6 +412,7 @@ export const captainsService = {
       to,
       area: params.area,
       q: params.q,
+      currentOnly: params.currentOnly,
       page: params.page,
       pageSize: params.pageSize,
     });

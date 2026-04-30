@@ -19,10 +19,14 @@ import { branchesRoutes } from "./branches.routes.js";
 import { zonesRoutes } from "./zones.routes.js";
 import { companiesRoutes } from "./companies.routes.js";
 import { publicRoutes } from "./public.routes.js";
+import { complaintsRoutes } from "./complaints.routes.js";
+import { companyPublicPageRoutes } from "./company-public-page.routes.js";
 
 const v1Router = Router();
 
 v1Router.use("/public", publicRoutes);
+v1Router.use("/", companyPublicPageRoutes);
+v1Router.use("/complaints", complaintsRoutes);
 v1Router.use("/auth", authRoutes);
 v1Router.use("/users", usersRoutes);
 v1Router.use("/stores", storesRoutes);

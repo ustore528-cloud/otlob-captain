@@ -165,6 +165,7 @@
     "guest": "Sign in to see your stats.",
     "loading": "Loading summary…",
     "subServer": "Delivered orders only — from the server",
+    "sectionPerformance": "Period summary",
     "kicker": "Your performance",
     "filterPeriod": "Period",
     "rangeAll": "All periods",
@@ -181,7 +182,8 @@
     "totalCollectionHint": "Sum of amounts to collect from delivered orders",
     "statDelivered": "Delivered orders",
     "statOrderValue": "Order value",
-    "note": "Figures are from the server for orders in “delivered” status in the selected period. They may differ from your actual balance depending on settlements."
+    "note": "Figures are from the server for orders in “delivered” status in the selected period. They may differ from your actual balance depending on settlements.",
+    "noteSectionTitle": "Note"
   },
   "notifications": {
     "title": "Notifications",
@@ -195,7 +197,20 @@
     "hintGeneral": "General alert — no direct order link",
     "empty": "No notifications yet.",
     "today": "Today",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "retryPushCta": "Re-enable notifications",
+    "retryPushProgress": "Re-enabling…",
+    "retryPushDeniedTitle": "Couldn't enable",
+    "retryPushDeniedBody": "Please grant notification permission in device settings.",
+    "retryPushNoProjectTitle": "Couldn't enable",
+    "retryPushNoProjectBody": "Could not find the EAS project ID.",
+    "retryPushOkTitle": "Enabled",
+    "retryPushOkBody": "Push token registered successfully.",
+    "retryPushFailTitle": "Couldn't enable",
+    "retryPushRejectedBody": "The server rejected the token. Check logs.",
+    "retryPushErrorTitle": "Couldn't enable",
+    "retryPushErrorBody": "Something went wrong: {{message}}",
+    "apiLine": "API: {{url}}"
   },
   "openExternal": {
     "phoneNoNumberTitle": "No number",
@@ -208,6 +223,8 @@
     "whatsappInvalidBody": "A full international number is required (e.g. +970 or +972). Local numbers starting with 05 are not enough without a country code.",
     "whatsappFailedTitle": "Cannot open WhatsApp",
     "whatsappFailedBody": "Make sure WhatsApp is installed and the number includes a country code.",
+    "whatsappOrDialUnavailableTitle": "Cannot open apps",
+    "whatsappOrDialUnavailableBody": "Could not open WhatsApp or the phone dialer on this device.",
     "mapFailedTitle": "Cannot open map",
     "mapFailedBody": "Try again."
   },
@@ -264,6 +281,11 @@
   "home": {
     "title": "Captain dashboard",
     "greet": "Hello",
+    "greetNamed": "Hi, {{name}}",
+    "workStatusSection": "Work availability",
+    "lastNotificationSection": "Latest alert",
+    "notificationsViewAll": "View all",
+    "notificationsEmpty": "No recent notifications",
     "sub": "A quick look at your status — run orders from “Available orders”",
     "loadingMe": "Loading your profile…",
     "loadProfileErrorTitle": "Could not load profile",
@@ -286,6 +308,14 @@
     "hintInferred": "Delivery fee was inferred from customer collection minus store amount when no separate fee was stored.",
     "hintCod": "Cash on delivery — use the calculator below for change.",
     "hintNoCod": "No separate customer collection — totals match the store amount."
+  },
+  "cashCalculator": {
+    "paidInputLabel": "Amount paid by customer ({{currency}})",
+    "inputA11y": "Amount paid by customer, {{currency}}",
+    "inputA11yHint": "Numbers only; at most one decimal allowed.",
+    "changeDue": "Change due",
+    "remainingAmount": "Remaining amount",
+    "paidInFull": "Paid in full"
   },
   "homeProfile": {
     "area": "Area",

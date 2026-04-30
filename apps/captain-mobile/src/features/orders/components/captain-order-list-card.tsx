@@ -2,7 +2,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import type { OrderListItemDto } from "@/services/api/dto";
-import { homeTheme } from "@/features/home/theme";
+import { StatusBadge } from "@/components/ui";
+import { captainSpacing, captainUiTheme } from "@/theme/captain-ui-theme";
 import { locationI18nKey } from "@/lib/order-location-i18n";
 import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
 import { WhatsAppActionButton } from "@/components/ui/whatsapp-action-button";
@@ -13,6 +14,7 @@ import { type ListPrimaryAction } from "../utils/order-list-primary-action";
 import { formatOrderSerial } from "@/lib/order-serial";
 import { OrderFinancialSection } from "@/components/order/order-financial-section";
 import { shouldShowOrderFinancialSection } from "@/lib/order-payment-ui-visibility";
+import { mapOrderStatusDtoToBadgeVariant } from "@/lib/map-order-status-to-badge-variant";
 
 type Props = {
   item: OrderListItemDto;
@@ -44,9 +46,11 @@ export function CaptainOrderListCard({
   isWorkbenchLinked = false,
 }: Props) {
   const { t } = useTranslation();
+  void statusAccent;
   const dash = t("common.emDash");
   const statusLabel = t(orderStatusTranslationKey(item.status));
   const showMainCta = primary != null && primary.kind !== "view_only";
+  const statusBadgeVariant = mapOrderStatusDtoToBadgeVariant(item.status);
 
   const dropLine = (item.dropoffAddress || item.area || "").trim();
   const pickupLine = item.pickupAddress.trim();
@@ -93,16 +97,7 @@ export function CaptainOrderListCard({
                   </Text>
                 </View>
               ) : (
-                <View
-                  style={[
-                    styles.refStatusPill,
-                    { borderColor: statusAccent.border, backgroundColor: statusAccent.bg },
-                  ]}
-                >
-                  <Text style={[styles.refStatusPillText, { color: statusAccent.text }]} numberOfLines={1}>
-                    {statusLabel}
-                  </Text>
-                </View>
+                <StatusBadge variant={statusBadgeVariant} label={statusLabel} compact />
               )}
             </View>
           </View>
@@ -185,7 +180,7 @@ export function CaptainOrderListCard({
               accessibilityRole="button"
               accessibilityLabel={t("orderCard.callA11y", { phone: item.customerPhone })}
             >
-              <Ionicons name="call-outline" size={20} color={homeTheme.accent} />
+              <Ionicons name="call-outline" size={20} color={captainUiTheme.accent} />
             </Pressable>
             <WhatsAppActionButton phone={item.customerPhone} variant="icon" size="default" />
             {showMainCta && primary ? (
@@ -201,7 +196,7 @@ export function CaptainOrderListCard({
                 accessibilityLabel={t(primary.labelKey)}
               >
                 {busy ? (
-                  <ActivityIndicator color={homeTheme.accent} size="small" />
+                  <ActivityIndicator color={captainUiTheme.accent} size="small" />
                 ) : (
                   <Text style={styles.refOutlineCtaText} numberOfLines={1}>
                     {t(primary.labelKey)}
@@ -239,10 +234,8 @@ export function CaptainOrderListCard({
             {formatOrderSerial(item.orderNumber, item.displayOrderNo)}
           </Text>
         </View>
-        <View style={[styles.badge, { backgroundColor: statusAccent.bg, borderColor: statusAccent.border }]}>
-          <Text style={[styles.badgeText, { color: statusAccent.text }]} numberOfLines={1}>
-            {statusLabel}
-          </Text>
+        <View style={styles.defaultStatusWrap}>
+          <StatusBadge variant={statusBadgeVariant} label={statusLabel} />
         </View>
       </Pressable>
 
@@ -277,7 +270,7 @@ export function CaptainOrderListCard({
             accessibilityRole="button"
             accessibilityLabel={t("orderCard.callA11y", { phone: item.customerPhone })}
           >
-            <Ionicons name="call-outline" size={20} color={homeTheme.accent} />
+            <Ionicons name="call-outline" size={20} color={captainUiTheme.accent} />
           </Pressable>
           <WhatsAppActionButton phone={item.customerPhone} variant="icon" size="default" />
           {showMainCta && primary ? (
@@ -293,7 +286,7 @@ export function CaptainOrderListCard({
               accessibilityLabel={t(primary.labelKey)}
             >
               {busy ? (
-                <ActivityIndicator color={homeTheme.accent} size="small" />
+                <ActivityIndicator color={captainUiTheme.accent} size="small" />
               ) : (
                 <Text style={styles.refOutlineCtaText} numberOfLines={1}>
                   {t(primary.labelKey)}
@@ -319,17 +312,13 @@ export function CaptainOrderListCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: homeTheme.cardWhite,
-    borderRadius: homeTheme.radiusMd,
-    padding: 11,
+    backgroundColor: captainUiTheme.surfaceElevated,
+    borderRadius: captainUiTheme.radiusLg,
+    padding: captainSpacing.md,
     borderWidth: 1,
-    borderColor: homeTheme.border,
-    marginBottom: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    borderColor: captainUiTheme.border,
+    marginBottom: captainSpacing.sm,
+    ...captainUiTheme.cardShadow,
   },
   cardFlat: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -353,48 +342,47 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   headerText: { flex: 1, alignItems: "flex-end" },
+  defaultStatusWrap: {
+    alignItems: "flex-end",
+    justifyContent: "flex-start",
+    maxWidth: "42%",
+    minWidth: 0,
+    flexShrink: 0,
+  },
   serialLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   serial: {
     fontSize: 18,
     fontWeight: "900",
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     textAlign: "right",
     marginTop: 2,
   },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    maxWidth: "42%",
-  },
-  badgeText: { fontSize: 11, fontWeight: "800", textAlign: "center" },
   primaryDisabled: { opacity: 0.6 },
   /** —— تبويب الطلبات: بطاقة قابلة للمسح بصرياً (إطار أيقونة، استلام/تسليم، تذييل) —— */
   refCard: {
-    backgroundColor: homeTheme.cardWhite,
-    borderRadius: 10,
+    backgroundColor: captainUiTheme.surfaceElevated,
+    borderRadius: captainUiTheme.radiusMd,
     paddingHorizontal: 8,
     paddingTop: 4,
     paddingBottom: 0,
     marginBottom: 5,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: homeTheme.border,
-    ...homeTheme.cardShadow,
+    borderColor: captainUiTheme.border,
+    ...captainUiTheme.cardShadow,
     overflow: "hidden",
   },
   refCardWorkbench: {
-    borderColor: homeTheme.accentMuted,
+    borderColor: captainUiTheme.accentMuted,
     borderWidth: 1.5,
   },
   refWorkbenchRibbon: {
-    backgroundColor: homeTheme.accentSoft,
+    backgroundColor: captainUiTheme.accentSoft,
     paddingVertical: 4,
     paddingHorizontal: 6,
     marginHorizontal: -8,
@@ -403,12 +391,12 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: homeTheme.border,
+    borderBottomColor: captainUiTheme.border,
   },
   refWorkbenchRibbonText: {
     fontSize: 9,
     fontWeight: "800",
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
     textAlign: "right",
     lineHeight: 13,
   },
@@ -417,7 +405,7 @@ const styles = StyleSheet.create({
   },
   /** رقم + شارة — فاصل سفلي خفيف */
   refHeaderSheet: {
-    backgroundColor: homeTheme.cardWhite,
+    backgroundColor: captainUiTheme.surfaceElevated,
     borderRadius: 0,
     borderWidth: 0,
     paddingHorizontal: 0,
@@ -426,7 +414,7 @@ const styles = StyleSheet.create({
     gap: 3,
     marginBottom: 1,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: homeTheme.border,
+    borderBottomColor: captainUiTheme.border,
   },
   refHeaderMeta: {
     gap: 2,
@@ -435,7 +423,7 @@ const styles = StyleSheet.create({
   refOrderId: {
     fontSize: 15,
     fontWeight: "800",
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     textAlign: "right",
     letterSpacing: -0.2,
     lineHeight: 20,
@@ -447,29 +435,20 @@ const styles = StyleSheet.create({
   refCancelBadge: {
     alignSelf: "flex-end",
     maxWidth: "100%",
-    backgroundColor: homeTheme.neutralSoft,
+    backgroundColor: captainUiTheme.neutralSoft,
     paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: homeTheme.border,
+    borderColor: captainUiTheme.border,
   },
   refCancelBadgeText: {
     fontSize: 10,
     fontWeight: "800",
-    color: homeTheme.dangerText,
+    color: captainUiTheme.dangerText,
     textAlign: "right",
     lineHeight: 14,
   },
-  refStatusPill: {
-    alignSelf: "flex-end",
-    maxWidth: "100%",
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  refStatusPillText: { fontSize: 10, fontWeight: "800", textAlign: "center" },
   /** تدفق: رأس → استلام → تسليم → إجراءات */
   refMiddle: {
     gap: 2,
@@ -485,16 +464,16 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   refSegStartPickup: {
-    borderStartColor: homeTheme.accent,
+    borderStartColor: captainUiTheme.accent,
   },
   refSegStartDrop: {
-    borderStartColor: homeTheme.gold,
+    borderStartColor: captainUiTheme.gold,
   },
   refSegAfterPickup: {
     marginTop: 2,
     paddingTop: 3,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: homeTheme.border,
+    borderTopColor: captainUiTheme.border,
   },
   refSegHead: {
     marginBottom: 2,
@@ -503,7 +482,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 10,
     fontWeight: "900",
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     textAlign: "right",
     letterSpacing: -0.1,
     lineHeight: 14,
@@ -520,7 +499,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15,
     fontWeight: "700",
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     textAlign: "right",
   },
   listFinancialWrap: {
@@ -529,7 +508,7 @@ const styles = StyleSheet.create({
   },
   refDivider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: homeTheme.border,
+    backgroundColor: captainUiTheme.border,
     marginTop: 0,
     marginBottom: 3,
   },
@@ -554,25 +533,25 @@ const styles = StyleSheet.create({
     minHeight: 40,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
+    borderRadius: captainUiTheme.radiusMd,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: homeTheme.accentMuted,
-    backgroundColor: homeTheme.cardWhite,
+    borderColor: captainUiTheme.accentMuted,
+    backgroundColor: captainUiTheme.surfaceElevated,
   },
   refOutlineCta: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: homeTheme.radiusMd,
+    paddingVertical: captainSpacing.sm,
+    paddingHorizontal: captainSpacing.md,
+    borderRadius: captainUiTheme.radiusMd,
     borderWidth: 1.5,
-    borderColor: homeTheme.accent,
-    backgroundColor: homeTheme.cardWhite,
-    minHeight: 30,
-    maxWidth: 148,
+    borderColor: captainUiTheme.accent,
+    backgroundColor: captainUiTheme.surfaceElevated,
+    minHeight: 40,
+    maxWidth: 160,
   },
   refOutlineCtaText: {
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
     fontSize: 12,
     fontWeight: "800",
     textAlign: "right",

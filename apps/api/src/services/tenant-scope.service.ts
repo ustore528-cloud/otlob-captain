@@ -1,7 +1,7 @@
 import type { UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/errors.js";
-import { isLegacyAdminRole, isOrderOperatorRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
+import { isOrderOperatorRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
 
 export type StaffTenantOrderListFilter = { companyId?: string; branchId?: string };
 
@@ -30,10 +30,6 @@ export async function resolveStaffTenantOrderListFilter(actor: {
   branchId = branchId ?? row?.branchId ?? null;
 
   if (isSuperAdminRole(actor.role)) {
-    return {};
-  }
-
-  if (isLegacyAdminRole(actor.role) && !companyId && !branchId) {
     return {};
   }
 

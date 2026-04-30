@@ -25,6 +25,8 @@ export type AvailabilityControlProps = {
   subtitle?: string;
   /** وضع مدمج لشريط جانبي أو إعدادات */
   compact?: boolean;
+  /** داخل SectionCard خارجي — إخفاء العنوان/الوصف المدمجين */
+  embedded?: boolean;
 };
 
 /**
@@ -38,6 +40,7 @@ export function AvailabilityControl({
   title,
   subtitle,
   compact = false,
+  embedded = false,
 }: AvailabilityControlProps) {
   const { t } = useTranslation();
   const resolvedTitle = title ?? t("availability.controlTitle");
@@ -45,9 +48,11 @@ export function AvailabilityControl({
   const blocked = pending || disabled;
 
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.title}>{resolvedTitle}</Text>
-      {resolvedSubtitle ? (
+    <View style={[styles.wrap, embedded && styles.wrapEmbedded]}>
+      {embedded ? null : (
+        <Text style={styles.title}>{resolvedTitle}</Text>
+      )}
+      {embedded ? null : resolvedSubtitle ? (
         <Text style={styles.sub} numberOfLines={compact ? 2 : undefined}>
           {resolvedSubtitle}
         </Text>
@@ -116,6 +121,12 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1,
     borderColor: homeTheme.border,
+  },
+  wrapEmbedded: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    padding: 0,
+    borderRadius: 0,
   },
   title: {
     color: homeTheme.text,

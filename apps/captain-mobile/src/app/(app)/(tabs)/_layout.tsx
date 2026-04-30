@@ -1,9 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Platform, StyleSheet } from "react-native";
+import { Platform, StyleSheet, type ViewStyle } from "react-native";
 import { OrdersTabBarLabel } from "@/components/navigation/orders-tab-label";
-import { homeTheme } from "@/features/home/theme";
+import {
+  captainRadius,
+  captainSpacing,
+  captainTypography,
+  captainUiTheme,
+} from "@/theme/captain-ui-theme";
 
 const TAB_ICON_FOCUS_BUMP = 1;
 
@@ -14,28 +19,41 @@ export default function TabsLayout() {
       initialRouteName="orders"
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: homeTheme.pageBackground },
-        tabBarActiveTintColor: homeTheme.tabBarActive,
-        tabBarInactiveTintColor: homeTheme.tabBarInactive,
+        sceneStyle: { backgroundColor: captainUiTheme.pageBackground },
+        tabBarActiveTintColor: captainUiTheme.tabBarActive,
+        tabBarInactiveTintColor: captainUiTheme.tabBarInactive,
         tabBarStyle: {
-          backgroundColor: homeTheme.tabBarBg,
-          borderTopColor: homeTheme.tabBarBorder,
+          backgroundColor: captainUiTheme.tabBarBg,
           borderTopWidth: StyleSheet.hairlineWidth,
-          height: Platform.OS === "ios" ? 88 : 72,
-          paddingTop: 6,
-          paddingBottom: Platform.OS === "ios" ? 28 : 10,
-          ...Platform.select({
+          borderTopColor: captainUiTheme.tabBarBorder,
+          borderTopLeftRadius: captainRadius.xl,
+          borderTopRightRadius: captainRadius.xl,
+          height: Platform.OS === "ios" ? 90 : 74,
+          paddingTop: captainSpacing.tabBarPaddingTop,
+          paddingHorizontal: captainSpacing.sm,
+          paddingBottom: Platform.OS === "ios" ? captainSpacing.tabBarIosBottom : captainSpacing.tabBarAndroidBottom,
+          ...Platform.select<ViewStyle>({
             ios: {
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.07,
-              shadowRadius: 8,
+              ...captainUiTheme.tabBarIosShadow,
+              shadowColor: captainUiTheme.cardShadow.shadowColor,
+              shadowOpacity: Math.min(0.12, (captainUiTheme.cardShadow.shadowOpacity ?? 0) + 0.02),
+              shadowRadius: (captainUiTheme.cardShadow.shadowRadius ?? 0) + 2,
             },
-            android: { elevation: 6 },
+            android: {
+              elevation: captainUiTheme.tabBarAndroidElevation + 2,
+            },
           }),
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginTop: 2 },
-        tabBarItemStyle: { paddingVertical: 2 },
+        tabBarLabelStyle: {
+          ...captainTypography.tabLabel,
+          marginTop: captainSpacing.xs / 2,
+        },
+        tabBarItemStyle: {
+          paddingVertical: captainSpacing.xs / 2,
+          paddingHorizontal: captainSpacing.xs / 2,
+          borderRadius: captainRadius.sm,
+          marginHorizontal: captainSpacing.xs / 4,
+        },
       }}
     >
       <Tabs.Screen

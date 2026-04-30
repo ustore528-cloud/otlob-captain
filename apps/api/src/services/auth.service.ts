@@ -1,4 +1,4 @@
-import { Prisma, UserRole } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 import { verifyPassword, hashPassword } from "../lib/password.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/jwt.js";
 import { env } from "../config/env.js";
@@ -7,6 +7,7 @@ import { userRepository } from "../repositories/user.repository.js";
 import { captainRepository } from "../repositories/captain.repository.js";
 import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
+import { userDisplayI18nFromJson } from "../lib/display-i18n.js";
 import { isStoreAdminRole, type AppRole } from "../lib/rbac-roles.js";
 
 type AuthUserRow = {
@@ -20,70 +21,46 @@ type AuthUserRow = {
   companyId: string | null;
   branchId: string | null;
   publicOwnerCode: string | null;
+  displayI18n?: import("@prisma/client").Prisma.JsonValue | null;
 };
 
+const authUserSelect = {
+  id: true,
+  fullName: true,
+  phone: true,
+  email: true,
+  passwordHash: true,
+  role: true,
+  isActive: true,
+  companyId: true,
+  branchId: true,
+  publicOwnerCode: true,
+  displayI18n: true,
+} as const;
+
 async function findAuthUserByPhone(phone: string): Promise<(AuthUserRow & { role: AppRole }) | null> {
-  const rows = await prisma.$queryRaw<AuthUserRow[]>(Prisma.sql`
-    SELECT
-      id,
-      full_name AS "fullName",
-      phone,
-      email,
-      password_hash AS "passwordHash",
-      role::text AS role,
-      is_active AS "isActive",
-      company_id AS "companyId",
-      branch_id AS "branchId",
-      public_owner_code AS "publicOwnerCode"
-    FROM users
-    WHERE phone = ${phone}
-    LIMIT 1
-  `);
-  const row = rows[0];
+  const row = await prisma.user.findFirst({
+    where: { phone },
+    select: authUserSelect,
+  });
   if (!row) return null;
   return { ...row, role: row.role as AppRole };
 }
 
 async function findAuthUserByEmail(email: string): Promise<(AuthUserRow & { role: AppRole }) | null> {
-  const rows = await prisma.$queryRaw<AuthUserRow[]>(Prisma.sql`
-    SELECT
-      id,
-      full_name AS "fullName",
-      phone,
-      email,
-      password_hash AS "passwordHash",
-      role::text AS role,
-      is_active AS "isActive",
-      company_id AS "companyId",
-      branch_id AS "branchId",
-      public_owner_code AS "publicOwnerCode"
-    FROM users
-    WHERE email = ${email}
-    LIMIT 1
-  `);
-  const row = rows[0];
+  const row = await prisma.user.findFirst({
+    where: { email },
+    select: authUserSelect,
+  });
   if (!row) return null;
   return { ...row, role: row.role as AppRole };
 }
 
 async function findAuthUserById(userId: string): Promise<(AuthUserRow & { role: AppRole }) | null> {
-  const rows = await prisma.$queryRaw<AuthUserRow[]>(Prisma.sql`
-    SELECT
-      id,
-      full_name AS "fullName",
-      phone,
-      email,
-      password_hash AS "passwordHash",
-      role::text AS role,
-      is_active AS "isActive",
-      company_id AS "companyId",
-      branch_id AS "branchId",
-      public_owner_code AS "publicOwnerCode"
-    FROM users
-    WHERE id = ${userId}
-    LIMIT 1
-  `);
-  const row = rows[0];
+  const row = await prisma.user.findUnique({
+    where: { id: userId },
+    select: authUserSelect,
+  });
   if (!row) return null;
   return { ...row, role: row.role as AppRole };
 }
@@ -121,6 +98,11 @@ async function buildTokenPayload(userId: string, role: AppRole) {
   return { sub: userId, role, storeId, companyId, branchId };
 }
 
+function userMeDisplay(user: AuthUserRow) {
+  const d = userDisplayI18nFromJson(user.displayI18n ?? undefined);
+  return d ? { displayI18n: d } : {};
+}
+
 function normalizeLoginIdentifiers(input: { phone?: string; email?: string; password: string }) {
   const phone = input.phone?.trim() || undefined;
   const emailRaw = input.email?.trim();
@@ -131,11 +113,7 @@ function normalizeLoginIdentifiers(input: { phone?: string; email?: string; pass
 export const authService = {
   async login(input: { phone?: string; email?: string; password: string }) {
     const { phone, email, password } = normalizeLoginIdentifiers(input);
-    const user = phone
-      ? await findAuthUserByPhone(phone)
-      : email
-        ? await findAuthUserByEmail(email)
-        : null;
+    const user = phone ? await findAuthUserByPhone(phone) : email ? await findAuthUserByEmail(email) : null;
     if (!user || !user.isActive) {
       throw new AppError(401, "Invalid credentials", "INVALID_CREDENTIALS");
     }
@@ -162,6 +140,7 @@ export const authService = {
         companyId: payload.companyId,
         branchId: payload.branchId,
         publicOwnerCode: user.publicOwnerCode,
+        ...userMeDisplay(user),
       },
     };
   },
@@ -185,12 +164,16 @@ export const authService = {
       refreshToken: result.refreshToken,
       tokenType: "Bearer" as const,
       expiresIn: env.JWT_ACCESS_EXPIRES_IN,
-      user: {
-        id: result.user.id,
-        fullName: result.user.fullName,
-        phone: result.user.phone,
-        role: result.user.role,
-      },
+      user: (() => {
+        const ru = result.user as typeof result.user & { displayI18n?: { fullName?: import("@captain/shared").ValueTranslations } };
+        return {
+          id: ru.id,
+          fullName: ru.fullName,
+          phone: ru.phone,
+          role: ru.role,
+          ...(ru.displayI18n ? { displayI18n: ru.displayI18n } : {}),
+        };
+      })(),
       captain: {
         id: captain.id,
         vehicleType: captain.vehicleType,
@@ -232,6 +215,7 @@ export const authService = {
       companyId: p.companyId,
       branchId: p.branchId,
       publicOwnerCode: user.publicOwnerCode,
+      ...userMeDisplay(user),
     };
   },
 
@@ -255,6 +239,10 @@ export const authService = {
       });
       const payload = await buildTokenPayload(user.id, user.role);
       await activityService.log(user.id, "USER_REGISTERED", "user", user.id, { role: user.role });
+      const u = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: authUserSelect,
+      });
       return {
         accessToken: signAccessToken(payload),
         refreshToken: signRefreshToken(user.id),
@@ -267,6 +255,7 @@ export const authService = {
           storeId: payload.storeId,
           companyId: payload.companyId,
           branchId: payload.branchId,
+          ...(u ? userMeDisplay(u as AuthUserRow) : {}),
         },
       };
     } catch {

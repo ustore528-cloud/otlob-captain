@@ -14,15 +14,13 @@ import {
   StoreIdWalletParamSchema,
   WalletAccountIdParamSchema,
 } from "../../validators/wallet-read.schemas.js";
-import { ROLE_GROUPS } from "../../lib/rbac-roles.js";
-import { rolesWithCapability } from "../../rbac/permissions.js";
+import { ROLE_GROUPS, type AppRole } from "../../lib/rbac-roles.js";
 
-/** Legacy store role (owner) may read own store wallet. */
-const LEGACY_STORE = "STORE" as const;
+/** أدوار المعتمدة فقط لمطالبة محفظة متجر وسجل حساب؛ أدوار legacy لا تستخدم هذه المسارات. */
+const financeLedgerReaders = ["SUPER_ADMIN", "COMPANY_ADMIN"] as const satisfies readonly AppRole[];
 
 const router = Router();
 router.use(authMiddleware);
-const financeReadRoles = rolesWithCapability("finance.read");
 
 /** `GET /company-wallet/me` must be registered before `/:companyId` or `me` is parsed as a cuid. */
 router.get(
@@ -37,14 +35,14 @@ router.get(
   asyncHandler(walletReadController.getCompanyWalletById.bind(walletReadController)),
 );
 
-const storeBalanceRoles = [...financeReadRoles, LEGACY_STORE] as const;
+const storeBalanceRoles = financeLedgerReaders;
 
-const captainBalanceRoles = [...financeReadRoles] as const;
+const captainBalanceRoles = ["SUPER_ADMIN", "COMPANY_ADMIN"] as const satisfies readonly AppRole[];
 
 const supervisorMeRoles = [...ROLE_GROUPS.superAdmins] as const;
 
-/** Same union as the most permissive read path; row-level check in service. */
-const ledgerReadRoles = [...financeReadRoles, LEGACY_STORE] as const;
+/** Same union as wallet reads; row-level check in service. */
+const ledgerReadRoles = financeLedgerReaders;
 
 router.post(
   "/stores/:storeId/company-top-up",

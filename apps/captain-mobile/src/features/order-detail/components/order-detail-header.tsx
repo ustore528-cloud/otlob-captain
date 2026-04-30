@@ -2,7 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { OrderDetailDto } from "@/services/api/dto";
 import { formatLogTime } from "@/lib/order-timestamps";
-import { homeTheme } from "@/features/home/theme";
+import { captainSpacing, captainTypography, captainUiTheme } from "@/theme/captain-ui-theme";
 import { formatOrderSerial } from "@/lib/order-serial";
 
 type Props = {
@@ -36,41 +36,41 @@ export function OrderDetailHeader({ order, offerHint }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: homeTheme.surfaceElevated,
-    borderRadius: homeTheme.radiusLg,
+    backgroundColor: captainUiTheme.surfaceElevated,
+    borderRadius: captainUiTheme.radiusLg,
     borderWidth: 1,
-    borderColor: homeTheme.border,
-    padding: 18,
-    gap: 10,
+    borderColor: captainUiTheme.border,
+    padding: captainSpacing.lg + 2,
+    gap: captainSpacing.sm + 2,
+    ...captainUiTheme.cardShadow,
   },
   kicker: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 12,
     textAlign: "right",
-    marginBottom: 4,
+    marginBottom: captainSpacing.xs,
   },
   orderNo: {
-    color: homeTheme.text,
-    fontSize: 22,
-    fontWeight: "900",
+    ...captainTypography.screenTitle,
+    color: captainUiTheme.text,
     textAlign: "right",
   },
-  metaRow: { paddingTop: 4 },
+  metaRow: { paddingTop: captainSpacing.xs },
   meta: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 12,
     textAlign: "right",
     lineHeight: 18,
   },
   offerBanner: {
-    backgroundColor: homeTheme.goldSoft,
-    borderRadius: 12,
-    padding: 10,
+    backgroundColor: captainUiTheme.goldSoft,
+    borderRadius: captainUiTheme.radiusMd,
+    padding: captainSpacing.sm + 2,
     borderWidth: 1,
-    borderColor: homeTheme.goldMuted,
+    borderColor: captainUiTheme.goldMuted,
   },
   offerText: {
-    color: homeTheme.gold,
+    color: captainUiTheme.gold,
     fontSize: 13,
     textAlign: "right",
     lineHeight: 20,

@@ -13,6 +13,11 @@ import { resolveDeliveryFeeForCommission } from "../domain/order-delivery-fee-fo
 import { LEDGER_REF_CAPTAIN_PREPAID_OP } from "../config/captain-prepaid-ledger.js";
 import { AppError } from "../utils/errors.js";
 import { normalizePaginationForPrisma } from "../utils/pagination.js";
+import {
+  captainDisplayI18nFromJson,
+  storeDisplayI18nFromJson,
+  userDisplayI18nFromJson,
+} from "../lib/display-i18n.js";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MAX_RANGE_MS = 90 * MS_PER_DAY;
@@ -395,8 +400,14 @@ export const reportsService = {
               deliveryFee: true,
               cashCollection: true,
               assignedCaptainId: true,
-              store: { select: { name: true, area: true } },
-              assignedCaptain: { select: { id: true, user: { select: { fullName: true } } } },
+              store: { select: { name: true, area: true, displayI18n: true } },
+              assignedCaptain: {
+                select: {
+                  id: true,
+                  displayI18n: true,
+                  user: { select: { fullName: true, displayI18n: true } },
+                },
+              },
             },
           },
         },
@@ -410,6 +421,17 @@ export const reportsService = {
         deliveryFee: o.deliveryFee,
         cashCollection: o.cashCollection,
       });
+      const storeDi = storeDisplayI18nFromJson(o.store.displayI18n ?? undefined);
+      const capUi = o.assignedCaptain?.user ? userDisplayI18nFromJson(o.assignedCaptain.user.displayI18n ?? undefined) : undefined;
+      const capArea = o.assignedCaptain ? captainDisplayI18nFromJson(o.assignedCaptain.displayI18n ?? undefined) : undefined;
+      const envelope = {
+        ...(storeDi?.name ? { storeName: storeDi.name } : {}),
+        ...(storeDi?.area ? { storeArea: storeDi.area } : {}),
+        ...(capUi?.fullName ? { captainName: capUi.fullName } : {}),
+        ...(capArea?.area ? { captainArea: capArea.area } : {}),
+      };
+      const hasEnvelope = Object.keys(envelope).length > 0;
+
       return {
         ledgerEntryId: r.id,
         orderId: r.orderId!,
@@ -422,6 +444,7 @@ export const reportsService = {
         commissionAmount: commission.toFixed(2),
         currency: r.currency,
         ledgerCreatedAt: r.createdAt.toISOString(),
+        ...(hasEnvelope ? { displayI18n: envelope } : {}),
       };
     });
     return {
@@ -493,11 +516,12 @@ export const reportsService = {
           amount: true,
           cashCollection: true,
           deliveryFee: true,
-          store: { select: { name: true } },
+          store: { select: { name: true, area: true, displayI18n: true } },
           assignedCaptain: {
             select: {
               commissionPercent: true,
-              user: { select: { fullName: true, phone: true } },
+              displayI18n: true,
+              user: { select: { fullName: true, phone: true, displayI18n: true } },
             },
           },
           assignmentLogs: {
@@ -520,6 +544,16 @@ export const reportsService = {
       });
       const commissionPercent = row.assignedCaptain?.commissionPercent ?? new Prisma.Decimal(0);
       const profitOrCommission = money(deliveryFeeResolved.mul(commissionPercent).div(100));
+      const storeDi = storeDisplayI18nFromJson(row.store.displayI18n ?? undefined);
+      const capUi = row.assignedCaptain?.user ? userDisplayI18nFromJson(row.assignedCaptain.user.displayI18n ?? undefined) : undefined;
+      const capArea = row.assignedCaptain ? captainDisplayI18nFromJson(row.assignedCaptain.displayI18n ?? undefined) : undefined;
+      const historyEnvelope = {
+        ...(storeDi?.name ? { storeName: storeDi.name } : {}),
+        ...(storeDi?.area ? { storeArea: storeDi.area } : {}),
+        ...(capUi?.fullName ? { captainName: capUi.fullName } : {}),
+        ...(capArea?.area ? { captainArea: capArea.area } : {}),
+      };
+      const hasHistoryEnvelope = Object.keys(historyEnvelope).length > 0;
       return {
         orderNumber: row.orderNumber,
         storeName: row.store.name,
@@ -535,6 +569,7 @@ export const reportsService = {
         deliveryFee: Number(deliveryFeeResolved.toFixed(2)),
         customerCollectionAmount: Number(money(row.cashCollection).toFixed(2)),
         profitOrCommission: Number(profitOrCommission.toFixed(2)),
+        ...(hasHistoryEnvelope ? { displayI18n: historyEnvelope } : {}),
       };
     });
 

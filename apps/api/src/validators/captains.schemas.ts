@@ -50,6 +50,7 @@ export const ListCaptainOrdersQuerySchema = PaginationQuerySchema.extend({
   q: z.string().max(200).optional(),
   area: z.string().max(200).optional(),
   status: z.nativeEnum(OrderStatus).optional(),
+  currentOnly: z.coerce.boolean().optional(),
 });
 
 export const CaptainAvailabilityBodySchema = z.object({

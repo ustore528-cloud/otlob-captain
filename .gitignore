@@ -22,6 +22,7 @@ apps/web/dist/
 .env.*
 !.env.example
 !**/.env.example
+apps/api/.smoke-password-once
 
 # Logs
 *.log
@@ -64,6 +65,7 @@ apps/captain-mobile/com.facebook.react.fabric.mounting.SurfaceMountingManager
 *.apk
 *.aab
 *.keystore
+**/google-services.json
 
 # iOS
 **/ios/build/

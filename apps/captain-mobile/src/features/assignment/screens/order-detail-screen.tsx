@@ -11,9 +11,9 @@ import { useCaptainOrderMutations } from "../hooks/use-captain-order-mutations";
 import { ScreenHeader } from "@/components/screen-header";
 import { WorkStatusBanner } from "@/features/work-status";
 import { QueryErrorState } from "@/components/ui/query-error-state";
-import { homeTheme } from "@/features/home/theme";
+import { ScreenContainer } from "@/components/ui";
 import { alertMutationError } from "@/lib/alert-mutation-error";
-import { screenStyles } from "@/theme/screen-styles";
+import { captainSpacing, captainUiTheme } from "@/theme/captain-ui-theme";
 import { deriveFromOrder } from "../utils/captain-order-actions";
 
 /**
@@ -55,7 +55,7 @@ export function OrderDetailScreen() {
     if (derived?.mode !== "active_patch") return;
     void run(
       () => updateStatus.mutateAsync({ orderId: derived.orderId, body: { status: derived.nextStatus } }),
-      "تعذّر تحديث الحالة",
+      t("assignmentDetail.mutationStatus"),
     );
   };
 
@@ -67,7 +67,7 @@ export function OrderDetailScreen() {
   };
 
   return (
-    <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+    <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
       <WorkStatusBanner />
       <View style={styles.page}>
         <ScreenHeader title={t("assignmentDetail.title")} onBack={goBack} />
@@ -82,7 +82,7 @@ export function OrderDetailScreen() {
             <Text style={styles.err}>{t("assignmentDetail.invalidId")}</Text>
           ) : orderQuery.isLoading ? (
             <View style={styles.center}>
-              <ActivityIndicator size="large" color={homeTheme.accent} />
+              <ActivityIndicator size="large" color={captainUiTheme.accent} />
               <Text style={styles.muted}>{t("assignmentDetail.loading")}</Text>
             </View>
           ) : orderQuery.isError ? (
@@ -95,7 +95,7 @@ export function OrderDetailScreen() {
             />
           ) : orderQuery.data && !captain?.id ? (
             <View style={styles.center}>
-              <ActivityIndicator size="large" color={homeTheme.accent} />
+              <ActivityIndicator size="large" color={captainUiTheme.accent} />
               <Text style={styles.muted}>{t("assignmentDetail.sessionPreparing")}</Text>
             </View>
           ) : orderQuery.data && derived ? (
@@ -117,31 +117,31 @@ export function OrderDetailScreen() {
           </SafeAreaView>
         ) : null}
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: homeTheme.bgSubtle,
+    backgroundColor: captainUiTheme.pageBackground,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingTop: captainSpacing.md,
+    paddingBottom: captainSpacing.lg,
   },
   actionDock: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: homeTheme.border,
-    backgroundColor: homeTheme.surface,
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    borderTopColor: captainUiTheme.border,
+    backgroundColor: captainUiTheme.surfaceElevated,
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingTop: captainSpacing.sm + 2,
   },
   center: { paddingVertical: 40, alignItems: "center", gap: 10 },
-  muted: { color: homeTheme.textMuted, fontSize: 13 },
-  err: { color: homeTheme.textMuted, textAlign: "center", marginTop: 20, fontSize: 14 },
+  muted: { color: captainUiTheme.textMuted, fontSize: 13 },
+  err: { color: captainUiTheme.textMuted, textAlign: "center", marginTop: 20, fontSize: 14 },
 });

@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { homeTheme } from "@/features/home/theme";
+import { isRtlLng } from "@/i18n/i18n";
 import { ORDER_CURRENCY_SUFFIX_AR } from "@/lib/order-currency";
 import { formatIlsAmount } from "@/lib/order-financial-breakdown";
 
@@ -11,17 +13,32 @@ export type IsraeliCashChangeCalculatorProps = {
   variant?: "default" | "compact";
 };
 
+type SecondBoxTitleKey =
+  | "cashCalculator.changeDue"
+  | "cashCalculator.remainingAmount"
+  | "cashCalculator.paidInFull";
+
+type SecondBoxState = {
+  tone: "ok" | "need" | "change";
+  titleKey: SecondBoxTitleKey;
+  /** `null` when no extra amount line (e.g. paid in full). */
+  amountLine: string | null;
+};
+
 /**
  * حاسبة باقي النقد — صندوقان فقط (بدون أزرار أو عناصر زائدة): إدخال المدفوع، والنتيجة من الإجمالي المستحق.
  */
 export function IsraeliCashChangeCalculator({ customerTotalIls, variant = "default" }: IsraeliCashChangeCalculatorProps) {
+  const { t, i18n } = useTranslation();
+  const rtl = isRtlLng(i18n.resolvedLanguage ?? i18n.language);
+  const textAlign = rtl ? "right" : "left";
   const [paidRaw, setPaidRaw] = useState("");
   const totalDue = useMemo(() => Math.max(0, round2(customerTotalIls)), [customerTotalIls]);
 
   const paid = useMemo(() => parsePaidAmount(paidRaw), [paidRaw]);
 
-  const onChangePaidText = useCallback((t: string) => {
-    setPaidRaw(sanitizePaidInput(t));
+  const onChangePaidText = useCallback((s: string) => {
+    setPaidRaw(sanitizePaidInput(s));
   }, []);
 
   const secondBox = useMemo(() => computeSecondBoxFromPaidAndTotal(paid, totalDue), [paid, totalDue]);
@@ -31,7 +48,9 @@ export function IsraeliCashChangeCalculator({ customerTotalIls, variant = "defau
   return (
     <View style={[styles.wrap, compact && styles.wrapCompact]}>
       <View style={styles.box}>
-        <Text style={styles.boxLabel}>Amount paid by customer ({ORDER_CURRENCY_SUFFIX_AR})</Text>
+        <Text style={[styles.boxLabel, { textAlign }]}>
+          {t("cashCalculator.paidInputLabel", { currency: ORDER_CURRENCY_SUFFIX_AR })}
+        </Text>
         <TextInput
           value={paidRaw}
           onChangeText={onChangePaidText}
@@ -41,15 +60,15 @@ export function IsraeliCashChangeCalculator({ customerTotalIls, variant = "defau
           autoCapitalize="none"
           placeholder="0"
           placeholderTextColor={homeTheme.textMuted}
-          style={[styles.input, compact && styles.inputCompact]}
-          accessibilityLabel={`Amount paid by customer, ${ORDER_CURRENCY_SUFFIX_AR}`}
-          accessibilityHint="Numbers only; optional one decimal."
+          style={[styles.input, compact && styles.inputCompact, { textAlign }]}
+          accessibilityLabel={t("cashCalculator.inputA11y", { currency: ORDER_CURRENCY_SUFFIX_AR })}
+          accessibilityHint={t("cashCalculator.inputA11yHint")}
         />
       </View>
 
       <View style={[styles.box, styles.resultBox, styles[`resultTone_${secondBox.tone}`]]}>
-        <Text style={styles.resultTitle}>{secondBox.title}</Text>
-        {secondBox.amountLine ? <Text style={styles.resultAmount}>{secondBox.amountLine}</Text> : null}
+        <Text style={[styles.resultTitle, { textAlign }]}>{t(secondBox.titleKey)}</Text>
+        {secondBox.amountLine ? <Text style={[styles.resultAmount, { textAlign }]}>{secondBox.amountLine}</Text> : null}
       </View>
     </View>
   );
@@ -58,13 +77,6 @@ export function IsraeliCashChangeCalculator({ customerTotalIls, variant = "defau
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
-
-type SecondBoxState = {
-  tone: "ok" | "need" | "change";
-  title: string;
-  /** `null` when no extra amount line (e.g. paid in full). */
-  amountLine: string | null;
-};
 
 /**
  * Second box is derived only from amount paid vs total due from customer (no side effects).
@@ -80,7 +92,7 @@ function computeSecondBoxFromPaidAndTotal(paidIls: number, totalDueIls: number):
     const change = round2(paid - total);
     return {
       tone: "change",
-      title: "Change due",
+      titleKey: "cashCalculator.changeDue",
       amountLine: `${formatIlsAmount(change)} ${ORDER_CURRENCY_SUFFIX_AR}`,
     };
   }
@@ -88,13 +100,13 @@ function computeSecondBoxFromPaidAndTotal(paidIls: number, totalDueIls: number):
     const remaining = round2(total - paid);
     return {
       tone: "need",
-      title: "Remaining amount",
+      titleKey: "cashCalculator.remainingAmount",
       amountLine: `${formatIlsAmount(remaining)} ${ORDER_CURRENCY_SUFFIX_AR}`,
     };
   }
   return {
     tone: "ok",
-    title: "Paid in full",
+    titleKey: "cashCalculator.paidInFull",
     amountLine: null,
   };
 }
@@ -103,8 +115,8 @@ function computeSecondBoxFromPaidAndTotal(paidIls: number, totalDueIls: number):
  * Numbers only: digits and at most one decimal separator (`.` or `,` pasted from locale).
  * Empty string allowed while editing.
  */
-function sanitizePaidInput(t: string): string {
-  const normalized = t.replace(/,/g, ".");
+function sanitizePaidInput(s: string): string {
+  const normalized = s.replace(/,/g, ".");
   const cleaned = normalized.replace(/[^\d.]/g, "");
   const firstDot = cleaned.indexOf(".");
   if (firstDot === -1) return cleaned;
@@ -155,7 +167,6 @@ const styles = StyleSheet.create({
     color: homeTheme.textMuted,
     fontSize: 12,
     fontWeight: "700",
-    textAlign: "right",
   },
   input: {
     borderRadius: 8,
@@ -167,7 +178,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "800",
     color: homeTheme.text,
-    textAlign: "right",
   },
   inputCompact: {
     paddingVertical: 8,
@@ -176,13 +186,11 @@ const styles = StyleSheet.create({
   resultTitle: {
     fontSize: 13,
     fontWeight: "800",
-    textAlign: "right",
     color: homeTheme.text,
   },
   resultAmount: {
     fontSize: 15,
     fontWeight: "800",
-    textAlign: "right",
     color: homeTheme.text,
   },
 });

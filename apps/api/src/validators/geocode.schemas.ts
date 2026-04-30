@@ -7,6 +7,12 @@ function queryString(v: unknown): string | undefined {
   return t === "" ? undefined : t;
 }
 
+/** إحداثيات → عنوان (عكسي، للصفحة العامة بدون JWT) */
+export const GeocodeReverseQuerySchema = z.object({
+  lat: z.coerce.number().gte(-90).lte(90),
+  lng: z.coerce.number().gte(-180).lte(180),
+});
+
 /** بحث جغرافي بالدولة و/أو المدينة — يجب تمرير واحد على الأقل. */
 export const GeocodePlaceQuerySchema = z
   .object({

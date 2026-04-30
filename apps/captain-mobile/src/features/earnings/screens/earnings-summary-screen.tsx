@@ -9,18 +9,17 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ScreenHeader } from "@/components/screen-header";
 import { WorkStatusBanner } from "@/features/work-status";
 import { QueryErrorState } from "@/components/ui/query-error-state";
 import { useInnerToolBack } from "@/hooks/use-inner-tool-back";
-import { homeTheme } from "@/features/home/theme";
-import { screenStyles } from "@/theme/screen-styles";
+import { captainSpacing, captainRadius, captainTypography, captainUiTheme } from "@/theme/captain-ui-theme";
 import { formatOrderAmountAr } from "@/lib/order-currency";
 import { useEarningsSummary } from "@/hooks/api/use-earnings-summary";
 import { useAuth } from "@/hooks/use-auth";
 import type { EarningsSummaryQuery } from "@/services/api/dto";
+import { ScreenContainer, SectionCard, MetricCard, EmptyState } from "@/components/ui";
 
 type RangePreset = "all" | "7d" | "30d" | "month";
 
@@ -94,41 +93,42 @@ export function EarningsSummaryScreen() {
 
   if (!isAuthenticated) {
     return (
-      <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+      <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
         <WorkStatusBanner />
         <ScreenHeader title={t("earnings.title")} onBack={goBack} />
         <Text style={[styles.muted, styles.guestPad]}>{t("earnings.guest")}</Text>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   if (query.isLoading) {
     return (
-      <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+      <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
+        <WorkStatusBanner />
         <ScreenHeader title={t("earnings.title")} onBack={goBack} />
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={homeTheme.accent} />
+          <ActivityIndicator size="large" color={captainUiTheme.accent} />
           <Text style={styles.muted}>{t("earnings.loading")}</Text>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   if (query.isError) {
     return (
-      <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+      <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
         <WorkStatusBanner />
         <ScreenHeader title={t("earnings.title")} onBack={goBack} />
         <View style={styles.heroPad}>
           <Text style={styles.sub}>{t("earnings.subServer")}</Text>
         </View>
         <QueryErrorState error={query.error} onRetry={() => void query.refetch()} />
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   return (
-    <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+    <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
       <WorkStatusBanner />
       <ScreenHeader title={t("earnings.title")} onBack={goBack} />
       <ScrollView
@@ -136,7 +136,11 @@ export function EarningsSummaryScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={homeTheme.accent} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void onRefresh()}
+            tintColor={captainUiTheme.accent}
+          />
         }
       >
         <View style={styles.heroPad}>
@@ -145,11 +149,7 @@ export function EarningsSummaryScreen() {
         </View>
 
         <Text style={styles.filterLabel}>{t("earnings.filterPeriod")}</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
           {RANGE_CHIPS.map((c) => {
             const active = preset === c.value;
             return (
@@ -165,185 +165,146 @@ export function EarningsSummaryScreen() {
         </ScrollView>
 
         {isEmpty ? (
-          <View style={styles.emptyCard}>
-            <View style={styles.emptyIcon}>
-              <Ionicons name="wallet-outline" size={44} color={homeTheme.textSubtle} />
-            </View>
-            <Text style={styles.emptyTitle}>{t("earnings.emptyTitle")}</Text>
-            <Text style={styles.emptyBody}>{t("earnings.emptyBody")}</Text>
-          </View>
+          <EmptyState
+            icon={
+              <View style={styles.emptyIconBubble}>
+                <Ionicons name="wallet-outline" size={44} color={captainUiTheme.textSubtle} />
+              </View>
+            }
+            title={t("earnings.emptyTitle")}
+            body={t("earnings.emptyBody")}
+            style={styles.emptyStatePad}
+          />
         ) : (
           <>
-            <View style={styles.heroCard}>
-              <Text style={styles.heroLabel}>{t("earnings.totalCollection")}</Text>
-              <Text style={styles.heroValue}>{formatOrderAmountAr(data?.totalCashCollection ?? "0")}</Text>
-              <Text style={styles.heroHint}>{t("earnings.totalCollectionHint")}</Text>
-            </View>
-
-            <View style={styles.grid}>
-              <View style={styles.statCard}>
-                <Ionicons name="layers-outline" size={22} color={homeTheme.accent} />
-                <Text style={styles.statLabel}>{t("earnings.statDelivered")}</Text>
-                <Text style={styles.statValue}>{data?.deliveredCount ?? 0}</Text>
+            <SectionCard title={t("earnings.sectionPerformance")} icon="analytics-outline" compact style={styles.metricsSection}>
+              <MetricCard
+                title={t("earnings.totalCollection")}
+                value={formatOrderAmountAr(data?.totalCashCollection ?? "0")}
+                hint={t("earnings.totalCollectionHint")}
+              />
+              <View style={styles.statsRow}>
+                <MetricCard
+                  dense
+                  style={styles.statCell}
+                  title={t("earnings.statDelivered")}
+                  value={String(data?.deliveredCount ?? 0)}
+                  accessory={<Ionicons name="layers-outline" size={20} color={captainUiTheme.accent} />}
+                />
+                <MetricCard
+                  dense
+                  style={styles.statCell}
+                  title={t("earnings.statOrderValue")}
+                  value={formatOrderAmountAr(data?.totalAmount ?? "0")}
+                  accessory={<Ionicons name="pricetag-outline" size={20} color={captainUiTheme.accent} />}
+                />
               </View>
-              <View style={styles.statCard}>
-                <Ionicons name="pricetag-outline" size={22} color={homeTheme.accent} />
-                <Text style={styles.statLabel}>{t("earnings.statOrderValue")}</Text>
-                <Text style={styles.statValueSmall}>{formatOrderAmountAr(data?.totalAmount ?? "0")}</Text>
-              </View>
-            </View>
+            </SectionCard>
 
-            <View style={styles.noteCard}>
-              <Ionicons name="information-circle-outline" size={20} color={homeTheme.textMuted} />
-              <Text style={styles.noteText}>{t("earnings.note")}</Text>
-            </View>
+            <SectionCard title={t("earnings.noteSectionTitle")} icon="information-circle-outline" compact style={styles.noteSection}>
+              <Text style={styles.noteBody}>{t("earnings.note")}</Text>
+            </SectionCard>
           </>
         )}
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: captainSpacing.xxxl }} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   scrollFlex: { flex: 1 },
-  scroll: { paddingBottom: 24 },
-  guestPad: { paddingHorizontal: 20, paddingTop: 12 },
-  heroPad: { paddingHorizontal: 20, paddingTop: 8 },
+  scroll: { paddingBottom: captainSpacing.xxl },
+  guestPad: {
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingTop: captainSpacing.md,
+  },
+  heroPad: { paddingHorizontal: captainSpacing.screenHorizontal, paddingTop: captainSpacing.sm },
   kicker: {
-    color: homeTheme.accent,
-    fontSize: 13,
-    fontWeight: "800",
+    ...captainTypography.cardTitle,
+    color: captainUiTheme.accent,
     textAlign: "right",
-    letterSpacing: 0.3,
-    marginBottom: 4,
+    marginBottom: captainSpacing.xs,
   },
   sub: {
-    color: homeTheme.textSubtle,
-    fontSize: 14,
+    ...captainTypography.body,
+    color: captainUiTheme.textSubtle,
     lineHeight: 22,
     textAlign: "right",
-    marginTop: 8,
+    marginTop: captainSpacing.sm,
   },
   filterLabel: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 12,
     fontWeight: "700",
     textAlign: "right",
-    marginTop: 20,
-    marginBottom: 8,
-    paddingHorizontal: 20,
+    marginTop: captainSpacing.xl,
+    marginBottom: captainSpacing.sm,
+    paddingHorizontal: captainSpacing.screenHorizontal,
   },
   chipsRow: {
     flexDirection: "row-reverse",
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingBottom: 8,
+    gap: captainSpacing.sm,
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingBottom: captainSpacing.sm,
   },
   chip: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 999,
+    paddingVertical: captainSpacing.sm + 2,
+    paddingHorizontal: captainSpacing.md + 4,
+    borderRadius: captainRadius.pill,
     borderWidth: 1,
-    borderColor: homeTheme.border,
-    backgroundColor: homeTheme.surfaceElevated,
+    borderColor: captainUiTheme.border,
+    backgroundColor: captainUiTheme.surfaceElevated,
   },
   chipActive: {
-    borderColor: homeTheme.borderStrong,
-    backgroundColor: homeTheme.accentSoft,
+    borderColor: captainUiTheme.borderStrong,
+    backgroundColor: captainUiTheme.accentSoft,
   },
-  chipText: { color: homeTheme.textMuted, fontSize: 13, fontWeight: "600" },
-  chipTextActive: { color: homeTheme.accent, fontWeight: "800" },
-  heroCard: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    padding: 24,
-    borderRadius: homeTheme.radiusLg,
-    backgroundColor: homeTheme.surfaceElevated,
-    borderWidth: 1,
-    borderColor: homeTheme.borderStrong,
-    alignItems: "flex-end",
+  chipText: { color: captainUiTheme.textMuted, fontSize: 13, fontWeight: "600" },
+  chipTextActive: { color: captainUiTheme.accent, fontWeight: "800" },
+  statsRow: {
+    flexDirection: "row-reverse",
+    gap: captainSpacing.sm + 4,
+    marginTop: captainSpacing.md,
+    alignItems: "stretch",
   },
-  heroLabel: { color: homeTheme.textMuted, fontSize: 14, fontWeight: "600" },
-  heroValue: {
-    color: homeTheme.text,
-    fontSize: 40,
-    fontWeight: "900",
-    marginTop: 8,
-    letterSpacing: -1,
+  statCell: {
+    flex: 1,
+    minWidth: 0,
   },
-  heroHint: {
-    color: homeTheme.textSubtle,
+  metricsSection: {
+    marginHorizontal: captainSpacing.screenHorizontal,
+    marginTop: captainSpacing.sm,
+  },
+  noteSection: {
+    marginHorizontal: captainSpacing.screenHorizontal,
+    marginTop: captainSpacing.md,
+  },
+  noteBody: {
+    ...captainTypography.body,
     fontSize: 12,
     lineHeight: 18,
-    textAlign: "right",
-    marginTop: 14,
-  },
-  grid: {
-    flexDirection: "row-reverse",
-    gap: 12,
-    paddingHorizontal: 20,
-    marginTop: 14,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: homeTheme.surfaceElevated,
-    borderRadius: homeTheme.radiusLg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: homeTheme.border,
-    alignItems: "flex-end",
-    gap: 8,
-  },
-  statLabel: { color: homeTheme.textMuted, fontSize: 12, fontWeight: "600", textAlign: "right" },
-  statValue: { color: homeTheme.text, fontSize: 26, fontWeight: "900", textAlign: "right" },
-  statValueSmall: { color: homeTheme.text, fontSize: 17, fontWeight: "800", textAlign: "right" },
-  noteCard: {
-    flexDirection: "row-reverse",
-    gap: 10,
-    marginHorizontal: 20,
-    marginTop: 16,
-    padding: 14,
-    borderRadius: homeTheme.radiusMd,
-    backgroundColor: homeTheme.neutralSoft,
-    borderWidth: 1,
-    borderColor: homeTheme.border,
-  },
-  noteText: {
-    flex: 1,
-    color: homeTheme.textSubtle,
-    fontSize: 12,
-    lineHeight: 18,
+    color: captainUiTheme.textSubtle,
     textAlign: "right",
   },
-  center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 14, minHeight: 280 },
-  muted: { color: homeTheme.textMuted, fontSize: 14 },
-  emptyCard: {
-    marginHorizontal: 20,
-    marginTop: 20,
-    padding: 28,
-    borderRadius: homeTheme.radiusLg,
-    backgroundColor: homeTheme.surfaceElevated,
-    borderWidth: 1,
-    borderColor: homeTheme.border,
-    alignItems: "center",
+  emptyStatePad: {
+    paddingVertical: captainSpacing.lg,
   },
-  emptyIcon: {
+  emptyIconBubble: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: homeTheme.neutralSoft,
+    backgroundColor: captainUiTheme.neutralSoft,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
   },
-  emptyTitle: { color: homeTheme.text, fontSize: 18, fontWeight: "800", textAlign: "center" },
-  emptyBody: {
-    color: homeTheme.textMuted,
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: "center",
-    marginTop: 8,
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: captainSpacing.sm + 6,
+    minHeight: 280,
   },
+  muted: { color: captainUiTheme.textMuted, fontSize: 14 },
 });

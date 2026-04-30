@@ -20,6 +20,7 @@
       "bundleIdentifier": "com.captain.mobile",
       "buildNumber": "2",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "نستخدم موقعك لعرضك على خريطة التوزيع ولتتبع الطلبات النشطة.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "للتتبع أثناء التوصيل عند تفعيل الخلفية لاحقًا.",
         "NSAppTransportSecurity": {
@@ -28,6 +29,7 @@
       }
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon-foreground.png",
         "backgroundColor": "#FFFFFF"
@@ -57,9 +59,10 @@
         {
           "icon": "./assets/icon.png",
           "color": "#C62828",
-          "defaultChannel": "captain-orders-v2",
+          "defaultChannel": "captain-orders-v9-strong",
           "sounds": [
-            "./assets/sounds/new_order.wav"
+            "./assets/sounds/captain_order_alert.wav",
+            "./assets/sounds/new_order_strong_alert.mp3"
           ]
         }
       ],

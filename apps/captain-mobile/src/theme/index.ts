@@ -1,6 +1,17 @@
 /**
- * نقطة دخول التنسيق: الألوان الأساسية + تخطيط RTL + أنماط الشاشات المشتركة.
+ * نقطة دخول التنسيق: التوكنز + تخطيط RTL + أنماط الشاشات المشتركة.
  */
-export { homeTheme, homeTheme as appTheme } from "@/features/home/theme";
+export {
+  appTheme,
+  BRAND_COLORS,
+  BRAND_GRADIENTS,
+  captainPalette,
+  captainRadius,
+  captainShadows,
+  captainSpacing,
+  captainTypography,
+  captainUiTheme,
+  homeTheme,
+} from "./captain-ui-theme";
 export { rtlLayout } from "./rtl";
 export { screenStyles } from "./screen-styles";

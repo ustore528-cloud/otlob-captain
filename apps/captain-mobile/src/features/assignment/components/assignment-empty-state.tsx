@@ -1,53 +1,45 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { homeTheme } from "@/features/home/theme";
+import { EmptyState } from "@/components/ui/empty-state";
+import { captainSpacing, captainRadius, captainUiTheme } from "@/theme/captain-ui-theme";
 
 /** Centered waiting state while polling continues in background. */
 export function AssignmentEmptyState() {
   const { t } = useTranslation();
-  return (
-    <View style={styles.wrap}>
-      <View style={styles.iconBubble}>
-        <Ionicons name="hourglass-outline" size={28} color={homeTheme.accent} />
-      </View>
-      <Text style={styles.line}>{t("assignmentEmpty.line1")}</Text>
-      <Text style={styles.sub}>{t("assignmentEmpty.line2")}</Text>
+
+  const icon = (
+    <View style={styles.iconBubble}>
+      <Ionicons name="hourglass-outline" size={28} color={captainUiTheme.accent} />
     </View>
+  );
+
+  return (
+    <EmptyState
+      icon={icon}
+      title={t("assignmentEmpty.line1")}
+      body={t("assignmentEmpty.line2")}
+      minHeight={320}
+      style={styles.emptyWrap}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    minHeight: 320,
-    paddingHorizontal: 18,
-    paddingVertical: 20,
-    justifyContent: "center",
-    alignItems: "center",
+  emptyWrap: {
+    paddingHorizontal: 0,
+    paddingVertical: captainSpacing.sm,
+    width: "100%",
   },
   iconBubble: {
     width: 60,
     height: 60,
-    borderRadius: 30,
-    marginBottom: 14,
+    borderRadius: captainRadius.md,
+    marginBottom: captainSpacing.sm + 2,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: homeTheme.accentSoft,
+    backgroundColor: captainUiTheme.accentSoft,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: homeTheme.border,
-  },
-  line: {
-    color: homeTheme.text,
-    fontSize: 22,
-    fontWeight: "800",
-    textAlign: "center",
-    lineHeight: 34,
-  },
-  sub: {
-    marginTop: 10,
-    color: homeTheme.textSubtle,
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: "center",
+    borderColor: captainUiTheme.border,
   },
 });

@@ -82,7 +82,7 @@ export function OrdersPanel({ orders, pendingOrderIds, onManual, onResend, onDra
   const { t } = useTranslation();
   return (
     <aside className="h-[calc(100vh-210px)] overflow-y-auto rounded-2xl border border-card-border bg-white p-3 shadow-sm">
-      <h3 className="mb-1 text-sm font-semibold">طلبات غير مسندة للإسناد اليدوي</h3>
+      <h3 className="mb-1 text-sm font-semibold">{t("distribution.ordersPanel.heading")}</h3>
       <p className="mb-3 text-xs text-muted">{t("distribution.ordersPanel.newOrdersCount", { count: orders.length })}</p>
       <div className="space-y-2">
         {orders.map((order) => (

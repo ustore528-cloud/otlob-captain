@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   MapPinned,
+  MessageSquare,
   PlusCircle,
   Store,
   Truck,
@@ -35,6 +36,7 @@ export type DashboardNavFlags = {
   canUsers: boolean;
   canFinance: boolean;
   canReports: boolean;
+  canComplaints: boolean;
 };
 
 type Props = {
@@ -118,6 +120,12 @@ export function DashboardSidebar({ userLabel, nav, onLogout }: Props) {
           <NavLink className={navClass} to="/reports">
             <FileBarChart2 className="size-4 shrink-0" />
             {t("nav.reports")}
+          </NavLink>
+        ) : null}
+        {nav.canComplaints ? (
+          <NavLink className={navClass} to="/complaints">
+            <MessageSquare className="size-4 shrink-0" />
+            {t("nav.complaints")}
           </NavLink>
         ) : null}
       </nav>

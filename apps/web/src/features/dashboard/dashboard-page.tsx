@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/layout/stat-card";
 import { QueryErrorLine } from "@/features/dashboard/components/query-error-line";
 import { useActivityList, useDashboardStats, useNotifications, useSendQuickStatusAlert, type QuickStatusCode } from "@/hooks";
-import { canListOrdersRole, isCompanyAdminRole, isDispatchRole } from "@/lib/rbac-roles";
+import { canListOrdersRole, isCompanyAdminRole, isDispatchRole, isSuperAdminRole } from "@/lib/rbac-roles";
 import { userRoleLabel } from "@/lib/user-role";
 import { useAuthStore } from "@/stores/auth-store";
 import { getLocalizedText } from "@/i18n/localize-dynamic-text";
@@ -20,6 +20,12 @@ const DashboardNotificationCardLazy = lazy(() =>
 );
 const DashboardActivityCardLazy = lazy(() =>
   import("./components/dashboard-activity-card").then((m) => ({ default: m.DashboardActivityCard })),
+);
+const DashboardPublicRequestSettingsLazy = lazy(() =>
+  import("./components/dashboard-public-request-settings-card").then((m) => ({ default: m.DashboardPublicRequestSettingsCard })),
+);
+const SuperAdminPublicCarouselCardLazy = lazy(() =>
+  import("./components/super-admin-public-carousel-card").then((m) => ({ default: m.SuperAdminPublicCarouselCard })),
 );
 
 function useDispatchRole() {
@@ -76,6 +82,18 @@ export function DashboardPage() {
           </Button>
         }
       />
+
+      {user && isSuperAdminRole(user.role) && showDeferredSections ? (
+        <Suspense fallback={<SectionSkeleton />}>
+          <SuperAdminPublicCarouselCardLazy />
+        </Suspense>
+      ) : null}
+
+      {user && isCompanyAdminRole(user.role) && user.publicOwnerCode ? (
+        <Suspense fallback={<SectionSkeleton />}>
+          <DashboardPublicRequestSettingsLazy />
+        </Suspense>
+      ) : null}
 
       {user && isCompanyAdminRole(user.role) && user.publicOwnerCode ? (
         <Card className="border-primary/25 bg-primary/5">

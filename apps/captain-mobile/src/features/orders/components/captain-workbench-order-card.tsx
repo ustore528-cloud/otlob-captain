@@ -2,13 +2,18 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { OrderDetailDto } from "@/services/api/dto";
-import { homeTheme } from "@/features/home/theme";
+import { SecondaryButton, StatusBadge } from "@/components/ui";
+import {
+  captainSpacing,
+  captainTypography,
+  captainUiTheme,
+} from "@/theme/captain-ui-theme";
 import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
 import { WhatsAppActionButton } from "@/components/ui/whatsapp-action-button";
 import { openPhoneDialer } from "@/lib/open-external";
-import { orderStatusAccent, type StatusAccent } from "../utils/order-status-accent";
 import { OrderRouteTapRows } from "./order-route-tap-rows";
 import { formatOrderSerial } from "@/lib/order-serial";
+import { mapOrderStatusDtoToBadgeVariant } from "@/lib/map-order-status-to-badge-variant";
 
 type Props = {
   order: OrderDetailDto;
@@ -31,31 +36,56 @@ export function CaptainWorkbenchOrderCard({
   onOpenDetail,
 }: Props) {
   const { t } = useTranslation();
-  const accent: StatusAccent = orderStatusAccent(order.status);
   const statusLabel = t(orderStatusTranslationKey(order.status));
+  const badgeVariant = mapOrderStatusDtoToBadgeVariant(order.status);
   const liveOps = visualDensity === "liveOperations";
   const compactEffective = Boolean(compact || liveOps);
+  const dash = t("common.emDash");
+
+  const storeLine = t("orderDetail.storeLine", {
+    name: (order.store?.name ?? "").trim() || dash,
+    area: (order.store?.area ?? "").trim() || dash,
+  });
+  const customerLine = t("orderDetail.customerLine", {
+    name: (order.customerName ?? "").trim() || dash,
+  });
 
   return (
-    <View style={[styles.card, compact && styles.cardCompact, liveOps && styles.cardLiveOps]}>
+    <View
+      style={[
+        styles.card,
+        compact && styles.cardCompact,
+        liveOps && styles.cardLiveOps,
+        captainUiTheme.cardShadow,
+      ]}
+    >
       <Pressable
         onPress={onOpenDetail}
         style={({ pressed }) => [styles.headerRow, liveOps && styles.headerRowLiveOps, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={t("workbenchOrderCard.openDetailsA11y", { n: formatOrderSerial(order.orderNumber, order.displayOrderNo) })}
+        accessibilityLabel={t("workbenchOrderCard.openDetailsA11y", {
+          n: formatOrderSerial(order.orderNumber, order.displayOrderNo),
+        })}
       >
         <View style={styles.headerText}>
-          <Text style={[styles.serialLabel, liveOps && styles.serialLabelLiveOps]}>{t("orderCard.serialLabel")}</Text>
+          <Text style={[styles.serialLabel, liveOps && styles.serialLabelLiveOps]}>
+            {t("orderCard.serialLabel")}
+          </Text>
           <Text style={[styles.serial, liveOps && styles.serialLiveOps]} numberOfLines={1}>
             {formatOrderSerial(order.orderNumber, order.displayOrderNo)}
           </Text>
         </View>
-        <View style={[styles.badge, { backgroundColor: accent.bg, borderColor: accent.border }]}>
-          <Text style={[styles.badgeText, { color: accent.text }]} numberOfLines={1}>
-            {statusLabel}
-          </Text>
-        </View>
+        <StatusBadge variant={badgeVariant} label={statusLabel} compact={compactEffective} />
       </Pressable>
+
+      <View style={styles.metaBlock}>
+        <Text style={[styles.metaLine, liveOps && styles.metaLineLiveOps]} numberOfLines={2}>
+          {storeLine}
+        </Text>
+        <Text style={[styles.metaLine, liveOps && styles.metaLineLiveOps]} numberOfLines={1}>
+          {customerLine}
+        </Text>
+      </View>
 
       {offerHint ? (
         <Text style={[styles.hintLine, compact && styles.hintLineCompact, liveOps && styles.hintLineLiveOps]} numberOfLines={2}>
@@ -76,24 +106,21 @@ export function CaptainWorkbenchOrderCard({
       <View style={[styles.actionsRow, liveOps && styles.actionsRowLiveOps]}>
         <Pressable
           onPress={() => void openPhoneDialer(order.customerPhone)}
-          style={({ pressed }) => [styles.iconBtn, styles.callBtn, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.callBtn, liveOps && styles.callBtnLiveOps, pressed && styles.pressed]}
           hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel={t("workbenchOrderCard.callA11y", { phone: order.customerPhone })}
         >
-          <Ionicons name="call-outline" size={liveOps ? 18 : 20} color={homeTheme.accent} />
+          <Ionicons name="call-outline" size={liveOps ? 20 : 22} color={captainUiTheme.accent} />
         </Pressable>
         <WhatsAppActionButton phone={order.customerPhone} variant="icon" size={compactEffective ? "default" : "large"} />
-        <Pressable
+        <SecondaryButton
+          label={t("workbenchOrderCard.details")}
           onPress={onOpenDetail}
-          style={({ pressed }) => [styles.detailBtn, liveOps && styles.detailBtnLiveOps, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel={t("workbenchOrderCard.orderDetailsA11y")}
-        >
-          <Text style={[styles.detailBtnText, liveOps && styles.detailBtnTextLiveOps]}>
-            {t("workbenchOrderCard.details")}
-          </Text>
-        </Pressable>
+          icon="document-text-outline"
+          compact={compactEffective}
+          style={liveOps ? styles.detailBtnLiveOps : styles.detailBtn}
+        />
       </View>
     </View>
   );
@@ -101,20 +128,19 @@ export function CaptainWorkbenchOrderCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: homeTheme.cardWhite,
-    borderRadius: homeTheme.radiusMd,
-    padding: 11,
+    backgroundColor: captainUiTheme.cardWhite,
+    borderRadius: captainUiTheme.radiusLg,
+    padding: captainSpacing.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: homeTheme.border,
-    marginBottom: 3,
-    ...homeTheme.cardShadow,
+    borderColor: captainUiTheme.border,
+    marginBottom: captainSpacing.xs,
   },
   cardCompact: {
-    padding: 6,
-    marginBottom: 3,
+    padding: captainSpacing.md,
+    marginBottom: captainSpacing.xs,
   },
   cardLiveOps: {
-    padding: 5,
+    padding: captainSpacing.sm + 1,
     marginBottom: 0,
   },
   pressed: { opacity: 0.96 },
@@ -122,105 +148,116 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 8,
-    marginBottom: 3,
+    gap: captainSpacing.sm,
+    marginBottom: captainSpacing.sm,
   },
   headerRowLiveOps: {
-    marginBottom: 1,
+    marginBottom: captainSpacing.xs,
   },
-  headerText: { flex: 1, alignItems: "flex-end" },
+  headerText: { flex: 1, alignItems: "flex-end", minWidth: 0 },
   serialLabel: {
+    ...captainTypography.caption,
     fontSize: 10,
-    fontWeight: "700",
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    textAlign: "right",
   },
   serialLabelLiveOps: {
     fontSize: 9,
   },
   serial: {
-    fontSize: 17,
-    fontWeight: "900",
-    color: homeTheme.text,
+    ...captainTypography.sectionTitle,
+    fontSize: 18,
+    color: captainUiTheme.text,
     textAlign: "right",
-    marginTop: 1,
+    marginTop: 2,
   },
   serialLiveOps: {
     fontSize: 15,
     marginTop: 0,
   },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    maxWidth: "44%",
+  metaBlock: {
+    gap: captainSpacing.xs,
+    marginBottom: captainSpacing.sm,
+    paddingVertical: captainSpacing.xs,
+    paddingHorizontal: captainSpacing.sm,
+    borderRadius: captainUiTheme.radiusMd,
+    backgroundColor: captainUiTheme.neutralSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: captainUiTheme.border,
   },
-  badgeText: { fontSize: 11, fontWeight: "800", textAlign: "center" },
-  hintLine: {
-    fontSize: 11,
-    color: homeTheme.textSubtle,
+  metaLine: {
+    ...captainTypography.body,
+    fontSize: 13,
+    fontWeight: "600",
+    color: captainUiTheme.text,
     textAlign: "right",
-    lineHeight: 15,
-    marginBottom: 7,
+    lineHeight: 20,
+  },
+  metaLineLiveOps: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  hintLine: {
+    ...captainTypography.caption,
+    fontWeight: "500",
+    color: captainUiTheme.textSubtle,
+    textAlign: "right",
+    lineHeight: 16,
+    marginBottom: captainSpacing.sm + 1,
   },
   hintLineCompact: {
     fontSize: 12,
     fontWeight: "800",
-    color: homeTheme.text,
-    marginBottom: 3,
+    color: captainUiTheme.text,
+    marginBottom: captainSpacing.xs + 1,
   },
   hintLineLiveOps: {
-    marginBottom: 2,
+    marginBottom: captainSpacing.xs,
     fontSize: 10,
     lineHeight: 14,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: homeTheme.border,
-    marginTop: 2,
-    marginBottom: 4,
+    backgroundColor: captainUiTheme.border,
+    marginVertical: captainSpacing.sm,
   },
   actionsRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "flex-end",
-    gap: 6,
+    gap: captainSpacing.sm,
+    flexWrap: "wrap",
   },
   actionsRowLiveOps: {
-    gap: 4,
+    gap: captainSpacing.xs + 2,
     marginBottom: 0,
   },
-  iconBtn: {
-    padding: 2,
-  },
   callBtn: {
-    minWidth: 40,
-    minHeight: 40,
+    minWidth: captainSpacing.xxxl + 12,
+    minHeight: captainSpacing.xxxl + 12,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 10,
+    borderRadius: captainUiTheme.radiusMd,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: homeTheme.accentMuted,
-    backgroundColor: homeTheme.cardWhite,
+    borderColor: captainUiTheme.accentMuted,
+    backgroundColor: captainUiTheme.surfaceElevated,
+  },
+  callBtnLiveOps: {
+    minWidth: captainSpacing.xxxl + 8,
+    minHeight: captainSpacing.xxxl + 8,
   },
   detailBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    marginStart: 2,
+    minHeight: captainSpacing.xxxl + 4,
+    flexGrow: 1,
+    flexBasis: "36%",
+    maxWidth: 200,
   },
   detailBtnLiveOps: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  detailBtnText: {
-    fontSize: 12,
-    color: homeTheme.accent,
-    fontWeight: "800",
-    textAlign: "right",
-  },
-  detailBtnTextLiveOps: {
-    fontSize: 11,
+    minHeight: captainSpacing.xxxl + 2,
+    flexGrow: 1,
+    flexBasis: "44%",
+    maxWidth: 160,
   },
 });

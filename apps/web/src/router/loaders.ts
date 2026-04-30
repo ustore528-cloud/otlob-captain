@@ -2,7 +2,9 @@ import { queryKeys } from "@/lib/api/query-keys";
 import { api } from "@/lib/api/singleton";
 import { loadDashboardStats } from "@/lib/dashboard-stats";
 import {
+  isAdminPanelRole,
   canAccessCaptainsPage,
+  canAccessComplaintsPage,
   canAccessIncubatorHost,
   canAccessReportsPage,
   canAccessUsersPage,
@@ -21,6 +23,7 @@ export async function homeLoader() {
   if (!token) return null;
   const user = useAuthStore.getState().user;
   const role = user?.role;
+  if (!isAdminPanelRole(role)) return redirect("/forbidden");
   const canListOrders = canListOrdersRole(role);
   const isDispatch = isDispatchRole(role);
 
@@ -44,7 +47,10 @@ export async function homeLoader() {
 }
 
 export async function ordersLoader() {
-  if (!useAuthStore.getState().token) return null;
+  const token = useAuthStore.getState().token;
+  const role = useAuthStore.getState().user?.role;
+  if (!token) return null;
+  if (!isAdminPanelRole(role) || !canListOrdersRole(role)) return redirect("/forbidden");
   void queryClient.prefetchQuery({
     queryKey: queryKeys.orders.list(ORDERS_PAGE_INITIAL_LIST_PARAMS),
     queryFn: () =>
@@ -60,20 +66,26 @@ export async function ordersLoader() {
 }
 
 export async function newOrderLoader() {
+  const token = useAuthStore.getState().token;
+  const role = useAuthStore.getState().user?.role;
+  if (!token) return null;
+  if (!isAdminPanelRole(role) || !canListOrdersRole(role)) return redirect("/forbidden");
   return null;
 }
 
 export async function incubatorHostLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
-  if (!token || !canAccessIncubatorHost(role)) return null;
+  if (!token) return null;
+  if (!isAdminPanelRole(role) || !canAccessIncubatorHost(role)) return redirect("/forbidden");
   return null;
 }
 
 export async function distributionLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
-  if (!token || !isDispatchRole(role)) return null;
+  if (!token) return null;
+  if (!isAdminPanelRole(role) || !isDispatchRole(role)) return redirect("/forbidden");
 
   const p1 = { page: 1, pageSize: 80, status: "PENDING", orderNumber: "", customerPhone: "" };
   const p2 = { page: 1, pageSize: 80, status: "CONFIRMED", orderNumber: "", customerPhone: "" };
@@ -92,7 +104,8 @@ export async function distributionLoader() {
 export async function captainsLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
-  if (!token || !canAccessCaptainsPage(role)) return null;
+  if (!token) return null;
+  if (!isAdminPanelRole(role) || !canAccessCaptainsPage(role)) return redirect("/forbidden");
   void queryClient.prefetchQuery({
     queryKey: queryKeys.captains.list({ page: 1, pageSize: 100 }),
     queryFn: () => api.captains.list({ page: 1, pageSize: 100 }),
@@ -103,7 +116,8 @@ export async function captainsLoader() {
 export async function storesLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
-  if (!token || !isDispatchRole(role)) return null;
+  if (!token) return null;
+  if (!isAdminPanelRole(role) || !isDispatchRole(role)) return redirect("/forbidden");
   void queryClient.prefetchQuery({
     queryKey: queryKeys.stores.list(1, 100),
     queryFn: () => api.stores.list(1, 100),
@@ -114,7 +128,8 @@ export async function storesLoader() {
 export async function usersLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
-  if (!token || !canAccessUsersPage(role)) return null;
+  if (!token) return null;
+  if (!isAdminPanelRole(role) || !canAccessUsersPage(role)) return redirect("/forbidden");
   const params = { page: 1, pageSize: 80, role: "" };
   void queryClient.prefetchQuery({
     queryKey: queryKeys.users.list(params),
@@ -127,6 +142,14 @@ export async function reportsLoader() {
   const token = useAuthStore.getState().token;
   const role = useAuthStore.getState().user?.role;
   if (!token) return redirect("/login");
-  if (!canAccessReportsPage(role)) return redirect("/");
+  if (!isAdminPanelRole(role) || !canAccessReportsPage(role)) return redirect("/forbidden");
+  return null;
+}
+
+export async function complaintsLoader() {
+  const token = useAuthStore.getState().token;
+  const role = useAuthStore.getState().user?.role;
+  if (!token) return redirect("/login");
+  if (!isAdminPanelRole(role) || !canAccessComplaintsPage(role)) return redirect("/forbidden");
   return null;
 }

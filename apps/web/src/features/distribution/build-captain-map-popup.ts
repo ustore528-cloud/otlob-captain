@@ -1,5 +1,5 @@
 import type { OrderStatus, ActiveMapCaptain } from "@/types/api";
-import { assignmentOfferSecondsLeft, captainMapVisual } from "@/features/distribution/captain-map-visual";
+import { assignmentOfferSecondsLeft, captainMapVisual, isCaptainLocationStale } from "@/features/distribution/captain-map-visual";
 import { isRtlLang } from "@/i18n/i18n";
 import i18n from "@/i18n/i18n";
 import { getLocalizedText } from "@/i18n/localize-dynamic-text";
@@ -73,6 +73,7 @@ export function buildCaptainPopupElement(c: ActiveMapCaptain, handlers: CaptainP
   const vis = captainMapVisual(c);
   const visLabel = String(i18n.t(`distribution.mapVisual.${vis.labelKey}`));
   const loc = c.lastLocation!;
+  const stale = isCaptainLocationStale(c);
   const secLeft =
     c.waitingOffers > 0 && c.assignmentOfferExpiresAt
       ? assignmentOfferSecondsLeft(c.assignmentOfferExpiresAt)
@@ -126,7 +127,9 @@ export function buildCaptainPopupElement(c: ActiveMapCaptain, handlers: CaptainP
 
   const time = document.createElement("div");
   time.style.cssText = "margin-bottom:4px;font-size:9px;color:var(--muted-foreground,#94a3b8);";
-  time.textContent = String(i18n.t("distribution.popup.location", { at: formatRecordedAt(loc.recordedAt) }));
+  time.textContent = stale
+    ? `موقع قديم · ${String(i18n.t("distribution.popup.location", { at: formatRecordedAt(loc.recordedAt) }))}`
+    : String(i18n.t("distribution.popup.location", { at: formatRecordedAt(loc.recordedAt) }));
   root.appendChild(time);
 
   if (secLeft !== null) {

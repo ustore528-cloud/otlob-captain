@@ -1,14 +1,51 @@
 import { prisma } from "../lib/prisma.js";
 import { env } from "../config/env.js";
 
+const CAPTAIN_ORDER_CHANNEL_ID = "captain-orders-v9-strong";
+const CAPTAIN_ORDER_ALERT_SOUND = "new_order_strong_alert";
+
 type ExpoPushMessage = {
   to: string;
   title: string;
   body: string;
-  sound: "new_order.wav";
-  channelId: "captain-orders-v2";
+  sound: typeof CAPTAIN_ORDER_ALERT_SOUND | "default";
+  channelId: typeof CAPTAIN_ORDER_CHANNEL_ID;
   priority: "high";
   data?: Record<string, unknown>;
+};
+
+type CaptainPushLocale = "ar" | "en" | "he";
+type CaptainPushTemplate = "NEW_ORDER" | "ORDER_STATUS_UPDATED";
+
+const CAPTAIN_PUSH_TEXT: Record<CaptainPushTemplate, Record<CaptainPushLocale, { title: string; body: string }>> = {
+  NEW_ORDER: {
+    ar: {
+      title: "طلب توصيل جديد",
+      body: "لديك طلب جديد بانتظار القبول خلال 30 ثانية",
+    },
+    en: {
+      title: "New delivery request",
+      body: "You have a new order waiting for acceptance for 30 seconds",
+    },
+    he: {
+      title: "בקשת משלוח חדשה",
+      body: "יש לך הזמנה חדשה שממתינה לאישור למשך 30 שניות",
+    },
+  },
+  ORDER_STATUS_UPDATED: {
+    ar: {
+      title: "تم تحديث حالة الطلب",
+      body: "تم تحديث حالة الطلب الخاص بك",
+    },
+    en: {
+      title: "Order status updated",
+      body: "Your order status has been updated",
+    },
+    he: {
+      title: "סטטוס ההזמנה עודכן",
+      body: "סטטוס ההזמנה שלך עודכן",
+    },
+  },
 };
 
 type ExpoPushTicket = {
@@ -45,6 +82,26 @@ export type SendToCaptainUserOutcome = {
 
 function isExpoPushToken(token: string): boolean {
   return /^ExponentPushToken\[.+\]$/.test(token) || /^ExpoPushToken\[.+\]$/.test(token);
+}
+
+function normalizeCaptainPushLocale(locale: string | null | undefined): CaptainPushLocale {
+  const base = (locale ?? "").split("-")[0];
+  return base === "ar" || base === "he" ? base : "en";
+}
+
+function captainPushText(template: CaptainPushTemplate, locale: string | null | undefined): { title: string; body: string } {
+  return CAPTAIN_PUSH_TEXT[template][normalizeCaptainPushLocale(locale)];
+}
+
+function inferCaptainPushTemplate(payload: {
+  data?: Record<string, unknown>;
+  template?: CaptainPushTemplate;
+}): CaptainPushTemplate | undefined {
+  if (payload.template) return payload.template;
+  const type = typeof payload.data?.type === "string" ? payload.data.type : "";
+  if (type === "NEW_ORDER" || type === "NEW_ORDER_TEST") return "NEW_ORDER";
+  if (type === "ORDER_STATUS_UPDATED") return "ORDER_STATUS_UPDATED";
+  return undefined;
 }
 
 async function postExpoPush(messages: ExpoPushMessage[]): Promise<unknown> {
@@ -175,23 +232,33 @@ export const pushNotificationService = {
     token: string;
     platform: "android" | "ios";
     appVersion?: string | null;
+    locale?: string | null;
   }): Promise<{ registered: boolean }> {
     const token = input.token.trim();
+    const locale = normalizeCaptainPushLocale(input.locale);
+    const captain = await prisma.captain.findFirst({
+      where: { userId: input.userId },
+      select: { id: true, companyId: true },
+    });
     if (!isExpoPushToken(token)) {
       // eslint-disable-next-line no-console
       console.warn("[pushNotificationService.registerCaptainPushToken] invalid_expo_token", {
         userId: input.userId,
+        captainId: captain?.id ?? null,
+        companyId: captain?.companyId ?? null,
         platform: input.platform,
         tokenPrefix: token.slice(0, 24),
+        validationResult: "REJECTED_NOT_EXPO_FORMAT",
       });
       return { registered: false };
     }
-    await prisma.captainPushToken.upsert({
+    const row = await prisma.captainPushToken.upsert({
       where: { token },
       update: {
         userId: input.userId,
         platform: input.platform,
         appVersion: input.appVersion ?? null,
+        locale,
         isActive: true,
         lastSeenAt: new Date(),
       },
@@ -200,14 +267,20 @@ export const pushNotificationService = {
         token,
         platform: input.platform,
         appVersion: input.appVersion ?? null,
+        locale,
         isActive: true,
       },
     });
     // eslint-disable-next-line no-console
     console.info("[pushNotificationService.registerCaptainPushToken] token_upserted", {
       userId: input.userId,
+      captainId: captain?.id ?? null,
+      companyId: captain?.companyId ?? null,
+      tokenId: row.id,
       platform: input.platform,
       appVersion: input.appVersion ?? null,
+      locale,
+      validationResult: "ACCEPTED_EXPO_FORMAT",
       token: `${token.slice(0, 18)}...${token.slice(-6)}`,
     });
     return { registered: true };
@@ -215,10 +288,19 @@ export const pushNotificationService = {
 
   async sendToCaptainUser(
     userId: string,
-    payload: { title: string; body: string; data?: Record<string, unknown> },
+    payload: {
+      title: string;
+      body: string;
+      data?: Record<string, unknown>;
+      template?: CaptainPushTemplate;
+    },
   ): Promise<SendToCaptainUserOutcome | null> {
     const t0 = Date.now();
     try {
+      const captain = await prisma.captain.findFirst({
+        where: { userId },
+        select: { id: true },
+      });
       const tokenRepo = prisma.captainPushToken;
       if (!tokenRepo) {
         // Defensive guard: if runtime Prisma client is stale, skip push but keep API healthy.
@@ -228,8 +310,8 @@ export const pushNotificationService = {
       }
       const rows = await tokenRepo.findMany({
         where: { userId, isActive: true },
-        select: { id: true, token: true, platform: true },
-        take: 10,
+        select: { id: true, token: true, platform: true, locale: true },
+        take: 1,
         orderBy: { updatedAt: "desc" },
       });
       // eslint-disable-next-line no-console
@@ -238,8 +320,10 @@ export const pushNotificationService = {
         action: "push_send",
         phase: "active_tokens_loaded",
         userId,
+        captainId: captain?.id ?? null,
         tokenRows: rows.length,
         platforms: rows.map((r) => r.platform),
+        locales: rows.map((r) => r.locale ?? null),
         msFromEnter: Date.now() - t0,
       });
       if (rows.length === 0) {
@@ -254,15 +338,34 @@ export const pushNotificationService = {
         };
       }
       const validRows = rows.filter((r) => isExpoPushToken(r.token));
-      const messages: ExpoPushMessage[] = validRows.map((r) => ({
+      const template = inferCaptainPushTemplate(payload);
+      const messages: ExpoPushMessage[] = validRows.map((r) => {
+        const localeUsed = normalizeCaptainPushLocale(r.locale);
+        const localized = template ? captainPushText(template, localeUsed) : null;
+        const sound = r.platform === "ios" ? "default" : CAPTAIN_ORDER_ALERT_SOUND;
+        // eslint-disable-next-line no-console
+        console.info("[pushNotificationService.sendToCaptainUser] message_built", {
+          userId,
+          captainId: captain?.id ?? null,
+          tokenId: r.id,
+          platform: r.platform,
+          localeRaw: r.locale ?? null,
+          localeUsed,
+          titleLanguage: localized ? localeUsed : "caller_payload",
+          channelId: CAPTAIN_ORDER_CHANNEL_ID,
+          sound,
+          template: template ?? null,
+        });
+        return {
           to: r.token,
-          title: payload.title,
-          body: payload.body,
-          sound: "new_order.wav",
-          channelId: "captain-orders-v2",
+          title: localized?.title ?? payload.title,
+          body: localized?.body ?? payload.body,
+          sound,
+          channelId: CAPTAIN_ORDER_CHANNEL_ID,
           priority: "high",
           data: payload.data,
-        }));
+        };
+      });
       if (messages.length === 0) {
         // eslint-disable-next-line no-console
         console.warn("[pushNotificationService.sendToCaptainUser] no_valid_expo_tokens", {
@@ -283,6 +386,7 @@ export const pushNotificationService = {
         action: "push_send",
         phase: "messages_built",
         userId,
+        captainId: captain?.id ?? null,
         messages: messages.length,
         msFromEnter: Date.now() - t0,
       });
@@ -292,6 +396,8 @@ export const pushNotificationService = {
       // eslint-disable-next-line no-console
       console.info("[captain-expo-push] ticket_response", {
         userId,
+        captainId: captain?.id ?? null,
+        channelId: CAPTAIN_ORDER_CHANNEL_ID,
         tokenRowsFound: rows.length,
         validExpoTokenRows: validRows.length,
         tickets: tickets.map((t) => ({
@@ -384,6 +490,7 @@ export const pushNotificationService = {
     const outcome = await this.sendToCaptainUser(input.userId, {
       title: input.title,
       body: input.body,
+      template: input.kind === "ALERT" ? "ORDER_STATUS_UPDATED" : "NEW_ORDER",
       data: {
         type: "NEW_ORDER",
         orderId: input.orderId,

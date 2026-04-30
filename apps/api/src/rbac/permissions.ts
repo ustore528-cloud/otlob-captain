@@ -40,6 +40,10 @@ function matrix(overrides: Partial<RoleMatrix>): RoleMatrix {
   return { ...base, ...overrides };
 }
 
+/**
+ * أدوار المنصّة المعتمَدة: SUPER_ADMIN ، COMPANY_ADMIN ، CAPTAIN فقط تحصل على قدرات إيجابية.
+ * بقيّة القيم في AppRole موجودة للتوافق مع قاعدة البيانات — بدون امتيازات (403 على المسارات المعتمدة على القدرات).
+ */
 export const ROLE_CAPABILITIES: Record<AppRole, RoleMatrix> = {
   SUPER_ADMIN: matrix({
     "users.read": true,
@@ -62,9 +66,7 @@ export const ROLE_CAPABILITIES: Record<AppRole, RoleMatrix> = {
     "orders.read": true,
     "captains.read": true,
     "captains.manage": true,
-    /** Storeless dashboard: create uses server-resolved operational store (no client storeId). */
     "orders.create": true,
-    /** Distribution map + tracking (tenant-scoped server-side; Phase 3.2.1). */
     "orders.dispatch": true,
     "stores.read": false,
     "stores.manage": false,
@@ -74,58 +76,19 @@ export const ROLE_CAPABILITIES: Record<AppRole, RoleMatrix> = {
     "settings.read": false,
     "settings.write": false,
   }),
-  // Deprecated/compatibility roles remain non-destructive but inactive in the new active UI model.
-  BRANCH_MANAGER: matrix({
-    "orders.read": false,
-  }),
-  DISPATCHER: matrix({
-    "orders.read": false,
-  }),
-  STORE_ADMIN: matrix({
-    "orders.read": true,
-    "orders.create": true,
-    "stores.read": false,
-    "finance.read": false,
-  }),
-  STORE_USER: matrix({
-    "orders.read": true,
-    "orders.create": true,
-    "stores.read": false,
-    "finance.read": false,
-  }),
-  CAPTAIN_SUPERVISOR: matrix({
-    "orders.read": false,
-  }),
   CAPTAIN: matrix({
+    /** قائمة الطلبيات مضيّقة في `ordersService.list` (تعيين + عروض/سجل). — قراءة قائمة كبتن الشركة ليست مفتوحة له. */
     "orders.read": true,
-    "captains.read": true,
   }),
-  CUSTOMER: matrix({
-    "orders.read": true,
-    "orders.create": true,
-  }),
-  ADMIN: matrix({
-    "users.read": true,
-    "users.create": true,
-    "users.toggleActive": true,
-    "orders.read": true,
-    "orders.create": true,
-    "orders.dispatch": true,
-    "captains.read": true,
-    "captains.manage": true,
-    "stores.read": true,
-    "stores.manage": true,
-    "finance.read": true,
-    "reports.read": true,
-    "settings.read": true,
-    "settings.write": true,
-  }),
-  STORE: matrix({
-    "orders.read": true,
-    "orders.create": true,
-    "stores.read": true,
-    "finance.read": true,
-  }),
+
+  BRANCH_MANAGER: matrix({}),
+  DISPATCHER: matrix({}),
+  CAPTAIN_SUPERVISOR: matrix({}),
+  STORE_ADMIN: matrix({}),
+  STORE_USER: matrix({}),
+  CUSTOMER: matrix({}),
+  ADMIN: matrix({}),
+  STORE: matrix({}),
 };
 
 export function hasCapability(role: AppRole, capability: Capability): boolean {
@@ -135,4 +98,3 @@ export function hasCapability(role: AppRole, capability: Capability): boolean {
 export function rolesWithCapability(capability: Capability): AppRole[] {
   return (Object.keys(ROLE_CAPABILITIES) as AppRole[]).filter((role) => ROLE_CAPABILITIES[role][capability]);
 }
-

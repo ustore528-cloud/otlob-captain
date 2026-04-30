@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { UserRole } from "@prisma/client";
 import { supervisorCaptainTransferController } from "../../controllers/supervisor-captain-transfer.controller.js";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
@@ -10,7 +9,8 @@ import { SupervisorCaptainTransferBodySchema } from "../../validators/supervisor
 const router = Router();
 
 router.use(authMiddleware);
-router.use(requireRoles(UserRole.BRANCH_MANAGER, UserRole.DISPATCHER));
+/** محفظة المشرف ← كابتن: الأدوار المعتمدة فقط (الباقي ROLE_NOT_SUPPORTED عبر middleware). */
+router.use(requireRoles("COMPANY_ADMIN", "SUPER_ADMIN"));
 
 router.post(
   "/transfers/to-captain",

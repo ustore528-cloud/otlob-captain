@@ -1,9 +1,13 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { homeTheme } from "@/features/home/theme";
-import { screenStyles } from "@/theme/screen-styles";
+import {
+  captainRadius,
+  captainSpacing,
+  captainTypography,
+  captainUiTheme,
+} from "@/theme/captain-ui-theme";
+import { ScreenContainer } from "@/components/ui/screen-container";
 import { WorkStatusBanner } from "@/features/work-status";
 import { useCaptainAssignmentWorkbench } from "@/features/assignment/hooks/use-captain-assignment-workbench";
 import { AssignmentEmptyState } from "@/features/assignment/components/assignment-empty-state";
@@ -29,7 +33,7 @@ export function OrdersLiveScreen() {
   }, [onRefresh]);
 
   return (
-    <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+    <ScreenContainer edges={["top", "left", "right"]}>
       <WorkStatusBanner />
       <View style={styles.accentBar} />
       <View style={styles.main}>
@@ -37,7 +41,11 @@ export function OrdersLiveScreen() {
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={homeTheme.accent} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void refresh()}
+              tintColor={captainUiTheme.accent}
+            />
           }
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -48,7 +56,7 @@ export function OrdersLiveScreen() {
           <View style={styles.assignmentBlock}>
             {isLoading ? (
               <View style={styles.loadingRow}>
-                <ActivityIndicator size="small" color={homeTheme.accent} />
+                <ActivityIndicator size="small" color={captainUiTheme.accent} />
                 <Text style={styles.muted}>{t("common.loading")}</Text>
               </View>
             ) : null}
@@ -72,17 +80,18 @@ export function OrdersLiveScreen() {
           </View>
         </ScrollView>
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   accentBar: {
-    height: 3,
-    marginHorizontal: 16,
-    borderRadius: 3,
-    backgroundColor: homeTheme.accent,
-    opacity: 0.35,
+    height: captainSpacing.xs,
+    marginHorizontal: captainSpacing.lg,
+    borderRadius: captainRadius.sm,
+    backgroundColor: captainUiTheme.accentSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: captainUiTheme.borderStrong,
   },
   main: {
     flex: 1,
@@ -90,53 +99,63 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
-  scrollContent: { paddingHorizontal: 14, paddingTop: 8, paddingBottom: 20 },
+  scrollContent: {
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingTop: captainSpacing.sm,
+    paddingBottom: captainSpacing.xl,
+  },
   title: {
-    color: homeTheme.text,
-    fontSize: 18,
-    fontWeight: "900",
+    ...captainTypography.sectionTitle,
+    color: captainUiTheme.text,
     textAlign: "right",
-    marginBottom: 4,
+    marginBottom: captainSpacing.xs,
   },
   sub: {
-    color: homeTheme.textSubtle,
-    fontSize: 12,
+    ...captainTypography.caption,
+    fontWeight: "500",
+    color: captainUiTheme.textSubtle,
     lineHeight: 18,
     textAlign: "right",
-    marginBottom: 12,
+    marginBottom: captainSpacing.md,
   },
-  /** Card list + inline actions for the primary active order. */
   assignmentBlock: {
-    gap: 10,
+    gap: captainSpacing.sm + 2,
   },
   cardsStack: {
-    gap: 12,
+    gap: captainSpacing.md,
   },
   loadingRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "flex-end",
-    gap: 10,
-    paddingVertical: 8,
+    gap: captainSpacing.sm + 2,
+    paddingVertical: captainSpacing.sm,
   },
-  muted: { color: homeTheme.textMuted, fontSize: 13 },
+  muted: {
+    color: captainUiTheme.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: captainTypography.body.fontWeight,
+  },
   inlineError: {
-    paddingVertical: 8,
-    gap: 8,
+    paddingVertical: captainSpacing.sm,
+    gap: captainSpacing.sm,
     alignItems: "flex-end",
   },
   inlineErrorText: {
-    color: homeTheme.dangerText,
+    color: captainUiTheme.dangerText,
     fontSize: 13,
+    fontWeight: captainTypography.body.fontWeight,
     textAlign: "right",
     lineHeight: 20,
   },
   inlineRetry: {
-    paddingVertical: 4,
+    paddingVertical: captainSpacing.xs,
   },
   inlineRetryText: {
-    color: homeTheme.accent,
-    fontWeight: "800",
+    ...captainTypography.body,
     fontSize: 14,
+    fontWeight: "800",
+    color: captainUiTheme.accent,
   },
 });

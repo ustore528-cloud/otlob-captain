@@ -23,8 +23,9 @@ async function main(): Promise<void> {
   }
 
   const outcome = await pushNotificationService.sendToCaptainUser(userId, {
-    title: "Test New Order",
-    body: "Testing captain push notification",
+    title: "New delivery request",
+    body: "You have a new order waiting for acceptance for 30 seconds",
+    template: "NEW_ORDER",
     data: { type: "NEW_ORDER_TEST" },
   });
 

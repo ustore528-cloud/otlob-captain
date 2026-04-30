@@ -1,12 +1,18 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import type { CaptainActionResult } from "../utils/captain-order-actions";
-import { homeTheme } from "@/features/home/theme";
+import {
+  captainShadows,
+  captainSpacing,
+  captainTypography,
+  captainUiTheme,
+} from "@/theme/captain-ui-theme";
 import { locationI18nKey } from "@/lib/order-location-i18n";
 import type { OrderDetailDto } from "@/services/api/dto";
 import { paymentSummaryLinesFromDetail } from "@/features/orders/utils/order-list-primary-action";
 import { formatAssignmentOfferCountdown } from "@/lib/assignment-offer-seconds-left";
+import { PrimaryButton } from "@/components/ui";
 
 type Props = {
   actions: CaptainActionResult;
@@ -20,6 +26,11 @@ type Props = {
   compactSummary?: boolean;
   onOpenOrderDetail?: () => void;
 };
+
+const dockElev =
+  Platform.OS === "ios"
+    ? captainShadows.tabBarTopIos
+    : { elevation: captainShadows.tabBarTopAndroidElevation };
 
 function InlineOrderSummary({
   order,
@@ -59,7 +70,7 @@ function InlineOrderSummary({
             </Text>
           ) : null}
           <View style={styles.detailsPhoneRow}>
-            <Ionicons name="call-outline" size={14} color={homeTheme.accent} />
+            <Ionicons name="call-outline" size={14} color={captainUiTheme.accent} />
             <Text style={styles.detailsPhone}>{order.customerPhone}</Text>
           </View>
           <Text style={styles.detailsPay} numberOfLines={2}>
@@ -67,21 +78,11 @@ function InlineOrderSummary({
           </Text>
           <Text style={styles.detailsHint}>{t("assignmentBar.fullDetailsHint")}</Text>
         </View>
-        <Ionicons name="chevron-back" size={18} color={homeTheme.accent} />
+        <Ionicons name="chevron-back" size={18} color={captainUiTheme.accent} />
       </Pressable>
     </View>
   );
 }
-
-const dockShadow =
-  Platform.OS === "ios"
-    ? {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-      }
-    : { elevation: 5 };
 
 export function AssignmentActionsBar({
   actions,
@@ -106,7 +107,7 @@ export function AssignmentActionsBar({
 
   if (actions.mode === "none" && actions.readOnly) {
     return (
-      <View style={[styles.dockWrap, dockShadow]}>
+      <View style={[styles.dockWrap, dockElev]}>
         <View style={styles.readOnly}>
           <Text style={styles.readOnlyText}>{t("assignmentBar.readOnly")}</Text>
         </View>
@@ -120,7 +121,7 @@ export function AssignmentActionsBar({
     const urgent = showCountdown && sec <= 10;
 
     return (
-      <View style={[styles.dockWrap, dockShadow, compact && styles.dockWrapCompact]}>
+      <View style={[styles.dockWrap, dockElev, compact && styles.dockWrapCompact]}>
         {showCountdown ? (
           <View style={[styles.offerCountdownRow, compact && styles.offerCountdownRowCompact]}>
             <Text style={styles.offerCountdownLabel}>{t("assignmentBar.offerCountdown")}</Text>
@@ -128,6 +129,11 @@ export function AssignmentActionsBar({
               {showCountdown ? formatAssignmentOfferCountdown(t, sec) : t("common.emDash")}
             </Text>
           </View>
+        ) : null}
+        {!compact ? (
+          <Text style={styles.acceptDisclaimer} numberOfLines={3}>
+            {t("assignmentBar.acceptConfirmHint")}
+          </Text>
         ) : null}
         {showInlineOrder ? <InlineOrderSummary order={actions.order} onOpenDetail={onOpenOrderDetail} /> : null}
         <View style={styles.offerRow}>
@@ -143,41 +149,19 @@ export function AssignmentActionsBar({
             accessibilityRole="button"
             accessibilityLabel={t("assignmentBar.declineA11y")}
           >
-            <Ionicons name="close-outline" size={compact ? 18 : 22} color={homeTheme.dangerText} />
+            <Ionicons name="close-outline" size={compact ? 18 : 22} color={captainUiTheme.dangerText} />
             <Text style={[styles.btnRejectText, compact && styles.btnRejectTextCompact]} numberOfLines={1}>
               {t("assignmentBar.decline")}
             </Text>
           </Pressable>
-          <Pressable
-            style={({ pressed }) => [
-              styles.btnAccept,
-              compact && styles.btnAcceptCompact,
-              pressed && styles.pressed,
-              busy && styles.disabled,
-            ]}
+          <PrimaryButton
+            icon="checkmark-circle"
+            label={t("assignmentBar.acceptOrder")}
             onPress={onAccept}
             disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel={t("assignmentBar.acceptA11y")}
-          >
-            {busy ? (
-              <ActivityIndicator color={homeTheme.onAccent} size="small" />
-            ) : (
-              <View style={styles.btnAcceptInner}>
-                <Ionicons name="checkmark-circle" size={compact ? 18 : 22} color={homeTheme.onAccent} />
-                <View style={styles.btnAcceptTextCol}>
-                  <Text style={[styles.btnAcceptText, compact && styles.btnAcceptTextCompact]} numberOfLines={1}>
-                    {t("assignmentBar.acceptOrder")}
-                  </Text>
-                  {!compact ? (
-                    <Text style={styles.btnAcceptSub} numberOfLines={1}>
-                      {t("assignmentBar.acceptConfirmHint")}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-            )}
-          </Pressable>
+            loading={busy}
+            style={compact ? styles.btnAcceptFlexCompact : styles.btnAcceptFlex}
+          />
         </View>
       </View>
     );
@@ -185,33 +169,17 @@ export function AssignmentActionsBar({
 
   if (actions.mode === "active_patch") {
     return (
-      <View style={[styles.dockWrap, dockShadow, compact && styles.dockWrapCompact]}>
+      <View style={[styles.dockWrap, dockElev, compact && styles.dockWrapCompact]}>
         {showInlineOrder ? <InlineOrderSummary order={actions.order} onOpenDetail={onOpenOrderDetail!} /> : null}
-        <Pressable
-          style={({ pressed }) => [
-            styles.btnAdvance,
-            compact && styles.btnAdvanceCompact,
-            pressed && styles.pressed,
-            busy && styles.disabled,
-          ]}
+        <PrimaryButton
+          fullWidth
+          icon="arrow-forward-circle"
+          label={t(actions.labelKey)}
           onPress={onAdvance}
           disabled={busy}
-          accessibilityRole="button"
-          accessibilityLabel={t(actions.labelKey)}
-        >
-          {busy ? (
-            <ActivityIndicator color={homeTheme.onAccent} size="small" />
-          ) : (
-            <View style={styles.btnAdvanceInner}>
-              <Ionicons name="arrow-forward-circle" size={compact ? 18 : 22} color={homeTheme.onAccent} />
-              <View style={styles.btnAdvanceTextCol}>
-                <Text style={[styles.btnAdvanceEn, compact && styles.btnAdvanceEnCompact]} numberOfLines={2}>
-                  {t(actions.labelKey)}
-                </Text>
-              </View>
-            </View>
-          )}
-        </Pressable>
+          loading={busy}
+          style={compact ? styles.advanceCompactLift : styles.advanceLift}
+        />
       </View>
     );
   }
@@ -221,50 +189,61 @@ export function AssignmentActionsBar({
 
 const styles = StyleSheet.create({
   dockWrap: {
-    backgroundColor: homeTheme.cardWhite,
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    backgroundColor: captainUiTheme.surfaceElevated,
+    paddingHorizontal: captainSpacing.screenHorizontal,
+    paddingTop: captainSpacing.sm + 2,
     paddingBottom: Platform.OS === "ios" ? 6 : 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: homeTheme.border,
+    borderTopColor: captainUiTheme.border,
   },
   dockWrapCompact: {
-    paddingTop: 8,
-    paddingBottom: Platform.OS === "ios" ? 6 : 8,
+    paddingTop: captainSpacing.sm,
+    paddingBottom: Platform.OS === "ios" ? 6 : captainSpacing.sm,
+  },
+  advanceLift: {
+    minHeight: 50,
+    marginTop: 2,
+  },
+  advanceCompactLift: {
+    minHeight: 40,
+    marginTop: 2,
+    paddingVertical: captainSpacing.sm,
+    paddingHorizontal: captainSpacing.md,
   },
   sumWrap: {
-    marginBottom: 10,
-    gap: 8,
+    marginBottom: captainSpacing.sm + 2,
+    gap: captainSpacing.sm,
   },
   sumLocBlock: {
-    gap: 4,
+    gap: captainSpacing.xs,
   },
   sumLocLabel: {
     fontSize: 10,
     fontWeight: "800",
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     textAlign: "right",
   },
   sumLocLabelSpaced: {
-    marginTop: 6,
+    marginTop: captainSpacing.sm - 2,
   },
   sumLocValue: {
     fontSize: 12,
     lineHeight: 18,
     fontWeight: "700",
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     textAlign: "right",
   },
   detailsCard: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    gap: captainSpacing.sm,
+    paddingVertical: captainSpacing.sm + 2,
+    paddingHorizontal: captainSpacing.md,
+    borderRadius: captainUiTheme.radiusMd,
     borderWidth: 1,
-    borderColor: homeTheme.border,
-    backgroundColor: homeTheme.neutralSoft,
+    borderColor: captainUiTheme.border,
+    backgroundColor: captainUiTheme.neutralSoft,
+    ...captainUiTheme.cardShadow,
   },
   detailsCardBody: {
     flex: 1,
@@ -273,39 +252,41 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   detailsCardTitle: {
+    ...captainTypography.bodyStrong,
     fontSize: 13,
-    fontWeight: "900",
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     textAlign: "right",
+    fontWeight: "900",
   },
   detailsLine: {
     fontSize: 12,
     fontWeight: "600",
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     textAlign: "right",
   },
   detailsPhoneRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    gap: 4,
+    gap: captainSpacing.xs,
   },
   detailsPhone: {
     fontSize: 13,
     fontWeight: "800",
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
     textAlign: "right",
   },
   detailsPay: {
     fontSize: 11,
     fontWeight: "600",
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     textAlign: "right",
     lineHeight: 16,
   },
   detailsHint: {
-    fontSize: 10,
+    ...captainTypography.tabLabel,
     fontWeight: "600",
-    color: homeTheme.textSubtle,
+    fontSize: 10,
+    color: captainUiTheme.textSubtle,
     textAlign: "right",
     marginTop: 2,
   },
@@ -313,16 +294,16 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 10,
-    marginBottom: 8,
-    paddingHorizontal: 4,
+    gap: captainSpacing.sm + 2,
+    marginBottom: captainSpacing.sm,
+    paddingHorizontal: captainSpacing.xs,
   },
   offerCountdownRowCompact: {
-    marginBottom: 6,
+    marginBottom: captainSpacing.sm - 2,
   },
   offerCountdownLabel: {
     flex: 1,
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 12,
     fontWeight: "700",
     textAlign: "right",
@@ -330,7 +311,7 @@ const styles = StyleSheet.create({
   },
   offerCountdownDigits: {
     fontVariant: ["tabular-nums"],
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
     fontSize: 20,
     fontWeight: "900",
     letterSpacing: 0.5,
@@ -339,118 +320,68 @@ const styles = StyleSheet.create({
     fontSize: 17,
   },
   offerCountdownUrgent: {
-    color: homeTheme.dangerText,
+    color: captainUiTheme.dangerText,
+  },
+  acceptDisclaimer: {
+    ...captainTypography.caption,
+    fontWeight: "600",
+    fontSize: 11,
+    lineHeight: 16,
+    color: captainUiTheme.textSubtle,
+    textAlign: "right",
+    marginBottom: captainSpacing.sm,
+    paddingHorizontal: captainSpacing.xs,
   },
   offerRow: {
     flexDirection: "row-reverse",
     alignItems: "stretch",
-    gap: 8,
+    gap: captainSpacing.sm,
+  },
+  btnAcceptFlex: {
+    flex: 1.2,
+    minHeight: 48,
+    alignSelf: "stretch",
+  },
+  btnAcceptFlexCompact: {
+    flex: 1,
+    minHeight: 36,
+    paddingVertical: captainSpacing.sm - 4,
+    paddingHorizontal: captainSpacing.sm + 2,
   },
   readOnly: {
-    padding: 12,
-    borderRadius: homeTheme.radiusMd,
-    backgroundColor: homeTheme.neutralSoft,
+    padding: captainSpacing.md - 4,
+    borderRadius: captainUiTheme.radiusMd,
+    backgroundColor: captainUiTheme.neutralSoft,
     borderWidth: 1,
-    borderColor: homeTheme.border,
+    borderColor: captainUiTheme.border,
   },
   readOnlyText: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 13,
     textAlign: "right",
     lineHeight: 20,
   },
-  btnAccept: {
-    flex: 1.2,
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: homeTheme.accent,
-    paddingVertical: 11,
-    paddingHorizontal: 12,
-    borderRadius: homeTheme.radiusMd,
-    minHeight: 48,
-  },
-  btnAcceptCompact: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    minHeight: 36,
-    flex: 1,
-  },
-  btnAcceptInner: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  btnAcceptTextCol: { alignItems: "flex-end", flexShrink: 1 },
   btnReject: {
     flex: 1,
     flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-    backgroundColor: homeTheme.surface,
+    gap: captainSpacing.xs,
+    backgroundColor: captainUiTheme.surfaceElevated,
     borderWidth: 1.5,
-    borderColor: homeTheme.dangerBorder,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: homeTheme.radiusMd,
+    borderColor: captainUiTheme.dangerBorder,
+    paddingVertical: captainSpacing.sm + 4,
+    paddingHorizontal: captainSpacing.sm + 2,
+    borderRadius: captainUiTheme.radiusMd,
     minHeight: 48,
   },
   btnRejectCompact: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    paddingVertical: captainSpacing.sm - 2,
+    paddingHorizontal: captainSpacing.sm,
     minHeight: 36,
   },
-  btnAdvance: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: homeTheme.accent,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: homeTheme.radiusMd,
-    minHeight: 50,
-  },
-  btnAdvanceCompact: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    minHeight: 40,
-  },
-  btnAdvanceInner: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    flex: 1,
-  },
-  btnAdvanceTextCol: { flex: 1, alignItems: "flex-end" },
   pressed: { opacity: 0.92 },
   disabled: { opacity: 0.55 },
-  btnAcceptText: { color: homeTheme.onAccent, fontSize: 15, fontWeight: "800", flexShrink: 1 },
-  btnAcceptTextCompact: { fontSize: 12 },
-  btnAcceptSub: {
-    color: "rgba(250,247,240,0.88)",
-    fontSize: 10,
-    fontWeight: "600",
-    marginTop: 1,
-    textAlign: "right",
-  },
-  btnRejectText: { color: homeTheme.dangerText, fontSize: 15, fontWeight: "800", flexShrink: 1 },
+  btnRejectText: { color: captainUiTheme.dangerText, fontSize: 15, fontWeight: "800", flexShrink: 1 },
   btnRejectTextCompact: { fontSize: 12 },
-  btnAdvanceEn: {
-    color: homeTheme.onAccent,
-    fontSize: 15,
-    fontWeight: "800",
-    textAlign: "right",
-  },
-  btnAdvanceEnCompact: { fontSize: 12 },
-  btnAdvanceAr: {
-    color: "rgba(250,247,240,0.88)",
-    fontSize: 12,
-    fontWeight: "600",
-    textAlign: "right",
-    marginTop: 2,
-  },
-  btnAdvanceArCompact: { fontSize: 11, marginTop: 1 },
 });

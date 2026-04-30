@@ -62,7 +62,7 @@ const ROLE_CAPABILITIES: Record<AppRole, Set<Capability>> = {
   STORE_USER: new Set([]),
   CAPTAIN: new Set([]),
   CUSTOMER: new Set([]),
-  ADMIN: new Set(["users.access", "orders.list", "dashboard.read", "captains.read", "reports.read"]),
+  ADMIN: new Set([]),
   STORE: new Set([]),
 };
 
@@ -94,7 +94,19 @@ export function isStoreAdminRole(role?: string | null): boolean {
 }
 
 export function isManagementAdminRole(role?: string | null): boolean {
-  return role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "ADMIN";
+  return role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
+}
+
+export function isCaptainRole(role?: string | null): boolean {
+  return role === "CAPTAIN";
+}
+
+export function isSupportedPlatformRole(role?: string | null): boolean {
+  return role === "SUPER_ADMIN" || role === "COMPANY_ADMIN" || role === "CAPTAIN";
+}
+
+export function isAdminPanelRole(role?: string | null): boolean {
+  return role === "SUPER_ADMIN" || role === "COMPANY_ADMIN";
 }
 
 export function isDispatchRole(role?: string | null): boolean {
@@ -152,4 +164,9 @@ export function canAccessIncubatorHost(role?: string | null): boolean {
 /** تبويب التقارير — مطابق `reports.read` في الـ API (لا يتضمّن Company Admin حتى تُتحقق من الـ scoping) */
 export function canAccessReportsPage(role?: string | null): boolean {
   return can(role, "reports.read");
+}
+
+/** قائمة الشكاوى من صفحات الطلب العامة — مطابقًا `GET /api/v1/complaints`. */
+export function canAccessComplaintsPage(role?: string | null): boolean {
+  return isSuperAdminRole(role) || isCompanyAdminRole(role);
 }

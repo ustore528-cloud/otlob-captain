@@ -4,6 +4,7 @@ import type { ActiveMapCaptain, OrderListItem } from "@/types/api";
 import { clampLatLng, clampLatLngPair, googleMapsRestrictionOption } from "@/lib/israel-map-bounds";
 import { isRtlLang } from "@/i18n/i18n";
 import { captainUserNameDisplay } from "@/i18n/localize-entity-labels";
+import { isCaptainLocationStale } from "@/features/distribution/captain-map-visual";
 
 declare global {
   interface Window {
@@ -44,7 +45,7 @@ function createCaptainIcon(status: "available" | "waiting" | "busy" | "far") {
 }
 
 function captainStatus(c: ActiveMapCaptain): "available" | "waiting" | "busy" | "far" {
-  if (!c.lastLocation || c.availabilityStatus !== "AVAILABLE") return "far";
+  if (!c.lastLocation || c.availabilityStatus !== "AVAILABLE" || isCaptainLocationStale(c)) return "far";
   if (c.activeOrders > 0) return "busy";
   if (c.waitingOffers > 0) return "waiting";
   return "available";

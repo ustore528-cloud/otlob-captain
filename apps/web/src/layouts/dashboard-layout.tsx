@@ -1,15 +1,16 @@
 import { useEffect } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, useNavigate } from "react-router-dom";
 import { DashboardSidebar } from "@/layouts/dashboard/dashboard-sidebar";
 import { useDashboardSocketInvalidate } from "@/layouts/dashboard/use-dashboard-socket-invalidate";
 import {
   canAccessCaptainsPage,
+  canAccessComplaintsPage,
   canAccessFinancePage,
   canAccessIncubatorHost,
   canAccessReportsPage,
   canAccessUsersPage,
   canListOrdersRole,
-  isCompanyAdminRole,
+  isAdminPanelRole,
   isDispatchRole,
 } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
@@ -25,9 +26,9 @@ export function DashboardLayout() {
   const clear = useAuthStore((s) => s.clear);
 
   const role = user?.role;
+  const isAdminPanel = isAdminPanelRole(role);
   const isDispatch = isDispatchRole(role);
-  /** Company Admin gets distribution (Phase 3.2.1) but not the legacy “stores” hub entry tied to the same flag. */
-  const canStoresNav = isDispatch && !isCompanyAdminRole(role);
+  const canStoresNav = isDispatch;
   const canOrders = canListOrdersRole(role);
   const canFinance = canAccessFinancePage(role);
   const canReports = canAccessReportsPage(role);
@@ -45,6 +46,7 @@ export function DashboardLayout() {
     canUsers,
     canFinance,
     canReports,
+    canComplaints: canAccessComplaintsPage(role),
   };
 
   useEffect(() => {
@@ -56,6 +58,7 @@ export function DashboardLayout() {
   useDashboardSocketInvalidate(token);
 
   if (!token) return null;
+  if (!isAdminPanel) return <Navigate to="/forbidden" replace />;
 
   const userLabel =
     user?.fullName != null && String(user.fullName).trim() !== ""

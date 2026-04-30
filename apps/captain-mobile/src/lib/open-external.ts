@@ -29,17 +29,91 @@ export async function openPhoneDialer(phone: string): Promise<void> {
 }
 
 export async function openWhatsAppChat(phone: string): Promise<void> {
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] rawPhone", { rawPhone: phone });
   const d = normalizePhoneForWhatsApp(phone);
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] normalizedPhone", { normalizedPhone: d });
   if (!d) {
     Alert.alert(i18n.t("openExternal.whatsappInvalidTitle"), i18n.t("openExternal.whatsappInvalidBody"));
     return;
   }
-  const url = `https://wa.me/${d}`;
+
+  const whatsappUrl = `whatsapp://send?phone=${d}`;
+  const waMeUrl = `https://wa.me/${d}`;
+  const sanitized = sanitizePhoneForDial(phone);
+  /** Prefer original `tel:` shape when dialable; else E.164-style from normalized digits. */
+  const telUrl = sanitized ? `tel:${sanitized}` : `tel:+${d}`;
+
+  let whatsappCanOpen = false;
+  let waMeCanOpen = false;
+  let telCanOpen = false;
   try {
-    await Linking.openURL(url);
+    whatsappCanOpen = await Linking.canOpenURL(whatsappUrl);
   } catch {
-    Alert.alert(i18n.t("openExternal.whatsappFailedTitle"), i18n.t("openExternal.whatsappFailedBody"));
+    whatsappCanOpen = false;
   }
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] whatsappCanOpen", { whatsappCanOpen });
+
+  if (whatsappCanOpen) {
+    try {
+      await Linking.openURL(whatsappUrl);
+      // eslint-disable-next-line no-console
+      console.info("[captain-whatsapp] selectedFallback", { selectedFallback: "whatsapp" });
+      return;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("[captain-whatsapp] whatsapp-open-failed", { error });
+    }
+  }
+
+  try {
+    waMeCanOpen = await Linking.canOpenURL(waMeUrl);
+  } catch {
+    waMeCanOpen = false;
+  }
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] waMeCanOpen", { waMeCanOpen });
+
+  if (waMeCanOpen) {
+    try {
+      await Linking.openURL(waMeUrl);
+      // eslint-disable-next-line no-console
+      console.info("[captain-whatsapp] selectedFallback", { selectedFallback: "wa.me" });
+      return;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("[captain-whatsapp] waMe-open-failed", { error });
+    }
+  }
+
+  try {
+    telCanOpen = await Linking.canOpenURL(telUrl);
+  } catch {
+    telCanOpen = false;
+  }
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] telCanOpen", { telCanOpen });
+
+  if (telCanOpen) {
+    try {
+      await Linking.openURL(telUrl);
+      // eslint-disable-next-line no-console
+      console.info("[captain-whatsapp] selectedFallback", { selectedFallback: "tel" });
+      return;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("[captain-whatsapp] tel-open-failed", { error });
+    }
+  }
+
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] selectedFallback", { selectedFallback: "none" });
+  Alert.alert(
+    i18n.t("openExternal.whatsappOrDialUnavailableTitle"),
+    i18n.t("openExternal.whatsappOrDialUnavailableBody"),
+  );
 }
 
 /**

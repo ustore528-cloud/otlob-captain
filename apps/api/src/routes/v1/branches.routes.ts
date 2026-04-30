@@ -11,7 +11,7 @@ router.use(authMiddleware);
 
 router.get(
   "/",
-  requireRoles("SUPER_ADMIN", "COMPANY_ADMIN", "ADMIN", "BRANCH_MANAGER"),
+  requireRoles("SUPER_ADMIN", "COMPANY_ADMIN"),
   validate("query", ListBranchesQuerySchema),
   asyncHandler(branchesController.list.bind(branchesController)),
 );

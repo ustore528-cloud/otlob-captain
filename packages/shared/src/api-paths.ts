@@ -26,6 +26,14 @@ export const paths = {
     byId: (companyId: string) => `${API_V1}/companies/${companyId}`,
     deletePreview: (companyId: string) => `${API_V1}/companies/${companyId}/delete-preview`,
     archive: (companyId: string) => `${API_V1}/companies/${companyId}/archive`,
+    /** SUPER_ADMIN — إعدادات صفحة الطلب العامة لشركة */
+    publicPageSettings: (companyId: string) => `${API_V1}/companies/${companyId}/public-page-settings`,
+    /** SUPER_ADMIN — سليكر صور صفحة الطلب (HTTPS) */
+    publicPageCarousel: (companyId: string) => `${API_V1}/companies/${companyId}/public-page-carousel`,
+  },
+  /** إعدادات صفحة الطلب العام — JWT مدير شركة فقط */
+  companyPublicPageSettings: {
+    me: `${API_V1}/company/public-page-settings/me`,
   },
   branches: {
     root: `${API_V1}/branches`,
@@ -36,6 +44,25 @@ export const paths = {
   public: {
     requestContext: (code: string) => `${API_V1}/public/request-context/${encodeURIComponent(code)}`,
     orders: `${API_V1}/public/orders`,
+    /** POST — بدون JWT؛ companyId يُستخرَج من صفحة الطلب */
+    complaints: (ownerCode: string) =>
+      `${API_V1}/public/request-pages/${encodeURIComponent(ownerCode)}/complaints`,
+    /** GET — إحداثيات → عنوان نصي (بدون JWT) */
+    reverseGeocode: (lat: number, lng: number) =>
+      `${API_V1}/public/geocode/reverse?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+    /** كباتن ضمن نصف قطر من نقطة — بدون JWT */
+    nearbyCaptains: (ownerCode: string, lat: number, lng: number, radiusKm?: number) => {
+      let u = `${API_V1}/public/nearby-captains/${encodeURIComponent(ownerCode)}?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`;
+      if (radiusKm != null) u += `&radiusKm=${encodeURIComponent(String(radiusKm))}`;
+      return u;
+    },
+    /** تتبّع طلب من صفحة عمومية — token من استجابة إنشاء الطلب */
+    orderTracking: (ownerCode: string, orderId: string, token: string) =>
+      `${API_V1}/public/order-tracking/${encodeURIComponent(ownerCode)}/${encodeURIComponent(orderId)}?token=${encodeURIComponent(token)}`,
+  },
+  complaints: {
+    root: `${API_V1}/complaints`,
+    status: (id: string) => `${API_V1}/complaints/${id}/status`,
   },
   captains: {
     root: `${API_V1}/captains`,

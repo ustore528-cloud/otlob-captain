@@ -17,7 +17,22 @@ import { CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES } from "./distribution/eligibilit
 import type { AppRole } from "../lib/rbac-roles.js";
 
 export const trackingService = {
-  async updateLocation(userId: string, latitude: number, longitude: number) {
+  async updateLocation(
+    userId: string,
+    latitude: number,
+    longitude: number,
+    meta?: { heading?: number | null; speed?: number | null; accuracy?: number | null; timestamp?: string | null },
+  ) {
+    // eslint-disable-next-line no-console
+    console.info("[api-location] received", {
+      userId,
+      latitude,
+      longitude,
+      heading: meta?.heading ?? null,
+      speed: meta?.speed ?? null,
+      accuracy: meta?.accuracy ?? null,
+      timestamp: meta?.timestamp ?? null,
+    });
     const captain = await captainRepository.findByUserId(userId);
     if (!captain) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
 
@@ -26,13 +41,24 @@ export const trackingService = {
       where: { id: captain.id },
       data: { lastSeenAt: new Date() },
     });
-    await activityService.log(userId, "CAPTAIN_LOCATION", "captain", captain.id, { latitude, longitude });
+    await activityService.log(userId, "CAPTAIN_LOCATION", "captain", captain.id, {
+      latitude,
+      longitude,
+      heading: meta?.heading ?? null,
+      speed: meta?.speed ?? null,
+      accuracy: meta?.accuracy ?? null,
+      timestamp: meta?.timestamp ?? null,
+    });
     emitCaptainLocation({
       captainId: captain.id,
       userId,
       latitude,
       longitude,
       recordedAt: loc.recordedAt.toISOString(),
+      heading: meta?.heading ?? null,
+      speed: meta?.speed ?? null,
+      accuracy: meta?.accuracy ?? null,
+      timestamp: meta?.timestamp ?? null,
     }, {
       companyId: captain.companyId,
       branchId: captain.branchId,
@@ -97,8 +123,9 @@ export const trackingService = {
         area: true,
         availabilityStatus: true,
         vehicleType: true,
+        displayI18n: true,
         /** `id` يطابق `userId` — احتياطي للواجهة عند كاش قديم يفتقد `userId` */
-        user: { select: { id: true, fullName: true, phone: true } },
+        user: { select: { id: true, fullName: true, phone: true, displayI18n: true } },
       },
     });
     const ids = captains.map((c) => c.id);

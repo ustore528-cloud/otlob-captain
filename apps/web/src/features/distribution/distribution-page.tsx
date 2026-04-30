@@ -29,6 +29,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { ActiveMapCaptain, OrderListItem } from "@/types/api";
 import { isRtlLang } from "@/i18n/i18n";
 import { orderCustomerNameQuick, resolveCaptainDisplayNameForPending } from "@/i18n/localize-entity-labels";
+import { isCaptainLocationStale } from "@/features/distribution/captain-map-visual";
 
 type PendingAssignmentUi = {
   id: string;
@@ -210,10 +211,12 @@ export function DistributionPageView() {
     const q = captainSearch.toLowerCase().trim();
     if (q && !displayName.includes(q)) return false;
     if (captainFilter === "all") return true;
-    if (captainFilter === "available") return c.availabilityStatus === "AVAILABLE" && c.activeOrders === 0 && c.waitingOffers === 0;
+    if (captainFilter === "available") {
+      return c.availabilityStatus === "AVAILABLE" && c.activeOrders === 0 && c.waitingOffers === 0 && !isCaptainLocationStale(c);
+    }
     if (captainFilter === "waiting") return c.waitingOffers > 0;
     if (captainFilter === "busy") return c.activeOrders > 0;
-    return !c.lastLocation || c.availabilityStatus !== "AVAILABLE";
+    return !c.lastLocation || c.availabilityStatus !== "AVAILABLE" || isCaptainLocationStale(c);
   });
   const selectedCaptain = selectedCaptainId ? mapCaptainsDeduped.find((c) => c.id === selectedCaptainId) ?? null : null;
   const selectedRosterCaptain = selectedCaptainId ? captainRoster.find((c) => c.id === selectedCaptainId) ?? null : null;
@@ -243,12 +246,17 @@ export function DistributionPageView() {
 
         <div className={`relative z-[1] rounded-2xl border border-card-border bg-white p-3 shadow-sm ${rtl ? "[direction:rtl]" : "[direction:ltr]"}`}>
           {hasGoogleMapsApiKey() ? (
-            <GoogleTrackingMap
-              captains={mapCaptainsDeduped}
-              orders={mergedOrders}
-              defaultCenter={distributionMapView.center}
-              defaultZoom={distributionMapView.zoom}
-            />
+            <>
+              <GoogleTrackingMap
+                captains={mapCaptainsDeduped}
+                orders={mergedOrders}
+                defaultCenter={distributionMapView.center}
+                defaultZoom={distributionMapView.zoom}
+              />
+              <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground" dir={rtl ? "rtl" : "ltr"}>
+                {t("distribution.google.assignDragUseCardsHint")}
+              </p>
+            </>
           ) : (
             <DistributionMap
               captains={mapCaptainsDeduped}
@@ -274,8 +282,9 @@ export function DistributionPageView() {
               type="search"
               value={captainSearch}
               onChange={(e) => setCaptainSearch(e.target.value)}
-              placeholder="بحث باسم الكابتن"
+              placeholder={t("distribution.google.captainSearchPlaceholder")}
               className="h-9 w-full rounded-lg border border-card-border bg-background px-3 text-sm"
+              aria-label={t("distribution.google.captainSearchPlaceholder")}
             />
           </div>
           <div className="mt-3 flex flex-wrap gap-1">

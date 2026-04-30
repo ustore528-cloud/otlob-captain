@@ -3,10 +3,10 @@ import { useRouter } from "expo-router";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useCaptainMe } from "@/hooks/api/use-captain-me";
 import { useNotificationsList } from "@/hooks/api/use-notifications";
 import { useAuth } from "@/hooks/use-auth";
+import { useInnerToolBack } from "@/hooks/use-inner-tool-back";
 import { AvailabilityControl, useUpdateAvailability } from "@/features/availability";
 import type { CaptainAvailabilityStatus } from "@/services/api/dto";
 import { CaptainSummaryCard } from "../components/captain-summary-card";
@@ -16,10 +16,9 @@ import { parseAvailabilityStatus } from "../labels";
 import { ScreenHeader } from "@/components/screen-header";
 import { WorkStatusBanner } from "@/features/work-status";
 import { QueryErrorState } from "@/components/ui/query-error-state";
-import { useInnerToolBack } from "@/hooks/use-inner-tool-back";
+import { ScreenContainer, SectionCard } from "@/components/ui";
 import { alertMutationError } from "@/lib/alert-mutation-error";
-import { screenStyles } from "@/theme/screen-styles";
-import { homeTheme } from "../theme";
+import { captainSpacing, captainUiTheme } from "@/theme/captain-ui-theme";
 
 export function HomeScreen() {
   const { t } = useTranslation();
@@ -65,8 +64,10 @@ export function HomeScreen() {
 
   const refreshing = meQuery.isFetching && !meQuery.isLoading;
 
+  const greetingName = meQuery.data?.user.fullName?.trim();
+
   return (
-    <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
+    <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
       <WorkStatusBanner />
       <ScreenHeader title={t("home.title")} onBack={goBack} />
       <View style={styles.accentBar} />
@@ -82,18 +83,20 @@ export function HomeScreen() {
               void meQuery.refetch();
               void notifQuery.refetch();
             }}
-            tintColor={homeTheme.accent}
+            tintColor={captainUiTheme.accent}
           />
         }
       >
         <View style={styles.header}>
-          <Text style={styles.greet}>{t("home.greet")}</Text>
+          <Text style={styles.greet}>
+            {greetingName ? t("home.greetNamed", { name: greetingName }) : t("home.greet")}
+          </Text>
           <Text style={styles.sub}>{t("home.sub")}</Text>
         </View>
 
         {meQuery.isLoading ? (
           <View style={styles.loader}>
-            <ActivityIndicator size="large" color={homeTheme.accent} />
+            <ActivityIndicator size="large" color={captainUiTheme.accent} />
             <Text style={styles.loaderText}>{t("home.loadingMe")}</Text>
           </View>
         ) : meQuery.isError ? (
@@ -105,7 +108,11 @@ export function HomeScreen() {
           />
         ) : meQuery.data ? (
           <>
-            <CaptainSummaryCard user={meQuery.data.user} captain={meQuery.data.captain} />
+            <CaptainSummaryCard
+              user={meQuery.data.user}
+              captain={meQuery.data.captain}
+              prepaidBalance={meQuery.data.captain.prepaidBalance ?? null}
+            />
 
             <View style={styles.sectionGap} />
 
@@ -113,11 +120,19 @@ export function HomeScreen() {
 
             <View style={styles.sectionGap} />
 
-            <AvailabilityControl
-              value={currentAvailability}
-              pending={updateAv.isPending}
-              onChange={onAvailability}
-            />
+            <SectionCard
+              title={t("home.workStatusSection")}
+              subtitle={t("availability.controlSubtitle")}
+              icon="radio-outline"
+              compact
+            >
+              <AvailabilityControl
+                embedded
+                value={currentAvailability}
+                pending={updateAv.isPending}
+                onChange={onAvailability}
+              />
+            </SectionCard>
 
             <View style={styles.sectionGap} />
 
@@ -136,53 +151,54 @@ export function HomeScreen() {
           </>
         ) : null}
 
-        <View style={{ height: 28 }} />
+        <View style={{ height: captainSpacing.screenBottom }} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
   accentBar: {
     height: 3,
-    marginHorizontal: 20,
+    marginHorizontal: captainSpacing.screenHorizontal,
     borderRadius: 3,
-    backgroundColor: homeTheme.accent,
-    opacity: 0.35,
+    backgroundColor: captainUiTheme.accent,
+    opacity: 0.28,
   },
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 12 },
-  header: { marginBottom: 20 },
+  scrollContent: { paddingHorizontal: captainSpacing.screenHorizontal, paddingTop: captainSpacing.md },
+  header: { marginBottom: captainSpacing.xl },
   greet: {
-    color: homeTheme.textMuted,
-    fontSize: 14,
+    color: captainUiTheme.textMuted,
+    fontSize: 17,
+    fontWeight: "800",
     textAlign: "right",
-    marginBottom: 4,
+    marginBottom: captainSpacing.xs,
   },
   sub: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 14,
     lineHeight: 22,
     textAlign: "right",
-    marginTop: 6,
+    marginTop: captainSpacing.sm - 2,
   },
-  sectionGap: { height: 16 },
+  sectionGap: { height: captainSpacing.lg },
   loader: {
     paddingVertical: 48,
     alignItems: "center",
-    gap: 12,
+    gap: captainSpacing.md,
   },
-  loaderText: { color: homeTheme.textMuted, fontSize: 14 },
+  loaderText: { color: captainUiTheme.textMuted, fontSize: 14 },
   hintBox: {
-    marginTop: 8,
-    padding: 14,
-    borderRadius: homeTheme.radiusMd,
-    backgroundColor: homeTheme.neutralSoft,
+    marginTop: captainSpacing.sm,
+    padding: captainSpacing.md - 2,
+    borderRadius: captainUiTheme.radiusMd,
+    backgroundColor: captainUiTheme.neutralSoft,
     borderWidth: 1,
-    borderColor: homeTheme.border,
+    borderColor: captainUiTheme.border,
   },
   hintText: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 13,
     lineHeight: 21,
     textAlign: "right",

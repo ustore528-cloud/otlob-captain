@@ -26,11 +26,12 @@ export const storesController = {
   },
 
   list: async (req: Request, res: Response) => {
-    const q = req.query as { page?: number; pageSize?: number; area?: string; isActive?: boolean };
+    const q = req.query as { page?: number; pageSize?: number; area?: string; isActive?: boolean; companyId?: string };
     const data = await storesService.list(
       {
         area: q.area,
         isActive: q.isActive,
+        companyId: q.companyId,
         page: Number(q.page) || 1,
         pageSize: Number(q.pageSize) || 20,
       },

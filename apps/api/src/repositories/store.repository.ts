@@ -11,6 +11,7 @@ const supervisorUserSelect = {
   role: true,
   companyId: true,
   branchId: true,
+  displayI18n: true,
 } as const satisfies Prisma.UserSelect;
 
 const storeListInclude = {

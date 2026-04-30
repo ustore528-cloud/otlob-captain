@@ -50,7 +50,7 @@ export const orderRepository = {
       where: { id },
       include: {
         store: orderStoreInclude,
-        assignedCaptain: { include: { user: { select: { id: true, fullName: true, phone: true } } } },
+        assignedCaptain: { include: { user: { select: { id: true, fullName: true, phone: true, displayI18n: true } } } },
         assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 50 },
         createdBy: { select: { id: true, fullName: true, phone: true } },
       },
@@ -120,7 +120,7 @@ export const orderRepository = {
       data: normalizedData,
       include: {
         store: orderStoreInclude,
-        assignedCaptain: { include: { user: { select: { id: true, fullName: true, phone: true } } } },
+        assignedCaptain: { include: { user: { select: { id: true, fullName: true, phone: true, displayI18n: true } } } },
         assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 20 },
       },
     });
@@ -142,11 +142,21 @@ export const orderRepository = {
      */
     supervisorReadOr?: { storeIds: string[]; captainIds: string[] };
     companyAdminOwnerUserId?: string;
+    /**
+     * قائمة كابتن فقط: الطلبات المعينة له أو التي له فيها سجل تعيين (عروض/سجل).
+     */
+    captainVisibilityScopeId?: string;
   }) {
     const andParts: Prisma.OrderWhereInput[] = [
       /** قوائم التشغيل واللوحة: لا تعرض الطلبات المؤرشفة */
       { archivedAt: null },
     ];
+    if (params.captainVisibilityScopeId) {
+      const cid = params.captainVisibilityScopeId;
+      andParts.push({
+        OR: [{ assignedCaptainId: cid }, { assignmentLogs: { some: { captainId: cid } } }],
+      });
+    }
     if (params.storeId) andParts.push({ storeId: params.storeId });
     if (params.companyId) andParts.push({ companyId: params.companyId });
     if (params.branchId) andParts.push({ branchId: params.branchId });
@@ -188,7 +198,7 @@ export const orderRepository = {
         include: {
           store: { select: orderStoreListSelect },
           assignedCaptain: {
-            include: { user: { select: { fullName: true, phone: true } } },
+            include: { user: { select: { fullName: true, phone: true, displayI18n: true } } },
           },
           /** للوحة التوزيع: مهلة قبول العرض الحالي (PENDING لنفس الكابتن المعيّن) */
           assignmentLogs: {
@@ -221,7 +231,7 @@ export const orderRepository = {
         include: {
           store: { select: orderStoreListSelect },
           assignedCaptain: {
-            include: { user: { select: { fullName: true, phone: true } } },
+            include: { user: { select: { fullName: true, phone: true, displayI18n: true } } },
           },
           assignmentLogs: {
             where: { responseStatus: AssignmentResponseStatus.PENDING },
@@ -242,6 +252,7 @@ export const orderRepository = {
   listForCaptain(params: {
     captainId: string;
     branchId: string;
+    currentOnly?: boolean;
     status?: OrderStatus;
     from?: Date;
     to?: Date;
@@ -252,12 +263,14 @@ export const orderRepository = {
   }) {
     const AND: Prisma.OrderWhereInput[] = [
       { branchId: params.branchId },
-      {
-        OR: [
-          { assignedCaptainId: params.captainId },
-          { assignmentLogs: { some: { captainId: params.captainId } } },
-        ],
-      },
+      params.currentOnly
+        ? { assignedCaptainId: params.captainId }
+        : {
+            OR: [
+              { assignedCaptainId: params.captainId },
+              { assignmentLogs: { some: { captainId: params.captainId } } },
+            ],
+          },
     ];
     if (params.status) AND.push({ status: params.status });
     if (params.from || params.to) {
@@ -296,7 +309,7 @@ export const orderRepository = {
         include: {
           store: { select: orderStoreListSelect },
           assignedCaptain: {
-            include: { user: { select: { id: true, fullName: true, phone: true } } },
+            include: { user: { select: { id: true, fullName: true, phone: true, displayI18n: true } } },
           },
         },
       }),

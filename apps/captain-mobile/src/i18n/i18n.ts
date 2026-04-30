@@ -11,6 +11,29 @@ export const CAPTAIN_MOBILE_LANG_KEY = "captain_mobile_lang";
 export const SUPPORTED_LANGS = ["en", "ar", "he"] as const;
 export type CaptainLang = (typeof SUPPORTED_LANGS)[number];
 
+export function normalizeCaptainLanguage(lng: string | null | undefined): CaptainLang {
+  const base = (lng ?? "").split("-")[0];
+  return base === "ar" || base === "he" ? base : "en";
+}
+
+function isCaptainLang(lng: string | null | undefined): lng is CaptainLang {
+  return lng === "en" || lng === "ar" || lng === "he";
+}
+
+export async function resolveCaptainPushLanguage(currentLng?: string | null): Promise<CaptainLang> {
+  try {
+    const stored = await AsyncStorage.getItem(CAPTAIN_MOBILE_LANG_KEY);
+    if (isCaptainLang(stored)) return stored;
+  } catch {
+    /* ignore */
+  }
+
+  const current = currentLng?.split("-")[0];
+  if (isCaptainLang(current)) return current;
+
+  return normalizeCaptainLanguage(Localization.getLocales()[0]?.languageCode);
+}
+
 export function isRtlLng(lng: string): boolean {
   return lng === "ar" || lng === "he";
 }
@@ -29,7 +52,7 @@ const languageDetector = {
       /* ignore */
     }
     const tag = Localization.getLocales()[0]?.languageCode;
-    cb(tag === "ar" || tag === "he" ? tag : "en");
+    cb(normalizeCaptainLanguage(tag));
   },
   init: () => {},
   cacheUserLanguage: async (lng: string) => {

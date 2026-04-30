@@ -90,6 +90,24 @@ enum WalletOwnerType {
   CAPTAIN
 }
 
+enum DeliveryPricingMode {
+  FIXED
+  DISTANCE_BASED
+}
+
+enum DeliveryFeeRoundingMode {
+  CEIL
+  ROUND
+  NONE
+}
+
+/** شكوى من صفحة الطلب العامة — مرتبطة بالشركة فقط (بدون كود طعم companyId من العميل) */
+enum PublicPageComplaintStatus {
+  NEW
+  REVIEWED
+  RESOLVED
+}
+
 /**
  * أحداث دفتر الأستاذ الموحد (Slice 0 — نطاق minimal).
  * موجب = رصيد لصالح المحفظة، سالب = خصم من المحفظة.
@@ -178,6 +196,9 @@ model User {
    */
   ordersOwnedAsAdmin Order[] @relation("OrderOwnedByCompanyAdmin")
 
+  /** Optional UI-only localized labels (JSON); canonical `full_name` unchanged. */
+  displayI18n Json? @map("display_i18n")
+
   @@index([role, isActive])
   @@index([companyId])
   @@index([branchId])
@@ -187,6 +208,13 @@ model User {
 model Company {
   id        String   @id @default(cuid())
   name      String
+  incubatorMotherName String? @map("incubator_mother_name")
+  /** Optional UI-only display translations for `name`. */
+  displayI18n Json? @map("display_i18n")
+  /**
+   * إعدادات صفحة الطلب العام (/request/:ownerCode) — نصوص، شريحة إعلانية، ظهور أقسام، نصف قطر الخريطة.
+   */
+  publicPageSettings Json? @map("public_page_settings")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -205,9 +233,27 @@ model Company {
   /**
    * محافظ مالية (Slice 1) — مرتبطة بالشركة
    */
-  walletAccounts   WalletAccount[]
+  walletAccounts         WalletAccount[]
+  publicPageComplaints   PublicPageComplaint[]
 
   @@map("companies")
+}
+
+model PublicPageComplaint {
+  id             String                    @id @default(cuid())
+  companyId      String                    @map("company_id")
+  company        Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customerName   String                    @map("customer_name")
+  customerPhone  String                    @map("customer_phone")
+  complaintType  String                    @map("complaint_type")
+  message        String                    @db.Text
+  status         PublicPageComplaintStatus @default(NEW)
+  createdAt      DateTime                  @default(now()) @map("created_at")
+  updatedAt      DateTime                  @updatedAt @map("updated_at")
+
+  @@index([companyId, createdAt])
+  @@index([status])
+  @@map("public_page_complaints")
 }
 
 /**
@@ -229,6 +275,8 @@ model Region {
    * GeoJSON (مثلاً Polygon / MultiPolygon) — يُستكمل لاحقاً من محرر الخريطة
    */
   boundaryGeoJson Json?    @map("boundary_geojson")
+  /** Optional UI-only translations for region `name`. */
+  displayI18n     Json?    @map("display_i18n")
   isActive        Boolean  @default(true) @map("is_active")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -308,6 +356,11 @@ model DeliverySettings {
   id                 String   @id @default(cuid())
   companyId          String   @unique @map("company_id")
   company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  deliveryPricingMode DeliveryPricingMode @default(FIXED) @map("delivery_pricing_mode")
+  fixedDeliveryFee    Decimal? @map("fixed_delivery_fee") @db.Decimal(12, 2)
+  baseDeliveryFee     Decimal? @map("base_delivery_fee") @db.Decimal(12, 2)
+  pricePerKm          Decimal? @map("price_per_km") @db.Decimal(12, 2)
+  deliveryFeeRoundingMode DeliveryFeeRoundingMode @default(CEIL) @map("delivery_fee_rounding_mode")
   /**
    * رسوم توصيل افتراضية للاقتباس (اختياري)
    */
@@ -347,6 +400,8 @@ model Store {
    */
   supervisorUserId String?               @map("supervisor_user_id")
   supervisorUser   User?                 @relation("StoreCaptainSupervisor", fields: [supervisorUserId], references: [id], onDelete: SetNull)
+  /** Optional UI-only translations ({ name?, area?, address?, primaryRegionName? }). */
+  displayI18n      Json?                 @map("display_i18n")
   orders           Order[]
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @updatedAt @map("updated_at")
@@ -398,6 +453,9 @@ model Captain {
    */
   zoneId          String? @map("zone_id")
   zone            Zone?   @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+
+  /** Optional UI-only translations (e.g. { area }). */
+  displayI18n Json? @map("display_i18n")
 
   assignmentLogs      OrderAssignmentLog[]
   locations           CaptainLocation[]
@@ -462,6 +520,10 @@ model Order {
    * نسخة denormalized من `User.publicOwnerCode` وقت إنشاء الطلب (تدقيق/روابط عامة).
    */
   orderPublicOwnerCode    String?                     @map("order_public_owner_code") @db.VarChar(64)
+  /**
+   * رمز لمتابعة الطلب على الصفحة العامة بدون JWT — يُصدَر مرّة عند الإنشاء من صفحة `/request`.
+   */
+  publicTrackingToken     String?                     @unique @map("public_tracking_token") @db.VarChar(64)
   /**
    * منطقة اختيارية مرتبطة بالطلب (عرض/تقارير — الحد الأمني هو المالك وليس المنطقة).
    */
@@ -547,6 +609,8 @@ model Notification {
   type      String
   title     String
   body      String   @db.Text
+  /** Optional UI-only localized lines ({ title?, body? }). Canonical `title`/`body` unchanged. */
+  displayI18n Json?  @map("display_i18n")
   isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -561,6 +625,7 @@ model CaptainPushToken {
   token      String   @unique
   platform   String   @default("android")
   appVersion String?  @map("app_version")
+  locale     String?
   isActive   Boolean  @default(true) @map("is_active")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")

@@ -10,7 +10,14 @@ import {
   inferCanonicalOrderFinancialBreakdown,
   inferLegacyOrderFinancialBreakdown,
   type OrderFinancialBreakdownDto,
+  type ValueTranslations,
 } from "@captain/shared";
+import {
+  captainDisplayI18nFromJson,
+  regionDisplayI18nFromJson,
+  storeDisplayI18nFromJson,
+  userDisplayI18nFromJson,
+} from "../lib/display-i18n.js";
 import { clampOfferExpiredAtToConfiguredWindow } from "../services/distribution/clamp-offer-expired-at.js";
 
 function dec(v: Decimal | null | undefined): string {
@@ -50,6 +57,8 @@ export type OrderStoreSupervisorDto = {
   role: UserRole;
   companyId: string | null;
   branchId: string | null;
+  /** Optional localized display overrides for fullName — canonical fields unchanged */
+  displayI18n?: { fullName?: ValueTranslations };
 } | null;
 
 /** Phase A completion — read-only region summary on store (same on orders and /stores). */
@@ -58,6 +67,7 @@ export type StorePrimaryRegionSummaryDto = {
   code: string;
   name: string;
   isActive: boolean;
+  displayI18n?: { name?: ValueTranslations };
 } | null;
 
 export type StoreSummaryDto = {
@@ -68,6 +78,12 @@ export type StoreSummaryDto = {
   subscriptionType: StoreSubscriptionType;
   supervisorUser: OrderStoreSupervisorDto;
   primaryRegion: StorePrimaryRegionSummaryDto;
+  displayI18n?: {
+    name?: ValueTranslations;
+    area?: ValueTranslations;
+    address?: ValueTranslations;
+    primaryRegionName?: ValueTranslations;
+  };
 };
 
 export type OrderAssignmentLogDto = {
@@ -143,13 +159,14 @@ export type OrderListItemDto = {
   notes: string | null;
   store: Pick<
     StoreSummaryDto,
-    "id" | "name" | "area" | "subscriptionType" | "supervisorUser" | "primaryRegion"
+    "id" | "name" | "area" | "subscriptionType" | "supervisorUser" | "primaryRegion" | "displayI18n"
   >;
   createdAt: string;
   updatedAt: string;
   assignedCaptain: null | {
     id: string;
-    user: { fullName: string; phone: string };
+    user: { fullName: string; phone: string; displayI18n?: { fullName?: ValueTranslations } };
+    displayI18n?: { area?: ValueTranslations };
   };
   pendingOfferExpiresAt: string | null;
 };
@@ -187,6 +204,7 @@ type OrderWithStore = {
     area: string;
     phone?: string;
     subscriptionType: StoreSubscriptionType;
+    displayI18n?: Prisma.JsonValue | null;
     supervisorUser: {
       id: string;
       fullName: string;
@@ -195,12 +213,14 @@ type OrderWithStore = {
       role: UserRole;
       companyId: string | null;
       branchId: string | null;
+      displayI18n?: Prisma.JsonValue | null;
     } | null;
     primaryRegion: {
       id: string;
       code: string;
       name: string;
       isActive: boolean;
+      displayI18n?: Prisma.JsonValue | null;
     } | null;
   };
   assignmentLogs?: Array<{
@@ -239,6 +259,12 @@ export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
       ? inferCanonicalOrderFinancialBreakdown(amountStr, deliveryFeeStr, cashStr)
       : inferLegacyOrderFinancialBreakdown(amountStr, cashStr);
   const commissionEstimate = commissionEstimateFromCaptain(order.assignedCaptain ?? null, financialBreakdown.deliveryFee);
+  const storeDi = storeDisplayI18nFromJson(order.store.displayI18n ?? undefined);
+  const pr = order.store.primaryRegion;
+  const prDi = pr ? regionDisplayI18nFromJson(pr.displayI18n ?? undefined) : undefined;
+  const supUi = order.store.supervisorUser
+    ? userDisplayI18nFromJson(order.store.supervisorUser.displayI18n ?? undefined)
+    : undefined;
   return {
     id: order.id,
     orderNumber: order.orderNumber,
@@ -271,12 +297,14 @@ export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
       name: order.store.name,
       area: order.store.area,
       subscriptionType: order.store.subscriptionType,
+      ...(storeDi ? { displayI18n: storeDi } : {}),
       primaryRegion: order.store.primaryRegion
         ? {
             id: order.store.primaryRegion.id,
             code: order.store.primaryRegion.code,
             name: order.store.primaryRegion.name,
             isActive: order.store.primaryRegion.isActive,
+            ...(prDi ? { displayI18n: prDi } : {}),
           }
         : null,
       supervisorUser: order.store.supervisorUser
@@ -288,6 +316,7 @@ export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
             role: order.store.supervisorUser.role,
             companyId: order.store.supervisorUser.companyId,
             branchId: order.store.supervisorUser.branchId,
+            ...(supUi ? { displayI18n: supUi } : {}),
           }
         : null,
       ...(order.store.phone != null ? { phone: order.store.phone } : {}),
@@ -326,7 +355,8 @@ export function toOrderListItemDto(order: {
   updatedAt: Date;
   assignedCaptain?: {
     id: string;
-    user: { fullName: string; phone: string };
+    displayI18n?: Prisma.JsonValue | null;
+    user: { fullName: string; phone: string; displayI18n?: Prisma.JsonValue | null };
   } | null;
   assignmentLogs?: Array<{
     captainId: string;
@@ -339,6 +369,7 @@ export function toOrderListItemDto(order: {
     name: string;
     area: string;
     subscriptionType: StoreSubscriptionType;
+    displayI18n?: Prisma.JsonValue | null;
     supervisorUser: {
       id: string;
       fullName: string;
@@ -347,17 +378,20 @@ export function toOrderListItemDto(order: {
       role: UserRole;
       companyId: string | null;
       branchId: string | null;
+      displayI18n?: Prisma.JsonValue | null;
     } | null;
     primaryRegion: {
       id: string;
       code: string;
       name: string;
       isActive: boolean;
+      displayI18n?: Prisma.JsonValue | null;
     } | null;
   };
 }): OrderListItemDto {
   const sup = order.store.supervisorUser;
   const cap = order.assignedCaptain;
+  const storeDi = storeDisplayI18nFromJson(order.store.displayI18n ?? undefined);
   return {
     id: order.id,
     orderNumber: order.orderNumber,
@@ -378,13 +412,19 @@ export function toOrderListItemDto(order: {
       name: order.store.name,
       area: order.store.area,
       subscriptionType: order.store.subscriptionType,
+      ...(storeDi ? { displayI18n: storeDi } : {}),
       primaryRegion: order.store.primaryRegion
-        ? {
-            id: order.store.primaryRegion.id,
-            code: order.store.primaryRegion.code,
-            name: order.store.primaryRegion.name,
-            isActive: order.store.primaryRegion.isActive,
-          }
+        ? (() => {
+            const r = order.store.primaryRegion!;
+            const rDi = regionDisplayI18nFromJson(r.displayI18n ?? undefined);
+            return {
+              id: r.id,
+              code: r.code,
+              name: r.name,
+              isActive: r.isActive,
+              ...(rDi ? { displayI18n: rDi } : {}),
+            };
+          })()
         : null,
       supervisorUser: sup
         ? {
@@ -395,6 +435,9 @@ export function toOrderListItemDto(order: {
             role: sup.role,
             companyId: sup.companyId,
             branchId: sup.branchId,
+            ...(userDisplayI18nFromJson(sup.displayI18n ?? undefined)
+              ? { displayI18n: userDisplayI18nFromJson(sup.displayI18n ?? undefined) }
+              : {}),
           }
         : null,
     },
@@ -403,7 +446,16 @@ export function toOrderListItemDto(order: {
     assignedCaptain: cap
       ? {
           id: cap.id,
-          user: { fullName: cap.user.fullName, phone: cap.user.phone },
+          ...(captainDisplayI18nFromJson(cap.displayI18n ?? undefined)
+            ? { displayI18n: captainDisplayI18nFromJson(cap.displayI18n ?? undefined) }
+            : {}),
+          user: {
+            fullName: cap.user.fullName,
+            phone: cap.user.phone,
+            ...(userDisplayI18nFromJson(cap.user.displayI18n ?? undefined)
+              ? { displayI18n: userDisplayI18nFromJson(cap.user.displayI18n ?? undefined) }
+              : {}),
+          },
         }
       : null,
     pendingOfferExpiresAt: pendingOfferExpiresAtIsoForListItem(order),

@@ -165,6 +165,7 @@
     "guest": "התחבר כדי לראות נתונים.",
     "loading": "טוען סיכום…",
     "subServer": "הזמנות שסופקו בלבד — מהשרת",
+    "sectionPerformance": "סיכום התקופה",
     "kicker": "הביצועים שלך",
     "filterPeriod": "תקופה",
     "rangeAll": "כל התקופות",
@@ -181,7 +182,8 @@
     "totalCollectionHint": "סכום שיש לגבות מהזמנות שסופקו",
     "statDelivered": "הזמנות שסופקו",
     "statOrderValue": "ערך הזמנות",
-    "note": "המספרים מהשרת להזמנות בסטטוס «נמסר» בטווח שנבחר. הם עשויים להשתנות מהיתרה בפועל לפי התאמות."
+    "note": "המספרים מהשרת להזמנות בסטטוס «נמסר» בטווח שנבחר. הם עשויים להשתנות מהיתרה בפועל לפי התאמות.",
+    "noteSectionTitle": "הערה"
   },
   "notifications": {
     "title": "התראות",
@@ -195,7 +197,20 @@
     "hintGeneral": "התראה כללית — אין קישור ישיר להזמנה",
     "empty": "אין התראות עדיין.",
     "today": "היום",
-    "yesterday": "אתמול"
+    "yesterday": "אתמול",
+    "retryPushCta": "הפעל מחדש התראות",
+    "retryPushProgress": "מפעיל מחדש…",
+    "retryPushDeniedTitle": "לא ניתן להפעיל",
+    "retryPushDeniedBody": "אשר הרשאת התראות בהגדרות המכשיר.",
+    "retryPushNoProjectTitle": "לא ניתן להפעיל",
+    "retryPushNoProjectBody": "לא נמצא EAS projectId.",
+    "retryPushOkTitle": "הופעל",
+    "retryPushOkBody": "טוקן הדחיפה נרשם בהצלחה.",
+    "retryPushFailTitle": "לא ניתן להפעיל",
+    "retryPushRejectedBody": "השרת דחה את הטוקן. בדוק לוגים.",
+    "retryPushErrorTitle": "לא ניתן להפעיל",
+    "retryPushErrorBody": "משהו השתבש: {{message}}",
+    "apiLine": "API: {{url}}"
   },
   "openExternal": {
     "phoneNoNumberTitle": "אין מספר",
@@ -208,6 +223,8 @@
     "whatsappInvalidBody": "נדרש מספר בינלאומי מלא (לדוגמה +970 או +972).",
     "whatsappFailedTitle": "לא ניתן לפתוח וואטסאפ",
     "whatsappFailedBody": "וודא שוואטסאפ מותקן ושהמספר כולל קידומת מדינה.",
+    "whatsappOrDialUnavailableTitle": "לא ניתן לפתוח",
+    "whatsappOrDialUnavailableBody": "לא ניתן לפתוח את וואטסאפ או את אפליקציית החיוג במכשיר זה.",
     "mapFailedTitle": "לא ניתן לפתוח מפה",
     "mapFailedBody": "נסה שוב."
   },
@@ -264,6 +281,11 @@
   "home": {
     "title": "לוח הקפטן",
     "greet": "שלום",
+    "greetNamed": "שלום, {{name}}",
+    "workStatusSection": "זמינות ומצב עבודה",
+    "lastNotificationSection": "התראה אחרונה",
+    "notificationsViewAll": "הצג הכול",
+    "notificationsEmpty": "אין התראות אחרונות",
     "sub": "מבט קצר על המצב — נהג הזמנות מ«הזמנות זמינות»",
     "loadingMe": "טוען את הפרופיל…",
     "loadProfileErrorTitle": "לא ניתן לטעון את הפרופיל",
@@ -286,6 +308,14 @@
     "hintInferred": "דמי המשלוח חושבו מהפרש בין גבייה לסכום החנות כשאין שדה נפרד.",
     "hintCod": "תשלום במזומן במסירה — השתמש במחשבון למטה לעודף.",
     "hintNoCod": "אין גבייה נפרדת מהלקוח — הסכומים תואמים לסכום החנות."
+  },
+  "cashCalculator": {
+    "paidInputLabel": "סכום ששילם הלקוח ({{currency}})",
+    "inputA11y": "סכום ששילם הלקוח, {{currency}}",
+    "inputA11yHint": "ספרות בלבד; עד ספרה אחת אחרי הנקודה.",
+    "changeDue": "עודף להחזרה",
+    "remainingAmount": "יתרה לתשלום",
+    "paidInFull": "שולם במלואו"
   },
   "homeProfile": {
     "area": "אזור",
@@ -322,6 +352,7 @@
     "moneyLine3": "סכום גבייה מהלקוח: {{c}} ₪"
   },
   "prepaid": {
+    "sectionTitle": "ארנק מראש",
     "labelRemaining": "יתרה נותרת",
     "metricCommission": "אחוז עמלה",
     "metricEstimatedOrders": "הזמנות משוערות",

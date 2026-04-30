@@ -7,7 +7,9 @@ import { StoresPage } from "@/pages/stores-page";
 import { IncubatorHostPage } from "@/pages/incubator-host-page";
 import { LoginPage } from "@/pages/login-page";
 import { PublicRequestPage } from "@/pages/public-request-page";
+import { ComplaintsPage } from "@/pages/complaints-page";
 import { NewOrderPage } from "@/pages/new-order-page";
+import { ForbiddenPage } from "@/pages/forbidden-page";
 import {
   captainsLoader,
   storesLoader,
@@ -17,6 +19,7 @@ import {
   newOrderLoader,
   ordersLoader,
   reportsLoader,
+  complaintsLoader,
   usersLoader,
 } from "@/router/loaders";
 
@@ -45,6 +48,10 @@ export const router = createBrowserRouter([
   {
     path: "/request/:ownerCode",
     element: <PublicRequestPage />,
+  },
+  {
+    path: "/forbidden",
+    element: <ForbiddenPage />,
   },
   {
     path: "/",
@@ -106,6 +113,11 @@ export const router = createBrowserRouter([
           </Suspense>
         ),
         loader: reportsLoader,
+      },
+      {
+        path: "complaints",
+        element: <ComplaintsPage />,
+        loader: complaintsLoader,
       },
     ],
   },

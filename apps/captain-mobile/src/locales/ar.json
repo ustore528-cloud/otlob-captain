@@ -165,6 +165,7 @@
     "guest": "سجّل الدخول لعرض إحصائياتك.",
     "loading": "جاري تحميل الملخص…",
     "subServer": "طلبات مسلّمة فقط — من الخادم",
+    "sectionPerformance": "ملخص الفترة",
     "kicker": "أداؤك",
     "filterPeriod": "الفترة",
     "rangeAll": "كل الفترات",
@@ -181,7 +182,8 @@
     "totalCollectionHint": "مجموع المبالغ المطلوب تحصيلها من الطلبات المسلّمة",
     "statDelivered": "طلبات مسلّمة",
     "statOrderValue": "قيمة الطلبات",
-    "note": "الأرقام من الخادم لطلبات بحالة «تم التسليم» ضمن الفترة المختارة. قد تختلف عن الرصيد الفعلي حسب التسويات."
+    "note": "الأرقام من الخادم لطلبات بحالة «تم التسليم» ضمن الفترة المختارة. قد تختلف عن الرصيد الفعلي حسب التسويات.",
+    "noteSectionTitle": "ملاحظة"
   },
   "notifications": {
     "title": "الإشعارات",
@@ -195,7 +197,20 @@
     "hintGeneral": "تنبيه عام — لا يوجد رابط مباشر لطلب",
     "empty": "لا توجد إشعارات بعد.",
     "today": "اليوم",
-    "yesterday": "أمس"
+    "yesterday": "أمس",
+    "retryPushCta": "تفعيل الإشعارات من جديد",
+    "retryPushProgress": "جارٍ إعادة التفعيل…",
+    "retryPushDeniedTitle": "فشل التفعيل",
+    "retryPushDeniedBody": "يرجى منح إذن الإشعارات من إعدادات الجهاز.",
+    "retryPushNoProjectTitle": "فشل التفعيل",
+    "retryPushNoProjectBody": "لم يتم العثور على EAS projectId.",
+    "retryPushOkTitle": "تم التفعيل",
+    "retryPushOkBody": "تم تسجيل توكن الإشعارات بنجاح.",
+    "retryPushFailTitle": "فشل التفعيل",
+    "retryPushRejectedBody": "الخادم رفض التوكن. راجع السجلات.",
+    "retryPushErrorTitle": "فشل التفعيل",
+    "retryPushErrorBody": "حدث خطأ: {{message}}",
+    "apiLine": "API: {{url}}"
   },
   "openExternal": {
     "phoneNoNumberTitle": "لا يوجد رقم",
@@ -208,6 +223,8 @@
     "whatsappInvalidBody": "يلزم رقم جوال دولي كامل (مثال: +970 أو +972). الأرقام المحلية التي تبدأ بـ 05… غير كافية بدون كود الدولة.",
     "whatsappFailedTitle": "تعذّر فتح واتساب",
     "whatsappFailedBody": "تأكد من تثبيت واتساب أو أن الرقم يتضمّن كود الدولة.",
+    "whatsappOrDialUnavailableTitle": "تعذّر الفتح",
+    "whatsappOrDialUnavailableBody": "تعذّر فتح واتساب أو تطبيق الاتصال على هذا الجهاز.",
     "mapFailedTitle": "تعذّر فتح الخريطة",
     "mapFailedBody": "حاول مرة أخرى."
   },
@@ -264,6 +281,11 @@
   "home": {
     "title": "لوحة الكابتن",
     "greet": "مرحبًا",
+    "greetNamed": "مرحباً، {{name}}",
+    "workStatusSection": "حالة العمل والتوفر",
+    "lastNotificationSection": "آخر تنبيه",
+    "notificationsViewAll": "عرض الكل",
+    "notificationsEmpty": "لا توجد تنبيهات حديثة",
     "sub": "نظرة سريعة على حالتك — التنفيذ من «الطلبات المتاحة»",
     "loadingMe": "جاري تحميل بياناتك…",
     "loadProfileErrorTitle": "تعذّر تحميل الملف",
@@ -286,6 +308,14 @@
     "hintInferred": "تم استنتاج رسوم التوصيل من الفرق بين التحصيل ومبلغ المتجر عند عدم وجود حقل منفصل.",
     "hintCod": "نقد عند التسليم — استخدم الحاسبة أدناه للباقي.",
     "hintNoCod": "لا يوجد تحصيل منفصل من العميل — الإجمالي يطابق مبلغ المتجر."
+  },
+  "cashCalculator": {
+    "paidInputLabel": "المبلغ المدفوع من العميل ({{currency}})",
+    "inputA11y": "المبلغ المدفوع من العميل، {{currency}}",
+    "inputA11yHint": "أرقام فقط؛ عدد واحد بعد الفاصلة كحدّ أقصى.",
+    "changeDue": "المبلغ المعاد للعميل",
+    "remainingAmount": "المبلغ المتبقي",
+    "paidInFull": "مُسدَّد بالكامل"
   },
   "homeProfile": {
     "area": "المنطقة",
@@ -322,6 +352,7 @@
     "moneyLine3": "مبلغ التحصيل من العميل: {{c}} ₪"
   },
   "prepaid": {
+    "sectionTitle": "الرصيد المسبق",
     "labelRemaining": "الرصيد المتبقي",
     "metricCommission": "نسبة العمولة",
     "metricEstimatedOrders": "طلبات تقديرية",

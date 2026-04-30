@@ -5,8 +5,20 @@ import { trackingService } from "../services/tracking.service.js";
 
 export const trackingController = {
   updateMyLocation: async (req: Request, res: Response) => {
-    const body = req.body as { latitude: number; longitude: number };
-    const data = await trackingService.updateLocation(req.user!.id, body.latitude, body.longitude);
+    const body = req.body as {
+      latitude: number;
+      longitude: number;
+      heading?: number | null;
+      speed?: number | null;
+      accuracy?: number | null;
+      timestamp?: string | null;
+    };
+    const data = await trackingService.updateLocation(req.user!.id, body.latitude, body.longitude, {
+      heading: body.heading ?? null,
+      speed: body.speed ?? null,
+      accuracy: body.accuracy ?? null,
+      timestamp: body.timestamp ?? null,
+    });
     return res.json(ok(data));
   },
 

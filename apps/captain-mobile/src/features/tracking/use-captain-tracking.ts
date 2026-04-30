@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AppState, type AppStateStatus } from "react-native";
+import { AppState, Platform, type AppStateStatus } from "react-native";
+import * as Location from "expo-location";
 import i18n from "@/i18n/i18n";
 import { useAuthStore, selectIsAuthenticated } from "@/store/auth-store";
 import type { CaptainLocationRecordDto } from "@/services/api/dto";
@@ -11,6 +12,9 @@ import { LocationOutbox } from "./outbox";
 import { getForegroundPermissionState, requestForegroundPermission } from "./permission";
 import { sendCaptainLocationReliable } from "./sender";
 import type { CaptainTrackingSnapshot, ForegroundPermissionState, TrackingIssue } from "./types";
+import { useCaptainAssignment } from "@/hooks/api/use-captain-assignment";
+
+const IS_TRACKING_RUNTIME_SUPPORTED = Platform.OS !== "web";
 
 type TrackingRefs = {
   sessionEnabled: boolean;
@@ -49,10 +53,33 @@ function buildSnapshot(
  * الجلسة مفعّلة تلقائيًا عندما يكون التوفر ليس «غير متصل» (OFFLINE) — مثل مفتاح التوفر في الصفحة الرئيسية.
  */
 export function useCaptainTrackingState(): UseCaptainTrackingResult {
+  if (!IS_TRACKING_RUNTIME_SUPPORTED) {
+    return {
+      snapshot: buildSnapshot({
+        sessionEnabled: false,
+        permission: "unknown",
+        reachability: "unknown",
+        appInForeground: true,
+        lastFix: null,
+        lastServerAck: null,
+        pendingInOutbox: 0,
+        lastIssue: null,
+      }),
+      refreshPermission: async () => {},
+    };
+  }
+
   const reachability = useNetworkReachability();
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const availabilityStatus = useAuthStore((s) => s.captain?.availabilityStatus);
-  const sessionEnabled = isAuthenticated && isAvailabilityOnlineForTracking(availabilityStatus);
+  const assignmentQ = useCaptainAssignment({
+    enabled: isAuthenticated,
+    refetchInterval: 20_000,
+    refetchIntervalInBackground: false,
+  });
+  const hasActiveAssignment = assignmentQ.data?.state === "ACTIVE";
+  const sessionEnabled =
+    isAuthenticated && (isAvailabilityOnlineForTracking(availabilityStatus) || hasActiveAssignment);
   const [permission, setPermission] = useState<ForegroundPermissionState>("unknown");
   const [appForeground, setAppForeground] = useState(true);
   const [lastFix, setLastFix] = useState<CaptainTrackingSnapshot["lastFix"]>(null);
@@ -91,8 +118,12 @@ export function useCaptainTrackingState(): UseCaptainTrackingResult {
       if (p !== "granted") {
         p = await requestForegroundPermission();
         setPermission(p);
+        // eslint-disable-next-line no-console
+        console.info("[captain-location] permission-status", { granted: p === "granted", source: "request" });
       } else {
         setPermission("granted");
+        // eslint-disable-next-line no-console
+        console.info("[captain-location] permission-status", { granted: true, source: "cached" });
       }
       if (p === "granted") {
         setLastIssue((prev) => (prev?.kind === "permission_denied" ? null : prev));
@@ -147,6 +178,13 @@ export function useCaptainTrackingState(): UseCaptainTrackingResult {
 
       const now = Date.now();
       setLastFix({ latitude: coords.latitude, longitude: coords.longitude, recordedAtMs: now });
+      // eslint-disable-next-line no-console
+      console.info("[captain-location] update lat lng accuracy timestamp", {
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        accuracy: null,
+        timestamp: new Date(now).toISOString(),
+      });
 
       if (refs.current.reachability !== "online") {
         outboxRef.current.enqueue(coords);
@@ -159,10 +197,24 @@ export function useCaptainTrackingState(): UseCaptainTrackingResult {
       }
 
       try {
-        const ack = await sendCaptainLocationReliable(coords);
+        const ack = await sendCaptainLocationReliable({
+          ...coords,
+          heading: null,
+          speed: null,
+          accuracy: null,
+          timestamp: new Date(now).toISOString(),
+        });
+        // eslint-disable-next-line no-console
+        console.info("[captain-location] send-success", {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          mode: "tick",
+        });
         setLastServerAck(ack);
         setLastIssue(null);
       } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error("[captain-location] send-failed", { mode: "tick", error: e });
         outboxRef.current.enqueue(coords);
         updatePending();
         setLastIssue(classifySendFailure(e));
@@ -175,7 +227,7 @@ export function useCaptainTrackingState(): UseCaptainTrackingResult {
   const runTickRef = useRef(runTick);
   runTickRef.current = runTick;
 
-  /** حلقة التقطيع — يعتمد على مرجع مستقر لتفادي إعادة جدولة المؤقت بلا داعٍ */
+  /** حلقة fallback دورية بسيطة في حال تعثّر watchPosition */
   useEffect(() => {
     if (!sessionEnabled || !appForeground || permission !== "granted") {
       return;
@@ -185,6 +237,94 @@ export function useCaptainTrackingState(): UseCaptainTrackingResult {
     const id = setInterval(tick, TRACKING_CONFIG.intervalMsForeground);
     return () => clearInterval(id);
   }, [sessionEnabled, appForeground, permission]);
+
+  /** Live foreground tracking stream */
+  useEffect(() => {
+    if (!sessionEnabled || !appForeground || permission !== "granted") return;
+
+    let disposed = false;
+    let inFlight = false;
+    let sub: Location.LocationSubscription | null = null;
+    // eslint-disable-next-line no-console
+    console.info("[captain-location] watcher-started", {
+      mode: "watchPositionAsync",
+      availabilityStatus,
+      intervalMs: TRACKING_CONFIG.intervalMsForeground,
+      hasActiveAssignment,
+    });
+
+    void Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 5000,
+        distanceInterval: 10,
+      },
+      (pos) => {
+        if (disposed || inFlight) return;
+        inFlight = true;
+        void (async () => {
+          const now = Date.now();
+          const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+          const body = {
+            ...coords,
+            heading: Number.isFinite(pos.coords.heading as number) ? (pos.coords.heading as number) : null,
+            speed: Number.isFinite(pos.coords.speed as number) ? (pos.coords.speed as number) : null,
+            accuracy: Number.isFinite(pos.coords.accuracy as number) ? (pos.coords.accuracy as number) : null,
+            timestamp: pos.timestamp ? new Date(pos.timestamp).toISOString() : new Date(now).toISOString(),
+          };
+          setLastFix({ ...coords, recordedAtMs: now });
+          // eslint-disable-next-line no-console
+          console.info("[captain-location] update lat lng accuracy timestamp", {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracy: body.accuracy,
+            timestamp: body.timestamp,
+          });
+          if (refs.current.reachability !== "online") {
+            outboxRef.current.enqueue(coords);
+            updatePending();
+            setLastIssue({ kind: "network", message: i18n.t("tracking.issueNetworkOffline") });
+            return;
+          }
+          try {
+            const ack = await sendCaptainLocationReliable(body);
+            // eslint-disable-next-line no-console
+            console.info("[captain-location] send-success", {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+              mode: "watch",
+            });
+            setLastServerAck(ack);
+            setLastIssue(null);
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error("[captain-location] send-failed", { mode: "watch", error: e });
+            outboxRef.current.enqueue(coords);
+            updatePending();
+            setLastIssue(classifySendFailure(e));
+          }
+        })().finally(() => {
+          inFlight = false;
+        });
+      },
+    )
+      .then((s) => {
+        sub = s;
+      })
+      .catch((e: unknown) => {
+        setLastIssue({
+          kind: "gps_unavailable",
+          message: formatLocationError(e),
+        });
+      });
+
+    return () => {
+      disposed = true;
+      sub?.remove();
+      // eslint-disable-next-line no-console
+      console.info("[captain-location] watcher-stopped", { availabilityStatus, hasActiveAssignment });
+    };
+  }, [sessionEnabled, appForeground, permission, availabilityStatus, hasActiveAssignment, updatePending]);
 
   /** عند عودة الشبكة — إفراغ الطابور */
   useEffect(() => {

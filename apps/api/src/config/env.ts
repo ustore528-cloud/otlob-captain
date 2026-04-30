@@ -7,6 +7,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** دائمًا `apps/api/.env` بغض النظر عن مجلد التشغيل (الجذر أو apps/api) */
 loadEnv({ path: path.resolve(__dirname, "..", "..", ".env"), override: true });
 
+/**
+ * One-off scripts (inspect DB, send test push against prod data) without editing `.env`:
+ * set `REMOTE_DATABASE_URL` in the shell to a Railway/Postgres URL; it overrides `DATABASE_URL` for Prisma.
+ */
+if (process.env.REMOTE_DATABASE_URL?.trim()) {
+  process.env.DATABASE_URL = process.env.REMOTE_DATABASE_URL.trim();
+}
+
 const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().default(4000),
@@ -18,6 +26,11 @@ const EnvSchema = z.object({
   EXPO_PUSH_ACCESS_TOKEN: z.string().optional(),
   /** افتراضيًا مفتوح للتطوير (موبايل على LAN، Expo). للإنتاج حدّد دومينات الويب صراحةً. */
   CORS_ORIGIN: z.string().default("*"),
+  /**
+   * أصول إضافية (مفصولة بفاصلة) تُدمَج مع `CORS_ORIGIN` و`WEB_DASHBOARD_ORIGIN` — مفيدة لـ Vercel Preview
+   * دون إطالة سطر `CORS_ORIGIN` على Railway.
+   */
+  CORS_EXTRA_ORIGINS: z.string().optional().default(""),
   /**
    * Set to `"1"` for one-test structured logs on stdout (`[offer-diagnostics]`) when creating/reading offers.
    * Offer window duration is fixed in code (`OFFER_CONFIRMATION_WINDOW_SECONDS`), not env.

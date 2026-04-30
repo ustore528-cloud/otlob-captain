@@ -23,6 +23,7 @@ import { openWhatsAppChat } from "@/lib/open-external";
 import { OrderFinancialSection } from "@/components/order/order-financial-section";
 import { shouldShowOrderFinancialSection } from "@/lib/order-payment-ui-visibility";
 import { workflowAdvanceLabelKey } from "../utils/captain-order-actions";
+import { playNewOrderAlertSound, stopNewOrderAlertSound } from "@/lib/sounds/new-order-alert";
 
 /** ASSIGNED+pending offer → API `OFFER` (shown here as kind OFFER); post-accept work → `ACTIVE` (ACCEPTED+). Blocking for auto distribution still counts ASSIGNED on server. */
 
@@ -63,6 +64,7 @@ export function useCaptainAssignmentWorkbench() {
     updatePendingOrderId,
   } = useCaptainOrderMutations();
   const [refreshing, setRefreshing] = useState(false);
+  const lastPlayedOfferKeyRef = useRef<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -187,6 +189,28 @@ export function useCaptainAssignmentWorkbench() {
 
   const orders = computedOrders;
 
+  useEffect(() => {
+    const current = assignmentQuery.data;
+    if (current?.state === "OFFER") {
+      const offerKey = `${current.order.id}:${current.log.id}`;
+      if (lastPlayedOfferKeyRef.current !== offerKey) {
+        lastPlayedOfferKeyRef.current = offerKey;
+        void playNewOrderAlertSound();
+      }
+      return;
+    }
+
+    lastPlayedOfferKeyRef.current = null;
+    void stopNewOrderAlertSound();
+  }, [assignmentQuery.data]);
+
+  useEffect(
+    () => () => {
+      void stopNewOrderAlertSound();
+    },
+    [],
+  );
+
   const isLoading = assignmentQuery.isLoading;
   const isError = assignmentQuery.isError;
   const errorMessage = isError ? formatUnknownError(assignmentQuery.error, t("workbench.loadError")) : null;
@@ -217,6 +241,8 @@ export function useCaptainAssignmentWorkbench() {
           card.kind === "OFFER"
             ? () =>
                 void run(async () => {
+                  lastPlayedOfferKeyRef.current = null;
+                  await stopNewOrderAlertSound();
                   await accept.mutateAsync(card.id);
                 }, t("workbench.errorAccept"))
             : undefined
@@ -225,6 +251,8 @@ export function useCaptainAssignmentWorkbench() {
           card.kind === "OFFER"
             ? () =>
                 void run(async () => {
+                  lastPlayedOfferKeyRef.current = null;
+                  await stopNewOrderAlertSound();
                   await reject.mutateAsync(card.id);
                 }, t("workbench.errorReject"))
             : undefined
@@ -244,6 +272,8 @@ export function useCaptainAssignmentWorkbench() {
         }
         busyAdvance={updatePendingOrderId === card.id}
         onOfferExpired={() => {
+          lastPlayedOfferKeyRef.current = null;
+          void stopNewOrderAlertSound();
           void assignmentQuery.refetch();
           void overflowQuery.refetch();
         }}

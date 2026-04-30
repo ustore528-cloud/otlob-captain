@@ -1,18 +1,13 @@
 import type { WalletAccount } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/errors.js";
-import { isOrderOperatorRole, isStoreAdminRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
+import { isOrderOperatorRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
 import { assertStaffCanAccessCaptain, resolveStaffTenantOrderListFilter } from "./tenant-scope.service.js";
 
-const STORE_BALANCE_ROLES: AppRole[] = [
-  "SUPER_ADMIN",
-  "STORE_ADMIN",
-  "STORE_USER",
-] as const;
+/** يطابق مسارات `/finance`: سوبر المنصّة أو مدير الشركة ضمن شركة فقط؛ أدوار المتجر القديمة غير معتمدة. */
+const STORE_BALANCE_ROLES: AppRole[] = ["SUPER_ADMIN", "COMPANY_ADMIN"] as const;
 
-const CAPTAIN_BALANCE_ROLES: AppRole[] = [
-  "SUPER_ADMIN",
-] as const;
+const CAPTAIN_BALANCE_ROLES: AppRole[] = ["SUPER_ADMIN", "COMPANY_ADMIN"] as const;
 
 const SUPERVISOR_ME_ROLES: AppRole[] = ["SUPER_ADMIN"] as const;
 
@@ -22,9 +17,7 @@ function assertRoleIn(role: AppRole, allowed: readonly AppRole[]): void {
   }
 }
 
-/**
- * Super admin: any store. Order operators: company/branch scope. Store admin/legacy store: own store only.
- */
+/** Super admin: any store. Company admin: company/branch scope only. */
 export async function assertCanReadStoreWallet(
   role: AppRole,
   userId: string,
@@ -34,7 +27,7 @@ export async function assertCanReadStoreWallet(
 ): Promise<void> {
   assertRoleIn(role, STORE_BALANCE_ROLES);
   if (isSuperAdminRole(role)) return;
-  if (isOrderOperatorRole(role) && !isStoreAdminRole(role)) {
+  if (isOrderOperatorRole(role)) {
     const tenant = await resolveStaffTenantOrderListFilter({
       userId,
       role,
@@ -45,12 +38,6 @@ export async function assertCanReadStoreWallet(
       throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
     if (tenant.branchId && store.branchId !== tenant.branchId) {
-      throw new AppError(403, "Forbidden", "FORBIDDEN");
-    }
-    return;
-  }
-  if (isStoreAdminRole(role)) {
-    if (store.ownerUserId !== userId) {
       throw new AppError(403, "Forbidden", "FORBIDDEN");
     }
     return;

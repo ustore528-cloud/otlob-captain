@@ -1,21 +1,20 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { OrderDetailDto } from "@/services/api/dto";
-import { homeTheme } from "@/features/home/theme";
+import { ActionRow, SectionCard, StatusBadge } from "@/components/ui";
+import { captainSpacing, captainTypography, captainUiTheme } from "@/theme/captain-ui-theme";
 import { locationI18nKey } from "@/lib/order-location-i18n";
 import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
 import { formatOrderEventTime } from "@/lib/order-timestamps";
-import { WhatsAppActionButton } from "@/components/ui/whatsapp-action-button";
 import { OrderFinancialSection } from "@/components/order/order-financial-section";
 import { shouldShowOrderFinancialSection } from "@/lib/order-payment-ui-visibility";
-import { openMapSearch, openPhoneDialer } from "@/lib/open-external";
+import { openMapSearch, openPhoneDialer, openWhatsAppChat } from "@/lib/open-external";
 import { AssignmentLogsTimeline } from "./components/assignment-logs-timeline";
 import { DetailRow } from "./components/detail-row";
 import { OrderStatusProgress } from "./components/order-status-progress";
-import { SectionCard } from "./components/section-card";
 import { isRtlLng } from "@/i18n/i18n";
 import { formatOrderSerial } from "@/lib/order-serial";
-import { orderStatusAccent } from "@/features/orders/utils/order-status-accent";
+import { mapOrderStatusDtoToBadgeVariant } from "@/lib/map-order-status-to-badge-variant";
 
 export type OrderDetailContentProps = {
   order: OrderDetailDto;
@@ -31,21 +30,66 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
   const rtl = isRtlLng(i18n.resolvedLanguage ?? i18n.language);
   const notRecorded = t("orderDetail.notRecorded");
   const statusLabel = t(orderStatusTranslationKey(order.status));
-  const statusAccent = orderStatusAccent(order.status);
+  const statusBadgeVariant = mapOrderStatusDtoToBadgeVariant(order.status);
+  const showFinancial = shouldShowOrderFinancialSection(order.status);
+
+  const heroContactItems = [
+    {
+      key: "wa",
+      icon: "logo-whatsapp" as const,
+      onPress: () => void openWhatsAppChat(order.customerPhone),
+      accessibilityLabel: t("whatsapp.a11y", { phone: order.customerPhone }),
+    },
+    {
+      key: "call",
+      icon: "call-outline" as const,
+      onPress: () => void openPhoneDialer(order.customerPhone),
+      accessibilityLabel: t("orderDetail.callA11y", { phone: order.customerPhone }),
+    },
+    {
+      key: "drop-map",
+      icon: "map-outline" as const,
+      onPress: () => void openMapSearch(order.dropoffAddress),
+      accessibilityLabel: t("orderDetail.mapHintDropoff"),
+    },
+  ];
+
+  const restaurantMapItems = [
+    {
+      key: "pickup-map",
+      icon: "map-outline" as const,
+      onPress: () => void openMapSearch(order.pickupAddress),
+      accessibilityLabel: t("orderDetail.mapHintPickup"),
+    },
+  ];
+
+  const customerPanelItems = [
+    {
+      key: "wa2",
+      icon: "logo-whatsapp" as const,
+      onPress: () => void openWhatsAppChat(order.customerPhone),
+      accessibilityLabel: t("whatsapp.a11y", { phone: order.customerPhone }),
+    },
+    {
+      key: "call2",
+      icon: "call-outline" as const,
+      onPress: () => void openPhoneDialer(order.customerPhone),
+      accessibilityLabel: t("orderDetail.callA11y", { phone: order.customerPhone }),
+    },
+    {
+      key: "drop-map2",
+      icon: "map-outline" as const,
+      onPress: () => void openMapSearch(order.dropoffAddress),
+      accessibilityLabel: t("orderDetail.mapHintDropoff"),
+    },
+  ];
+
   return (
     <View style={[styles.stack, { direction: rtl ? "rtl" : "ltr" }]}>
-      {/* بطاقة 1: رقم الطلب + الحالة + الوقت + ملخص سريع */}
       <SectionCard title={t("orderDetail.sectionOrder")} icon="receipt-outline" compact>
         <Text style={styles.orderNo}>{formatOrderSerial(order.orderNumber, order.displayOrderNo)}</Text>
-        <View style={styles.pillRow}>
-          <View
-            style={[
-              styles.pill,
-              { backgroundColor: statusAccent.bg, borderColor: statusAccent.border },
-            ]}
-          >
-            <Text style={[styles.pillText, { color: statusAccent.text }]}>{statusLabel}</Text>
-          </View>
+        <View style={styles.badgeRow}>
+          <StatusBadge variant={statusBadgeVariant} label={statusLabel} />
         </View>
         <Text style={styles.timeLine} numberOfLines={5}>
           {t("orderDetail.created")}: {formatOrderEventTime(order.createdAt, notRecorded)}
@@ -61,23 +105,20 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
             </Text>
           </View>
         ) : null}
-        <View style={styles.customerRow}>
+        <View style={styles.customerBlock}>
           <Text style={styles.customerNameLine} numberOfLines={2}>
             {t("orderDetail.customerLine", { name: order.customerName })}
-            {" · "}
           </Text>
-          <View style={styles.phoneActionsRow}>
-            <WhatsAppActionButton phone={order.customerPhone} variant="pill" />
-            <Pressable
-              onPress={() => void openPhoneDialer(order.customerPhone)}
-              hitSlop={8}
-              accessibilityRole="link"
-              accessibilityLabel={t("orderDetail.callA11y", { phone: order.customerPhone })}
-              style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
-            >
-              <Text style={styles.phoneLink}>{order.customerPhone}</Text>
-            </Pressable>
-          </View>
+          <ActionRow items={heroContactItems} style={styles.actionRowTight} />
+          <Pressable
+            onPress={() => void openPhoneDialer(order.customerPhone)}
+            hitSlop={8}
+            accessibilityRole="link"
+            accessibilityLabel={t("orderDetail.callA11y", { phone: order.customerPhone })}
+            style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
+          >
+            <Text style={styles.phoneLink}>{order.customerPhone}</Text>
+          </Pressable>
         </View>
         <Text style={styles.inlineMeta} numberOfLines={1}>
           {t("orderDetail.areaLine", { area: order.area })}
@@ -85,6 +126,20 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
         <Text style={styles.inlineMeta} numberOfLines={2}>
           {t("orderDetail.storeLine", { name: order.store.name, area: order.store.area })}
         </Text>
+        {showFinancial ? (
+          <View style={styles.financialInset}>
+            <Text style={styles.financialInsetTitle}>{t("money.sectionTitle")}</Text>
+            <OrderFinancialSection
+              amount={order.amount}
+              cashCollection={order.cashCollection}
+              deliveryFee={order.deliveryFee ?? null}
+              orderStatus={order.status}
+              financialBreakdown={order.financialBreakdown}
+              variant="default"
+              hideTitle
+            />
+          </View>
+        ) : null}
         <OrderStatusProgress status={order.status} compact />
       </SectionCard>
 
@@ -93,6 +148,7 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
           <View style={styles.infoPanel}>
             <Text style={styles.infoTitle}>{order.store.name}</Text>
             <Text style={styles.infoSub}>{order.store.area}</Text>
+            <ActionRow items={restaurantMapItems} style={styles.actionRowTight} />
             <Pressable
               onPress={() => void openMapSearch(order.pickupAddress)}
               hitSlop={8}
@@ -106,18 +162,16 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
         <SectionCard title={t("orderDetail.sectionCustomer")} icon="person-outline" compact>
           <View style={styles.infoPanel}>
             <Text style={styles.infoTitle}>{order.customerName}</Text>
-            <View style={styles.phoneActionsRow}>
-              <WhatsAppActionButton phone={order.customerPhone} variant="pill" />
-              <Pressable
-                onPress={() => void openPhoneDialer(order.customerPhone)}
-                hitSlop={8}
-                accessibilityRole="link"
-                accessibilityLabel={t("orderDetail.callA11y", { phone: order.customerPhone })}
-                style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
-              >
-                <Text style={styles.phoneLink}>{order.customerPhone}</Text>
-              </Pressable>
-            </View>
+            <ActionRow items={customerPanelItems} style={styles.actionRowTight} />
+            <Pressable
+              onPress={() => void openPhoneDialer(order.customerPhone)}
+              hitSlop={8}
+              accessibilityRole="link"
+              accessibilityLabel={t("orderDetail.callA11y", { phone: order.customerPhone })}
+              style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
+            >
+              <Text style={styles.phoneLink}>{order.customerPhone}</Text>
+            </Pressable>
             <Pressable
               onPress={() => void openMapSearch(order.dropoffAddress)}
               hitSlop={8}
@@ -129,22 +183,6 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
         </SectionCard>
       </View>
 
-      {/* بطاقة 2: المالية والتحصيل + حاسبة نقد — تظهر من مرحلة التوصيل للعميل فقط */}
-      {shouldShowOrderFinancialSection(order.status) ? (
-        <SectionCard title={t("money.sectionTitle")} icon="cash-outline" compact>
-          <OrderFinancialSection
-            amount={order.amount}
-            cashCollection={order.cashCollection}
-            deliveryFee={order.deliveryFee ?? null}
-            orderStatus={order.status}
-            financialBreakdown={order.financialBreakdown}
-            variant="default"
-            hideTitle
-          />
-        </SectionCard>
-      ) : null}
-
-      {/* بطاقة 3: العناوين */}
       <SectionCard title={t("orderDetail.sectionAddresses")} icon="map-outline" compact>
         <DetailRow
           compact
@@ -167,7 +205,6 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
         />
       </SectionCard>
 
-      {/* بطاقة 4: الملاحظات */}
       {order.notes ? (
         <SectionCard title={t("orderDetail.sectionNotes")} icon="document-text-outline" compact>
           <DetailRow compact isFirst label={t("orderDetail.notesField")} value={order.notes} />
@@ -181,118 +218,116 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
 
 const styles = StyleSheet.create({
   stack: {
-    gap: 10,
+    gap: captainSpacing.md,
   },
   orderNo: {
-    color: homeTheme.text,
-    fontSize: 17,
-    fontWeight: "900",
+    ...captainTypography.sectionTitle,
+    color: captainUiTheme.text,
     textAlign: "right",
-    marginBottom: 6,
+    marginBottom: captainSpacing.xs,
   },
-  pillRow: {
-    flexDirection: "row-reverse",
-    marginBottom: 6,
-  },
-  pill: {
-    alignSelf: "flex-end",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  pillText: {
-    fontSize: 12,
-    fontWeight: "800",
+  badgeRow: {
+    alignItems: "flex-end",
+    marginBottom: captainSpacing.sm,
   },
   timeLine: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 11,
     textAlign: "right",
     lineHeight: 16,
-    marginBottom: 8,
+    marginBottom: captainSpacing.sm,
   },
   offerBanner: {
-    backgroundColor: homeTheme.goldSoft,
-    borderRadius: 8,
-    padding: 8,
+    backgroundColor: captainUiTheme.goldSoft,
+    borderRadius: captainUiTheme.radiusMd,
+    padding: captainSpacing.sm,
     borderWidth: 1,
-    borderColor: homeTheme.goldMuted,
-    marginBottom: 8,
+    borderColor: captainUiTheme.goldMuted,
+    marginBottom: captainSpacing.sm,
   },
   offerText: {
-    color: homeTheme.gold,
+    color: captainUiTheme.gold,
     fontSize: 11,
     textAlign: "right",
     lineHeight: 16,
   },
   inlineMeta: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 11,
     textAlign: "right",
     lineHeight: 16,
-    marginBottom: 4,
+    marginBottom: captainSpacing.xs,
+  },
+  customerBlock: {
+    alignItems: "flex-end",
+    gap: captainSpacing.xs,
+    marginBottom: captainSpacing.xs,
+  },
+  actionRowTight: {
+    paddingVertical: captainSpacing.xs,
+    alignSelf: "stretch",
+    justifyContent: "flex-end",
+  },
+  financialInset: {
+    marginTop: captainSpacing.sm,
+    paddingTop: captainSpacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: captainUiTheme.border,
+    gap: captainSpacing.xs,
+  },
+  financialInsetTitle: {
+    ...captainTypography.caption,
+    color: captainUiTheme.textMuted,
+    textAlign: "right",
   },
   infoGrid: {
-    gap: 10,
+    gap: captainSpacing.md,
   },
   infoPanel: {
-    gap: 8,
+    gap: captainSpacing.sm,
     alignItems: "flex-end",
   },
   infoTitle: {
-    color: homeTheme.text,
+    color: captainUiTheme.text,
     fontSize: 16,
     fontWeight: "900",
     textAlign: "right",
   },
   infoSub: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 12,
     fontWeight: "700",
     textAlign: "right",
   },
   addressButton: {
     width: "100%",
-    borderRadius: 12,
-    backgroundColor: homeTheme.neutralSoft,
+    borderRadius: captainUiTheme.radiusMd,
+    backgroundColor: captainUiTheme.neutralSoft,
     borderWidth: 1,
-    borderColor: homeTheme.border,
-    padding: 10,
+    borderColor: captainUiTheme.border,
+    padding: captainSpacing.sm + 2,
   },
   addressButtonText: {
-    color: homeTheme.textMuted,
+    color: captainUiTheme.textMuted,
     fontSize: 13,
     lineHeight: 20,
     textAlign: "right",
   },
-  customerRow: {
-    flexDirection: "row-reverse",
-    flexWrap: "wrap",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    marginBottom: 4,
-  },
-  phoneActionsRow: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-  },
   customerNameLine: {
-    color: homeTheme.textSubtle,
+    color: captainUiTheme.textSubtle,
     fontSize: 11,
     textAlign: "right",
     lineHeight: 16,
+    width: "100%",
   },
   phonePress: { alignSelf: "flex-end" },
   phonePressed: { opacity: 0.85 },
   phoneLink: {
-    color: homeTheme.accent,
+    color: captainUiTheme.accent,
     fontSize: 11,
     fontWeight: "800",
     textDecorationLine: "underline",
-    textDecorationColor: homeTheme.accentMuted,
+    textDecorationColor: captainUiTheme.accentMuted,
     lineHeight: 16,
   },
 });
