@@ -496,6 +496,7 @@ export async function getPublicOrderTracking(ownerCode: string, orderId: string,
 
   let captainPayload: null | {
     displayName: string;
+    phone: string | null;
     phoneMasked: string;
     latitude: number;
     longitude: number;
@@ -509,6 +510,7 @@ export async function getPublicOrderTracking(ownerCode: string, orderId: string,
     if (order.status === OrderStatus.ASSIGNED) {
       captainPayload = {
         displayName: "مسند إلى كابتن — بانتظار القبول",
+        phone: null,
         phoneMasked: "—",
         latitude: loc.latitude,
         longitude: loc.longitude,
@@ -523,6 +525,7 @@ export async function getPublicOrderTracking(ownerCode: string, orderId: string,
     ) {
       captainPayload = {
         displayName: captainFirstWord(order.assignedCaptain?.user?.fullName ?? null),
+        phone: order.assignedCaptain?.user?.phone ?? null,
         phoneMasked: maskPhoneDigits(order.assignedCaptain?.user?.phone ?? ""),
         latitude: loc.latitude,
         longitude: loc.longitude,

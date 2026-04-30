@@ -17,6 +17,7 @@ import {
   Navigation,
   Package,
   Phone,
+  MessageCircle,
   LocateFixed,
   Send,
   ShieldCheck,
@@ -54,6 +55,15 @@ const SUCCESS_WAIT_EXPAND_MS = 3 * 60 * 1000;
 
 /** Distinct hues for leaflet markers — brand palette (captain pins). */
 const CAPT_NEARBY_COLORS = ["#c62828", "#d4af37", "#8e1b1b", "#a67c00"];
+
+function digitsForWhatsApp(phone: string | null | undefined): string | null {
+  const cleaned = String(phone ?? "").trim().replace(/[^\d+]/g, "");
+  if (!cleaned) return null;
+  const noPlus = cleaned.startsWith("+") ? cleaned.slice(1) : cleaned;
+  const digits = noPlus.startsWith("00") ? noPlus.slice(2) : noPlus;
+  if (!/^\d{8,15}$/.test(digits)) return null;
+  return digits;
+}
 
 /** Legacy export — الواجهة تبدأ بقيمة منتج فارغة حتى يدخل المرسل الرقم.y */
 export const PRICING_DEMO_DEFAULTS = {
@@ -1634,10 +1644,10 @@ export function PublicRequestSuccessStage({
                 <p className="mt-6 text-[13px] text-slate-700">
                   {t("public.orderExperience.captainLine")}{" "}
                   <span className="font-semibold">{live.captain.displayName}</span>
-                  {live.captain.phoneMasked !== "—" ? (
+                  {(live.captain.phone ?? "").trim() !== "" ? (
                     <>
                       {" "}
-                      — <span dir="ltr">{live.captain.phoneMasked}</span>
+                      — <span dir="ltr">{live.captain.phone}</span>
                     </>
                   ) : live.captain.awaitingCaptainAcceptance ? (
                     <span className="block text-[12px] text-slate-500">
@@ -1657,8 +1667,30 @@ export function PublicRequestSuccessStage({
                   ) : null}
                 </p>
               ) : (
-                <p className="mt-6 text-[13px] text-slate-600">{t("public.orderExperience.captainPendingCard")}</p>
+                <p className="mt-6 text-[13px] text-slate-600">{t("public.orderExperience.captainSearching")}</p>
               )}
+              {live?.captain && (live.captain.phone ?? "").trim() !== "" ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <a
+                    href={`tel:${String(live.captain.phone).replace(/[^\d+]/g, "")}`}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[color:var(--brand-border)] bg-white px-3 py-2 text-[12px] font-semibold text-[color:var(--brand-primary-dark)] hover:bg-[color:var(--brand-light-primary)]"
+                  >
+                    <Phone className="size-4" aria-hidden />
+                    {t("public.orderExperience.callCaptain")}
+                  </a>
+                  {digitsForWhatsApp(live.captain.phone) ? (
+                    <a
+                      href={`https://wa.me/${digitsForWhatsApp(live.captain.phone)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] font-semibold text-emerald-800 hover:bg-emerald-100"
+                    >
+                      <MessageCircle className="size-4" aria-hidden />
+                      {t("public.orderExperience.whatsappCaptain")}
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
 

@@ -44,6 +44,12 @@ export async function openWhatsAppChat(phone: string): Promise<void> {
   const sanitized = sanitizePhoneForDial(phone);
   /** Prefer original `tel:` shape when dialable; else E.164-style from normalized digits. */
   const telUrl = sanitized ? `tel:${sanitized}` : `tel:+${d}`;
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] whatsappUrl", { whatsappUrl });
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] waMeUrl", { waMeUrl });
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] fallbackTel", { fallbackTel: telUrl });
 
   let whatsappCanOpen = false;
   let waMeCanOpen = false;
@@ -97,23 +103,25 @@ export async function openWhatsAppChat(phone: string): Promise<void> {
   console.info("[captain-whatsapp] telCanOpen", { telCanOpen });
 
   if (telCanOpen) {
-    try {
-      await Linking.openURL(telUrl);
-      // eslint-disable-next-line no-console
-      console.info("[captain-whatsapp] selectedFallback", { selectedFallback: "tel" });
-      return;
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("[captain-whatsapp] tel-open-failed", { error });
-    }
+    Alert.alert(
+      i18n.t("openExternal.whatsappUnavailableTitle"),
+      i18n.t("openExternal.whatsappUnavailableBody"),
+      [
+        { text: i18n.t("openExternal.whatsappFallbackCancel"), style: "cancel" },
+        {
+          text: i18n.t("openExternal.whatsappFallbackCall"),
+          onPress: () => {
+            void Linking.openURL(telUrl).catch(() => {
+              Alert.alert(i18n.t("openExternal.phoneFailedTitle"), i18n.t("openExternal.phoneFailedBody"));
+            });
+          },
+        },
+      ],
+    );
+    return;
   }
 
-  // eslint-disable-next-line no-console
-  console.info("[captain-whatsapp] selectedFallback", { selectedFallback: "none" });
-  Alert.alert(
-    i18n.t("openExternal.whatsappOrDialUnavailableTitle"),
-    i18n.t("openExternal.whatsappOrDialUnavailableBody"),
-  );
+  Alert.alert(i18n.t("openExternal.whatsappOrDialUnavailableTitle"), i18n.t("openExternal.whatsappOrDialUnavailableBody"));
 }
 
 /**

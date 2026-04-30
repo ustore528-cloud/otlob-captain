@@ -121,6 +121,7 @@ export type PublicOrderTrackingResult = {
   etaSource: string;
   captain: null | {
     displayName: string;
+    phone: string | null;
     phoneMasked: string;
     latitude: number;
     longitude: number;

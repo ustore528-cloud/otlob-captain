@@ -111,7 +111,7 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
           </Text>
           <ActionRow items={heroContactItems} style={styles.actionRowTight} />
           <Pressable
-            onPress={() => void openPhoneDialer(order.customerPhone)}
+            onPress={() => void openWhatsAppChat(order.customerPhone)}
             hitSlop={8}
             accessibilityRole="link"
             accessibilityLabel={t("orderDetail.callA11y", { phone: order.customerPhone })}
@@ -164,7 +164,7 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
             <Text style={styles.infoTitle}>{order.customerName}</Text>
             <ActionRow items={customerPanelItems} style={styles.actionRowTight} />
             <Pressable
-              onPress={() => void openPhoneDialer(order.customerPhone)}
+              onPress={() => void openWhatsAppChat(order.customerPhone)}
               hitSlop={8}
               accessibilityRole="link"
               accessibilityLabel={t("orderDetail.callA11y", { phone: order.customerPhone })}
