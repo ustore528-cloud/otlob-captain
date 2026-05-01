@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import {
   PublicRequestOrderExperience,
   PublicRequestSuccessStage,
@@ -9,12 +9,17 @@ import {
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ApiError } from "@/lib/api/http";
-import { getPublicRequestContext, type PublicRequestContext } from "@/lib/api/services/public-request";
+import {
+  fetchPublicOrderTracking,
+  getPublicRequestContext,
+  type PublicRequestContext,
+} from "@/lib/api/services/public-request";
 import { isRtlLang } from "@/i18n/i18n";
 
 export function PublicRequestPage() {
   const { t, i18n } = useTranslation();
   const { ownerCode } = useParams<{ ownerCode: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const rtl = isRtlLang(i18n.resolvedLanguage ?? i18n.language);
 
   const [ctx, setCtx] = useState<PublicRequestContext | null>(null);
@@ -23,6 +28,9 @@ export function PublicRequestPage() {
   const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
   const [receipt, setReceipt] = useState<ReceiptState | null>(null);
+  const [resumeAttempted, setResumeAttempted] = useState(false);
+  const resumeQueryKey =
+    `${searchParams.get("track") ?? ""}|${searchParams.get("oid") ?? ""}|${searchParams.get("tok") ?? ""}`;
 
   useEffect(() => {
     if (!ownerCode?.trim()) {
@@ -50,6 +58,65 @@ export function PublicRequestPage() {
       cancelled = true;
     };
   }, [ownerCode, t]);
+
+  /** فتح متابعة من إشعار / رابط قصير: ?track=1&oid=…&tok=… */
+  useEffect(() => {
+    if (!ownerCode?.trim() || !ctx || resumeAttempted || done) return;
+    const track = searchParams.get("track");
+    const oid = searchParams.get("oid")?.trim();
+    const tok = searchParams.get("tok")?.trim();
+    if (track !== "1" || !oid || !tok) return;
+    setResumeAttempted(true);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await fetchPublicOrderTracking(ownerCode.trim(), oid, tok);
+        if (cancelled) return;
+        const h = data.receiptHints;
+        const cap = data.captain;
+        const feeStr = (h?.deliveryFee ?? "").trim() !== "" ? (h!.deliveryFee as string) : "0";
+        setReceipt({
+          orderNumber: h?.orderNumber ?? "—",
+          status: data.status,
+          store: h?.storeLabel ?? "—",
+          fee: feeStr,
+          collect: (h?.cashCollection ?? "").trim() !== "" ? h!.cashCollection : "0",
+          pickupAddress: h?.pickupAddress ?? "",
+          dropoffAddress: h?.dropoffAddress ?? "",
+          captainName: cap?.displayName ?? null,
+          captainPhone: cap?.phone ?? null,
+          orderId: oid,
+          ownerCode: ownerCode.trim(),
+          trackingToken: tok,
+        });
+        setDone(true);
+        setSearchParams(
+          (prev) => {
+            const p = new URLSearchParams(prev);
+            p.delete("track");
+            p.delete("oid");
+            p.delete("tok");
+            return p;
+          },
+          { replace: true },
+        );
+      } catch {
+        setSearchParams(
+          (prev) => {
+            const p = new URLSearchParams(prev);
+            p.delete("track");
+            p.delete("oid");
+            p.delete("tok");
+            return p;
+          },
+          { replace: true },
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ctx, done, ownerCode, resumeAttempted, resumeQueryKey, setSearchParams]);
 
   if (loading) {
     return (

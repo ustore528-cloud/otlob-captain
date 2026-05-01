@@ -136,6 +136,16 @@ export type PublicOrderTrackingResult = {
   pickupLng: number | null;
   dropoffLat: number | null;
   dropoffLng: number | null;
+  /** يظهر لمَن يملك الرمز؛ يُحمَّل من عنوان URL للعودة لمتابعة الطلب بعد إغلاق التبويب */
+  receiptHints?: {
+    orderNumber: string;
+    storeLabel: string;
+    pickupAddress: string;
+    dropoffAddress: string;
+    amount: string;
+    cashCollection: string;
+    deliveryFee: string | null;
+  };
 };
 
 /** GET `/api/v1/public/order-tracking/:ownerCode/:orderId?token=...` via `paths.public.orderTracking`. */
@@ -145,6 +155,18 @@ export function fetchPublicOrderTracking(
   token: string,
 ): Promise<PublicOrderTrackingResult> {
   return apiFetch<PublicOrderTrackingResult>(paths.public.orderTracking(ownerCode, orderId, token), { method: "GET" });
+}
+
+export type PublicOrderIdsByTrackingToken = {
+  ownerCode: string;
+  orderId: string;
+};
+
+/** Resolve owner + order id for `/track/:trackingToken` deep links (no JWT). */
+export function fetchPublicOrderIdsByTrackingToken(trackingToken: string): Promise<PublicOrderIdsByTrackingToken> {
+  return apiFetch<PublicOrderIdsByTrackingToken>(paths.public.orderIdsByTrackingToken(trackingToken), {
+    method: "GET",
+  });
 }
 
 export function createPublicOrder(body: PublicCreateOrderBody): Promise<PublicCreateOrderResult> {

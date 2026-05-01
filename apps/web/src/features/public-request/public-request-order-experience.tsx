@@ -36,6 +36,7 @@ import {
   HelpCircle,
   Zap,
   AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import { ApiError } from "@/lib/api/http";
 import i18n from "@/i18n/i18n";
@@ -50,7 +51,13 @@ import {
   type PublicRequestContext,
 } from "@/lib/api/services/public-request";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { CustomerOrderBrowserNotifications } from "@/features/public-request/customer-order-browser-notifications";
+import {
+  usePublicOrderLiveTracking,
+  type CustomerOrderStatusChangedPayload,
+} from "@/features/public-request/use-public-order-live-tracking";
 import { isRtlLang } from "@/i18n/i18n";
+import { toast } from "@/lib/toast";
 import { isReasonableFlexiblePhone } from "@captain/shared";
 import { isValidLatLng } from "@/lib/geo-validation";
 import { useTranslation } from "react-i18next";
@@ -1534,37 +1541,92 @@ export function PublicRequestSuccessStage({
   const [captainsNearbyAtFive, setCaptainsNearbyAtFive] = useState<number | null>(null);
   const [nearbyPreviewPts, setNearbyPreviewPts] = useState<MapPoint[]>([]);
 
-  useEffect(() => {
+  const pollTracking = useCallback(async () => {
     const tok = receipt.trackingToken;
     if (!tok || !receipt.orderId) return;
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const next = await fetchPublicOrderTracking(receipt.ownerCode, receipt.orderId, tok);
-        if (!cancelled) {
-          setLive(next);
-          setTrackingPollFailure(null);
-        }
-      } catch (e: unknown) {
-        if (!cancelled) {
-          const message =
-            e instanceof ApiError
-              ? e.message
-              : e instanceof Error
-                ? e.message
-                : t("public.orderExperience.trackingPollFailedUnknown");
-          const status = e instanceof ApiError ? e.status : undefined;
-          setTrackingPollFailure({ message, status });
-        }
-      }
-    };
-    void poll();
-    const id = window.setInterval(poll, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
+    try {
+      const next = await fetchPublicOrderTracking(receipt.ownerCode, receipt.orderId, tok);
+      setLive(next);
+      setTrackingPollFailure(null);
+    } catch (e: unknown) {
+      const message =
+        e instanceof ApiError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : t("public.orderExperience.trackingPollFailedUnknown");
+      const status = e instanceof ApiError ? e.status : undefined;
+      setTrackingPollFailure({ message, status });
+    }
   }, [receipt.ownerCode, receipt.orderId, receipt.trackingToken, t]);
+
+  const [liveSocketBanner, setLiveSocketBanner] = useState<{ title: string; body: string } | null>(null);
+  const socketNotifyStatusRef = useRef<string | null>(null);
+  const socketAudioAllowedRef = useRef(false);
+
+  useEffect(() => {
+    socketNotifyStatusRef.current = null;
+  }, [receipt.trackingToken]);
+
+  useEffect(() => {
+    const unlock = () => {
+      socketAudioAllowedRef.current = true;
+    };
+    window.addEventListener("pointerdown", unlock, true);
+    return () => window.removeEventListener("pointerdown", unlock, true);
+  }, []);
+
+  const playSoftSocketSound = useCallback(() => {
+    if (!socketAudioAllowedRef.current) return;
+    const W = window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+    const AudioCtx = window.AudioContext ?? W.webkitAudioContext;
+    if (!AudioCtx) return;
+    let ctx: AudioContext;
+    try {
+      ctx = new AudioCtx();
+    } catch {
+      return;
+    }
+    void Promise.resolve(ctx.resume()).catch(() => undefined);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.04, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0008, ctx.currentTime + 0.11);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.12);
+    osc.onended = () => void ctx.close();
+  }, []);
+
+  const onSocketOrderPayload = useCallback(
+    (payload: CustomerOrderStatusChangedPayload) => {
+      const tok = receipt.trackingToken;
+      if (!tok || payload.trackingToken !== tok) return;
+      if (socketNotifyStatusRef.current === payload.status) return;
+      socketNotifyStatusRef.current = payload.status;
+
+      setLive((prev) => (prev ? { ...prev, status: payload.status } : prev));
+      void pollTracking();
+
+      const title = t(payload.statusLabelKey);
+      const body = t(payload.messageKey);
+      setLiveSocketBanner({ title, body });
+      toast.info(title, { description: body });
+      playSoftSocketSound();
+    },
+    [playSoftSocketSound, pollTracking, receipt.trackingToken, t],
+  );
+
+  const { socketConnected } = usePublicOrderLiveTracking({
+    enabled: Boolean(receipt.trackingToken && receipt.orderId),
+    trackingToken: receipt.trackingToken,
+    poll: pollTracking,
+    onCustomerOrderStatusChanged: onSocketOrderPayload,
+  });
 
   const effectiveStatus = live?.status ?? receipt.status;
   const statusIndex = PUBLIC_SUCCESS_TIMELINE.findIndex((s) => s === effectiveStatus);
@@ -1798,11 +1860,44 @@ export function PublicRequestSuccessStage({
                 </div>
               </div>
             ) : null}
+            {liveSocketBanner ? (
+              <div
+                role="status"
+                className="mb-4 flex gap-3 rounded-2xl border border-emerald-300/80 bg-emerald-50/95 px-4 py-3 text-emerald-950 shadow-sm"
+              >
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold leading-snug">{liveSocketBanner.title}</p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-emerald-950/92">{liveSocketBanner.body}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLiveSocketBanner(null)}
+                  className="shrink-0 rounded-lg px-2 py-1 text-[12px] font-semibold text-emerald-900 hover:bg-emerald-100/90"
+                >
+                  {t("common.close")}
+                </button>
+              </div>
+            ) : null}
             {!receipt.trackingToken ? (
               <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50/90 px-3 py-2 text-center text-[12px] text-amber-950">
                 {t("public.orderExperience.trackingPollNoTokenNotice")}
               </p>
             ) : null}
+            {receipt.trackingToken ? (
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                {socketConnected ? (
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-semibold text-emerald-950">
+                    {t("public.orderExperience.liveConnectionRealtime")}
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-slate-200/90 px-2.5 py-0.5 font-semibold text-slate-900">
+                    {t("public.orderExperience.liveConnectionPolling")}
+                  </span>
+                )}
+              </div>
+            ) : null}
+            <CustomerOrderBrowserNotifications trackingToken={receipt.trackingToken} rtl={rtl} />
             {live?.captain?.wazeUrl ? (
               <div className="mb-4 flex justify-center">
                 <a

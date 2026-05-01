@@ -59,6 +59,18 @@ export const paths = {
     /** تتبّع طلب من صفحة عمومية — token من استجابة إنشاء الطلب */
     orderTracking: (ownerCode: string, orderId: string, token: string) =>
       `${API_V1}/public/order-tracking/${encodeURIComponent(ownerCode)}/${encodeURIComponent(orderId)}?token=${encodeURIComponent(token)}`,
+    /** GET — يعيد ownerCode + orderId لمَن يملك رمز التتبع العام (بدون JWT) */
+    orderIdsByTrackingToken: (trackingToken: string) =>
+      `${API_V1}/public/order-by-tracking-token/${encodeURIComponent(trackingToken.trim())}`,
+    /** متصفّح عميل عام — Web Push VAPID (قد يرجع 503 إن لم تُعرَّف المتغيرات على الخادم) */
+    pushWebVapidPublicKey: `${API_V1}/public/push/web/vapid-public-key`,
+    /** مفضّل — مفتاح VAPID العام فقط */
+    webPushPublicKey: `${API_V1}/public/web-push/public-key`,
+    /** اشتراك Web Push مرتبط بطلب عمومي (token تتبّع مطلوب) */
+    pushWebSubscribe: `${API_V1}/public/push/web/subscribe`,
+    /** POST اشتراك دفع عبر `trackingToken` فقط في المسار */
+    ordersPushSubscription: (trackingToken: string) =>
+      `${API_V1}/public/orders/${encodeURIComponent(trackingToken.trim())}/push-subscription`,
   },
   complaints: {
     root: `${API_V1}/complaints`,
@@ -166,5 +178,7 @@ export const paths = {
     orderStatus: (orderId: string) => `${API_V1}/mobile/captain/orders/${orderId}/status`,
     orderHistory: `${API_V1}/mobile/captain/orders/history`,
     earningsSummary: `${API_V1}/mobile/captain/earnings/summary`,
+    /** Soft-deactivate captain + user; preserves orders and ledger history. */
+    deleteAccount: `${API_V1}/mobile/captain/me/delete-account`,
   },
 } as const;

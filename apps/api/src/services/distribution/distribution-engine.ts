@@ -726,6 +726,7 @@ export class DistributionEngine {
         throw new AppError(409, "Cannot cancel captain on closed order", "INVALID_STATE");
       }
 
+      const previousOrderStatus = order.status;
       const previousCaptainId = order.assignedCaptainId;
       const previousCaptain = await tx.captain.findUnique({
         where: { id: previousCaptainId },
@@ -764,7 +765,7 @@ export class DistributionEngine {
       }
 
       const nextOrder = await tx.order.findUnique({ where: { id: orderId }, include: orderInclude });
-      return { order: nextOrder, cancelledCaptainUserId };
+      return { order: nextOrder, cancelledCaptainUserId, previousOrderStatus };
     }, DISTRIBUTION_TRANSACTION_OPTIONS);
   }
 

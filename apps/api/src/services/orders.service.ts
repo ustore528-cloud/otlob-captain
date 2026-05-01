@@ -12,10 +12,11 @@ import { orderStoreInclude } from "../repositories/order-store-enrichment.js";
 import {
   emitCaptainAssignmentEnded,
   emitCaptainOrderUpdated,
+  emitDispatchersOnlyOrderFresh,
   emitDispatcherOrderUpdated,
 } from "../realtime/order-emits.js";
 import { CAPTAIN_SOCKET_EVENTS } from "../realtime/captain-events.js";
-import { emitToCaptain } from "../realtime/hub.js";
+import { emitPublicCustomerTrackingOnly, emitToCaptain } from "../realtime/hub.js";
 import { DISTRIBUTION_TIMEOUT_SECONDS } from "./distribution/constants.js";
 import { lockOrderDistributionTx } from "./distribution/order-lock.js";
 import { logCaptainOrderResponse } from "./captain-order-response-log.js";
@@ -233,6 +234,9 @@ export const ordersService = {
     );
 
     await activityService.log(actor.userId, "ORDER_CREATED", "order", order.id, {});
+    if (input.publicTrackingToken?.trim()) {
+      emitPublicCustomerTrackingOnly(order.id, order.status);
+    }
     return order;
   },
 
@@ -441,7 +445,7 @@ export const ordersService = {
       },
       ORDER_STATUS_TX_OPTIONS,
     );
-    emitDispatcherOrderUpdated(order);
+    emitDispatcherOrderUpdated(order, existing.status);
     if (order.assignedCaptain?.userId) {
       emitCaptainOrderUpdated(order.assignedCaptain.userId, order);
     }
@@ -538,10 +542,10 @@ export const ordersService = {
       });
 
       await activityService.logTx(tx, userId, "ORDER_ACCEPTED_BY_CAPTAIN", "order", orderId, {});
-      return order;
-    }).then((order) => {
+      return { order, previousStatus: orderRow.status };
+    }).then(({ order, previousStatus }) => {
       logCaptainOrderResponse("ACCEPT_SUCCESS", { orderId, orderNumber: order.orderNumber, status: order.status });
-      emitDispatcherOrderUpdated(order);
+      emitDispatcherOrderUpdated(order, previousStatus);
       emitCaptainOrderUpdated(userId, order);
       return order;
     });
@@ -612,7 +616,7 @@ export const ordersService = {
 
       await activityService.logTx(tx, userId, "ORDER_REJECTED_BY_CAPTAIN", "order", orderId, {});
 
-      return tx.order.findUnique({
+      const nextOrder = await tx.order.findUnique({
         where: { id: orderId },
         include: {
           assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 15 },
@@ -620,13 +624,14 @@ export const ordersService = {
           store: orderStoreInclude,
         },
       });
-    }).then((order) => {
+      return { order: nextOrder, previousStatus: orderRow.status };
+    }).then(({ order, previousStatus }) => {
       logCaptainOrderResponse("REJECT_SUCCESS", {
         orderId,
         orderNumber: order?.orderNumber ?? null,
         status: order?.status ?? null,
       });
-      if (order) emitDispatcherOrderUpdated(order);
+      if (order) emitDispatcherOrderUpdated(order, previousStatus);
       emitCaptainAssignmentEnded(userId, { orderId, reason: "REJECTED" });
       /**
        * بعد الرفض، مسار AUTO قد يعرض الطلب على كابتن آخر داخل نفس المعاملة — يجب بث `captain:assignment`
@@ -744,6 +749,7 @@ export const ordersService = {
     }
 
     let releasedCaptainUserId: string | null = null;
+    let adminPrevStatusForEmit: OrderStatus | undefined;
 
     await prisma.$transaction(
       async (tx) => {
@@ -759,6 +765,8 @@ export const ordersService = {
         if (before.status === targetStatus) {
           return;
         }
+
+        adminPrevStatusForEmit = before.status;
 
         await tx.orderAssignmentLog.updateMany({
           where: { orderId, responseStatus: AssignmentResponseStatus.PENDING },
@@ -821,12 +829,16 @@ export const ordersService = {
     const order = await orderRepository.findById(orderId);
     if (!order) throw new AppError(500, "Order update failed", "INTERNAL");
 
-    if (releasedCaptainUserId) {
-      emitCaptainAssignmentEnded(releasedCaptainUserId, { orderId, reason: "ADMIN_STATUS_OVERRIDE" });
+    if (adminPrevStatusForEmit !== undefined) {
+      if (releasedCaptainUserId) {
+        emitCaptainAssignmentEnded(releasedCaptainUserId, { orderId, reason: "ADMIN_STATUS_OVERRIDE" });
+      }
+      emitDispatcherOrderUpdated(order, adminPrevStatusForEmit);
+      const capUserId = order.assignedCaptain?.user?.id;
+      if (capUserId) emitCaptainOrderUpdated(capUserId, order);
+    } else {
+      emitDispatchersOnlyOrderFresh(order);
     }
-    emitDispatcherOrderUpdated(order);
-    const capUserId = order.assignedCaptain?.user?.id;
-    if (capUserId) emitCaptainOrderUpdated(capUserId, order);
     return order;
   },
 
@@ -880,7 +892,7 @@ export const ordersService = {
 
     await activityService.log(actor.userId, "ORDER_ARCHIVED", "order", orderId, {});
     const archived = await orderRepository.findById(orderId);
-    if (archived) emitDispatcherOrderUpdated(archived);
+    if (archived) emitDispatcherOrderUpdated(archived, existing.status);
     return archived;
   },
 
@@ -915,7 +927,7 @@ export const ordersService = {
 
     await activityService.log(actor.userId, "ORDER_UNARCHIVED", "order", orderId, {});
     const restored = await orderRepository.findById(orderId);
-    if (restored) emitDispatcherOrderUpdated(restored);
+    if (restored) emitDispatcherOrderUpdated(restored, existing.status);
     return restored;
   },
 };

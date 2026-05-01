@@ -164,7 +164,11 @@ async function runFastOrderPrecheck(
   }
 }
 
-async function emitCaptainDistributionSocket(order: OrderCaptainEmit, kind: "OFFER" | "REASSIGNED"): Promise<void> {
+async function emitCaptainDistributionSocket(
+  order: OrderCaptainEmit,
+  kind: "OFFER" | "REASSIGNED",
+  previousOrderStatus?: OrderStatus | null,
+): Promise<void> {
   if (!order?.assignedCaptain?.userId) return;
   const pendingAssignment = await prisma.orderAssignmentLog.findFirst({
     where: {
@@ -183,7 +187,12 @@ async function emitCaptainDistributionSocket(order: OrderCaptainEmit, kind: "OFF
     timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
   });
   emitOrderUpdated(
-    { id: order.id, orderNumber: order.orderNumber, status: order.status },
+    {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      ...(previousOrderStatus !== undefined && previousOrderStatus !== null ? { previousStatus: previousOrderStatus } : {}),
+    },
     { companyId: order.companyId, branchId: order.branchId },
   );
   // eslint-disable-next-line no-console
@@ -238,7 +247,11 @@ async function emitAfterTimeoutProcessing(hint: { orderId: string; expiredCaptai
     void emitCaptainDistributionSocket(order, "OFFER");
   } else {
     emitOrderUpdated(
-      { id: order.id, orderNumber: order.orderNumber, status: order.status },
+      {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+      },
       { companyId: order.companyId, branchId: order.branchId },
     );
   }
@@ -272,12 +285,15 @@ export const distributionService = {
 
   startAuto: async (orderId: string, actorUserId: string | null, actorScope?: StaffDistributionScope) => {
     await assertDispatcherCanAccessDistributionTargets(orderId, actorScope);
+    const beforeStatus = (
+      await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } })
+    )?.status;
     const order = await distributionEngine.startAutoDistribution(
       orderId,
       actorUserId,
       mergeEngineCtx({}, actorScope),
     );
-    void emitCaptainDistributionSocket(order, "OFFER");
+    void emitCaptainDistributionSocket(order, "OFFER", beforeStatus ?? undefined);
     return order;
   },
 
@@ -367,6 +383,9 @@ export const distributionService = {
             telemetryOrders += 1;
           }
         }
+        const beforeStatus = (
+          await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } })
+        )?.status;
         const result = await distributionEngine.startAutoDistributionVisible(
           orderId,
           actorUserId,
@@ -375,7 +394,7 @@ export const distributionService = {
         );
         if (result?.assignedCaptain) {
           assignedCount += 1;
-          void emitCaptainDistributionSocket(result, "OFFER");
+          void emitCaptainDistributionSocket(result, "OFFER", beforeStatus ?? undefined);
         } else {
           skippedCount += 1;
           skipped.push({ orderId, reason: "No available captain" });
@@ -445,6 +464,9 @@ export const distributionService = {
       msFromEnter: Date.now() - t0,
     });
     try {
+      const beforeStatus = (
+        await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } })
+      )?.status;
       const order = await distributionEngine.resendToDistribution(
         orderId,
         actorUserId,
@@ -458,7 +480,7 @@ export const distributionService = {
         orderStatus: order?.status ?? null,
         msFromEnter: afterEngine - t0,
       });
-      void emitCaptainDistributionSocket(order, "OFFER");
+      void emitCaptainDistributionSocket(order, "OFFER", beforeStatus ?? undefined);
       logActionTiming("resend_distribution", "socket_emit_and_push_enqueue_done", {
         requestId: ctx.requestId,
         orderId,
@@ -513,6 +535,9 @@ export const distributionService = {
       msFromEnter: Date.now() - t0,
     });
     try {
+      const beforeStatus = (
+        await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } })
+      )?.status;
       const order = await distributionEngine.assignManualOverride(
         orderId,
         captainId,
@@ -529,7 +554,7 @@ export const distributionService = {
         orderStatus: order?.status ?? null,
         msFromEnter: afterEngine - t0,
       });
-      void emitCaptainDistributionSocket(order, "OFFER");
+      void emitCaptainDistributionSocket(order, "OFFER", beforeStatus ?? undefined);
       logActionTiming("manual_assign", "socket_emit_and_push_enqueue_done", {
         requestId: ctx.requestId,
         orderId,
@@ -578,6 +603,9 @@ export const distributionService = {
       msFromEnter: Date.now() - t0,
     });
     try {
+      const beforeStatus = (
+        await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } })
+      )?.status;
       const order = await distributionEngine.reassign(orderId, captainId, actorUserId, mergeEngineCtx(ctx, actorScope));
       logActionTiming("reassign", "engine_done", {
         requestId: ctx.requestId,
@@ -587,7 +615,7 @@ export const distributionService = {
         orderStatus: order?.status ?? null,
         msFromEnter: Date.now() - t0,
       });
-      void emitCaptainDistributionSocket(order, "REASSIGNED");
+      void emitCaptainDistributionSocket(order, "REASSIGNED", beforeStatus ?? undefined);
       logActionTiming("reassign", "socket_emit_and_push_enqueue_done", {
         requestId: ctx.requestId,
         orderId,
@@ -617,7 +645,12 @@ export const distributionService = {
     }
     if (result.order) {
       emitOrderUpdated(
-        { id: result.order.id, orderNumber: result.order.orderNumber, status: result.order.status },
+        {
+          id: result.order.id,
+          orderNumber: result.order.orderNumber,
+          status: result.order.status,
+          previousStatus: result.previousOrderStatus,
+        },
         { companyId: result.order.companyId, branchId: result.order.branchId },
       );
     }

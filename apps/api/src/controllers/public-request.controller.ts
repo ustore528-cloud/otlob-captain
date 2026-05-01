@@ -3,12 +3,20 @@ import { ok } from "../utils/api-response.js";
 import { pathParam } from "../utils/path-params.js";
 import {
   createOrderFromPublicPage,
+  getPublicOrderIdsByTrackingToken,
   getPublicOrderTracking,
   getRequestContextByOwnerCode,
   listNearbyCaptainsPublic,
 } from "../services/public-request.service.js";
 import { submitPublicComplaintByOwnerCode } from "../services/complaints.service.js";
 import { reverseGeocodeFromLatLng } from "../services/geocode-nominatim.service.js";
+import { AppError } from "../utils/errors.js";
+import {
+  getPublicCustomerWebPushVapidPublicKey,
+  isPublicCustomerWebPushConfigured,
+  upsertCustomerWebPushSubscriptionByTrackingToken,
+  upsertPublicCustomerOrderPushSubscription,
+} from "../services/customer-public-order-web-push.service.js";
 
 export const publicRequestController = {
   requestContext: async (req: Request, res: Response) => {
@@ -55,5 +63,70 @@ export const publicRequestController = {
     const { token } = req.query as unknown as { token: string };
     const data = await getPublicOrderTracking(ownerCode, orderId, token);
     return res.json(ok(data));
+  },
+
+  orderIdsByTrackingToken: async (req: Request, res: Response) => {
+    const { trackingToken } = req.params as { trackingToken: string };
+    const data = await getPublicOrderIdsByTrackingToken(trackingToken);
+    return res.json(ok(data));
+  },
+
+  /** Browser Web Push (public customer site) — VAPID public key for PushManager.subscribe */
+  pushWebVapidPublicKey: async (_req: Request, res: Response) => {
+    if (!isPublicCustomerWebPushConfigured()) {
+      throw new AppError(503, "خدمة الإشعارات غير مهيّأة على الخادم.", "WEB_PUSH_UNAVAILABLE", {
+        messageAr: "الإشعارات غير مفعّلة حالياً.",
+        messageEn: "Notifications are not enabled on this server.",
+        messageHe: "ההתראות אינן מוגדרות בשרת זה.",
+      });
+    }
+    const publicKey = getPublicCustomerWebPushVapidPublicKey();
+    if (!publicKey) {
+      throw new AppError(503, "خدمة الإشعارات غير مهيّأة على الخادم.", "WEB_PUSH_UNAVAILABLE");
+    }
+    return res.json(ok({ publicKey }));
+  },
+
+  subscribePublicWebPush: async (req: Request, res: Response) => {
+    const body = req.body as {
+      ownerCode: string;
+      orderId: string;
+      trackingToken: string;
+      locale?: string;
+      userAgent?: string;
+      platform?: string;
+      subscription: { endpoint: string; keys: { p256dh: string; auth: string } };
+    };
+    const fallbackUa = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+    await upsertPublicCustomerOrderPushSubscription({
+      ownerCode: body.ownerCode,
+      orderId: body.orderId,
+      trackingToken: body.trackingToken,
+      locale: body.locale,
+      userAgent: body.userAgent ?? fallbackUa ?? null,
+      platform: body.platform ?? null,
+      subscription: body.subscription,
+    });
+    return res.status(204).send();
+  },
+
+  /** Preferred: POST body + `:trackingToken` only (no ownerCode / orderId in body). */
+  subscribePublicWebPushByTrackingToken: async (req: Request, res: Response) => {
+    const trackingToken = pathParam(req, "trackingToken");
+    const body = req.body as {
+      locale?: string;
+      userAgent?: string;
+      platform?: string;
+      subscription: { endpoint: string; keys: { p256dh: string; auth: string } };
+    };
+    const fallbackUa = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+    await upsertCustomerWebPushSubscriptionByTrackingToken({
+      trackingToken,
+      locale: body.locale ?? null,
+      userAgent: body.userAgent ?? fallbackUa ?? null,
+      platform: body.platform ?? null,
+      subscription: body.subscription,
+    });
+    return res.status(200).json(ok({ subscribed: true }));
   },
 };

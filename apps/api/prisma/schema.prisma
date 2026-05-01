@@ -551,6 +551,8 @@ model Order {
    * إخفاء من قوائم التشغيل دون حذف الصف — قابل للاسترجاع
    */
   archivedAt              DateTime?                   @map("archived_at")
+  /** Web Push subscriptions for browsers following this order on `/request`. */
+  customerPublicPushSubscriptions CustomerPublicPushSubscription[]
   /**
    * First instant the order reached PICKED_UP (set once; not backfilled from updated_at).
    */
@@ -574,6 +576,34 @@ model Order {
   @@index([ownerUserId])
   @@index([zoneId])
   @@map("orders")
+}
+
+/**
+ * Browser Web Push for customer order tracking — one row per `(orderId, endpoint)`.
+ */
+model CustomerPublicPushSubscription {
+  id                  String    @id @default(cuid())
+  orderId             String    @map("order_id")
+  order               Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /** Denormalized from `Order.publicTrackingToken` for auditing and send logs. */
+  publicTrackingToken String    @map("public_tracking_token") @db.VarChar(64)
+  endpoint            String    @db.Text
+  p256dh              String    @map("p256dh") @db.Text
+  auth                String    @db.VarChar(256)
+  /** Last known viewer locale (`ar` | `en` | `he`). */
+  locale              String?   @db.VarChar(8)
+  userAgent           String?   @map("user_agent") @db.Text
+  platform            String?   @db.VarChar(64)
+  isActive            Boolean   @default(true) @map("is_active")
+  lastSuccessAt       DateTime? @map("last_success_at")
+  lastFailureAt       DateTime? @map("last_failure_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  @@unique([orderId, endpoint])
+  @@index([orderId])
+  @@index([orderId, isActive])
+  @@map("customer_public_push_subscriptions")
 }
 
 model OrderAssignmentLog {

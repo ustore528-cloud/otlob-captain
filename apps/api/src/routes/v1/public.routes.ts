@@ -5,9 +5,13 @@ import {
   PublicCreateOrderBodySchema,
   PublicNearbyCaptainsParamsSchema,
   PublicNearbyCaptainsQuerySchema,
+  PublicOrderByTrackingTokenParamsSchema,
   PublicOrderTrackingParamsSchema,
   PublicOrderTrackingQuerySchema,
   PublicRequestContextParamSchema,
+  PublicWebPushSubscribeBodySchema,
+  PublicWebPushSubscribeByTokenBodySchema,
+  PublicWebPushSubscribeByTokenParamsSchema,
 } from "../../validators/public-request.schemas.js";
 import {
   PublicComplaintBodySchema,
@@ -22,6 +26,18 @@ router.get(
   "/request-context/:code",
   validate("params", PublicRequestContextParamSchema),
   asyncHandler(publicRequestController.requestContext.bind(publicRequestController)),
+);
+
+router.get(
+  "/web-push/public-key",
+  asyncHandler(publicRequestController.pushWebVapidPublicKey.bind(publicRequestController)),
+);
+
+router.post(
+  "/orders/:trackingToken/push-subscription",
+  validate("params", PublicWebPushSubscribeByTokenParamsSchema),
+  validate("body", PublicWebPushSubscribeByTokenBodySchema),
+  asyncHandler(publicRequestController.subscribePublicWebPushByTrackingToken.bind(publicRequestController)),
 );
 
 router.post(
@@ -55,6 +71,23 @@ router.get(
   validate("params", PublicOrderTrackingParamsSchema),
   validate("query", PublicOrderTrackingQuerySchema),
   asyncHandler(publicRequestController.orderTracking.bind(publicRequestController)),
+);
+
+router.get(
+  "/order-by-tracking-token/:trackingToken",
+  validate("params", PublicOrderByTrackingTokenParamsSchema),
+  asyncHandler(publicRequestController.orderIdsByTrackingToken.bind(publicRequestController)),
+);
+
+router.get(
+  "/push/web/vapid-public-key",
+  asyncHandler(publicRequestController.pushWebVapidPublicKey.bind(publicRequestController)),
+);
+
+router.post(
+  "/push/web/subscribe",
+  validate("body", PublicWebPushSubscribeBodySchema),
+  asyncHandler(publicRequestController.subscribePublicWebPush.bind(publicRequestController)),
 );
 
 export { router as publicRoutes };

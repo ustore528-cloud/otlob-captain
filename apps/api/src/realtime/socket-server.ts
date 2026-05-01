@@ -5,6 +5,7 @@ import { resolveCorsOrigin } from "../config/cors-options.js";
 import { verifyAccessToken } from "../lib/jwt.js";
 import { prisma } from "../lib/prisma.js";
 import { isCaptainRole, isDispatcherRole, isManagementAdminRole, isStoreAdminRole, isSuperAdminRole } from "../lib/rbac-roles.js";
+import { customerSocketRoomForTrackingToken } from "./customer-order-public-tracking.js";
 import { setIo, rooms } from "./hub.js";
 import type { AppRole } from "../lib/rbac-roles.js";
 
@@ -100,12 +101,24 @@ export function attachSocketIo(httpServer: HttpServer): Server {
 
   io.use((socket, next) => {
     void (async () => {
+      const auth = socket.handshake.auth ?? {};
+      if (
+        typeof auth === "object" &&
+        auth !== null &&
+        (auth as { client?: unknown }).client === "public_order_page"
+      ) {
+        socket.data.socketKind = "public_order_page" as const;
+        socket.data.publicCustomerToken = undefined as string | undefined;
+        return next();
+      }
+
       const token =
         (socket.handshake.auth?.token as string | undefined) ??
         (typeof socket.handshake.query.token === "string" ? socket.handshake.query.token : undefined);
       if (!token) return next(new Error("Unauthorized"));
       const payload = verifyAccessToken(token);
       const actor = await resolveRealtimeActor(payload);
+      socket.data.socketKind = "staff" as const;
       socket.data.userId = actor.userId;
       socket.data.role = actor.role as UserRole;
       socket.data.storeId = actor.storeId;
@@ -119,6 +132,51 @@ export function attachSocketIo(httpServer: HttpServer): Server {
   });
 
   io.on("connection", (socket) => {
+    if (socket.data.socketKind === "public_order_page") {
+      socket.on("customer:join_order", async (raw: unknown) => {
+        if (socket.disconnected || socket.data.socketKind !== "public_order_page") return;
+
+        let tokenRaw: unknown;
+        if (typeof raw === "object" && raw !== null && "trackingToken" in raw) {
+          tokenRaw = (raw as { trackingToken: unknown }).trackingToken;
+        } else {
+          tokenRaw = raw;
+        }
+        const trackingToken =
+          typeof tokenRaw === "string"
+            ? tokenRaw.trim()
+            : typeof raw === "string"
+              ? raw.trim()
+              : "";
+        const maxLen = 64;
+        if (!trackingToken || trackingToken.length > maxLen) {
+          socket.emit("customer:join_order:error", { code: "INVALID_TOKEN" });
+          return;
+        }
+
+        const row = await prisma.order.findUnique({
+          where: { publicTrackingToken: trackingToken },
+          select: { publicTrackingToken: true },
+        });
+        const stored = row?.publicTrackingToken ?? null;
+        if (!stored || stored !== trackingToken) {
+          socket.emit("customer:join_order:error", { code: "INVALID_TOKEN" });
+          return;
+        }
+
+        const prev = socket.data.publicCustomerToken as string | undefined;
+        if (prev && prev !== trackingToken) {
+          await socket.leave(customerSocketRoomForTrackingToken(prev));
+        }
+        const room = customerSocketRoomForTrackingToken(trackingToken);
+        await socket.join(room);
+        socket.data.publicCustomerToken = trackingToken;
+        socket.emit("customer:join_order:ok", { ok: true });
+      });
+
+      return;
+    }
+
     const actor: RealtimeTenantActor = {
       userId: socket.data.userId as string,
       role: socket.data.role as AppRole,

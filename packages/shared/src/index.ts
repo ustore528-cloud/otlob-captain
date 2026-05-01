@@ -1,3 +1,4 @@
+export * from "./customer-notifications-i18n.js";
 export * from "./enums.js";
 export * from "./display-i18n.js";
 export * from "./api-paths.js";

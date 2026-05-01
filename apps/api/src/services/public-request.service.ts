@@ -439,12 +439,31 @@ function captainFirstWord(fullName: string | null | undefined): string {
   return t || "كابتن";
 }
 
+/** لمَن يملك رمز التتبع العام فقط — لفتح `/track/:token` بدون ownerCode في الرابط */
+export async function getPublicOrderIdsByTrackingToken(trackingToken: string): Promise<{
+  ownerCode: string;
+  orderId: string;
+}> {
+  const tok = trackingToken.trim();
+  if (!tok) throw new AppError(400, "رمز التتبع مطلوب.", "BAD_REQUEST");
+  const order = await prisma.order.findUnique({
+    where: { publicTrackingToken: tok },
+    select: { id: true, orderPublicOwnerCode: true },
+  });
+  const ownerCode = order?.orderPublicOwnerCode ?? null;
+  if (!order || !ownerCode) {
+    throw new AppError(404, "الطلب غير موجود أو الرمز غير صالح.", "NOT_FOUND");
+  }
+  return { ownerCode, orderId: order.id };
+}
+
 /** لمتابعة الطلب بدون JWT — يتطلّب رمزًا أُنشئ عند إنشاء الطلب من الصفحة العامة فقط */
 export async function getPublicOrderTracking(ownerCode: string, orderId: string, trackingToken: string) {
   if (!trackingToken.trim()) throw new AppError(400, "رمز التتبع مطلوب.", "BAD_REQUEST");
   const order = await prisma.order.findFirst({
     where: { id: orderId },
     include: {
+      store: { select: { name: true } },
       assignedCaptain: {
         select: {
           id: true,
@@ -550,5 +569,14 @@ export async function getPublicOrderTracking(ownerCode: string, orderId: string,
     pickupLng: order.pickupLng,
     dropoffLat: order.dropoffLat,
     dropoffLng: order.dropoffLng,
+    receiptHints: {
+      orderNumber: order.orderNumber,
+      storeLabel: order.store?.name ?? "—",
+      pickupAddress: order.pickupAddress,
+      dropoffAddress: order.dropoffAddress,
+      amount: order.amount.toString(),
+      cashCollection: order.cashCollection.toString(),
+      deliveryFee: order.deliveryFee?.toString() ?? null,
+    },
   };
 }

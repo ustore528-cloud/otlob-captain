@@ -1306,6 +1306,30 @@
       "small": "Small parcel",
       "other": "Other"
     },
+    "customerOrder": {
+      "socket": {
+        "statusLabel": {
+          "orderReceived": "Order received",
+          "orderAccepted": "Order accepted",
+          "captainAssigned": "Captain assigned",
+          "captainEnRoutePickup": "Captain heading to pickup",
+          "pickedUp": "Picked up",
+          "enRouteToCustomer": "On the way to you",
+          "delivered": "Delivered",
+          "canceled": "Canceled"
+        },
+        "message": {
+          "orderReceived": "We have your order and will process it shortly.",
+          "orderAccepted": "Your order has been accepted.",
+          "captainAssigned": "A captain has been assigned to your order.",
+          "captainEnRoutePickup": "Your captain is on the way to pick up the shipment.",
+          "pickedUp": "Your order has been picked up.",
+          "enRouteToCustomer": "Your order is on its way to you.",
+          "delivered": "Your order has been delivered.",
+          "canceled": "This order was canceled."
+        }
+      }
+    },
     "orderExperience": {
       "settings": "Settings",
       "closeMenu": "Close",
@@ -1432,6 +1456,7 @@
       "successTimeline_picked": "Picked up",
       "successTimeline_transit": "On the way",
       "successTimeline_delivered": "Delivered",
+      "successTimeline_cancelled": "Cancelled",
       "successTitle": "Order received successfully",
       "successMapNote": "The map shows an approximate route on public roads; use Waze for live tracking.",
       "storesLabel": "Purchase amount",
@@ -1457,7 +1482,28 @@
       "minutesToArrive": "~{{n}} min",
       "etaToPickup": " — route to pickup",
       "etaToDropoff": " — route to drop-off",
-      "etaSentence": "Approx. travel time (~{{minutes}} min{{suffix}})."
+      "etaSentence": "Approx. travel time (~{{minutes}} min{{suffix}}).",
+      "liveConnectionRealtime": "Live channel on — updating while this tab is open.",
+      "liveConnectionPolling": "Live channel off — refreshing here about every 12 seconds while this tab stays open.",
+      "offlinePushHeading": "Optional: alerts outside this tab",
+      "offlinePushBody": "With this page left open in your browser, the map and order status refresh automatically here (live link when possible, otherwise periodic reload). After you leave the website, alerts may arrive only where your browser and device support push notifications and you allow permission — they are never guaranteed on every device.",
+      "offlinePushLimitationsLead": "We do not promise that outside-the-browser alerts work everywhere.",
+      "offlinePushIosPwaTitle": "On iPhone / iPad",
+      "offlinePushIosPwaBody": "Add this site to your Home Screen first (Share → Add to Home Screen). Then open it from that home-screen icon — that is typically required before alerts can work. Next, enable notifications from that installed web app.",
+      "offlinePushIosStandaloneOk": "You opened from the Home Screen icon. Alerts still depend on OS and browser support; you can try the option below.",
+      "offlinePushIosSafariWaitForPwa": "From a normal Safari tab, outside alerts are usually not available. Add this site to your Home Screen, open it from the icon, then use the alerts option there if your device supports it.",
+      "offlinePushToggle": "Try alerts when I’m away from this tab",
+      "offlinePushEnabling": "Requesting permission…",
+      "offlinePushEnabledLabel": "Outside alerts attempted",
+      "offlinePushEnabledToast": "Alerts were requested.",
+      "offlinePushEnabledToastDetail": "Whether they arrive depends on browser, OS, and notification settings — not every device delivers them. For reliable tracking, leave this tab open.",
+      "offlinePushUnavailableHint": "The server has not configured Web Push. Keep this tab open — tracking still updates here.",
+      "offlinePushDeniedHint": "Permission was declined. Alerts when away will not work until you change that in browser or system settings. This tab still updates while open.",
+      "offlinePushUnsupportedHint": "On this combination of browser/OS, alerts outside this page are not available — keep this tab open and status keeps refreshing.",
+      "offlinePushProdOnlyHint": "Browser push for order updates is available in the production build (or preview). Use a deployed site or run `vite build` + `vite preview` to try it.",
+      "offlinePushFailedToast": "Could not complete alert setup — this tab will still refresh while it’s open.",
+      "statusToastTitle": "Order update",
+      "statusToastGeneric": "Status: {{status}}"
     }
   },
   "manualAssign": {

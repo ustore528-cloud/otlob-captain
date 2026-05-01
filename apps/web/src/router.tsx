@@ -7,6 +7,7 @@ import { StoresPage } from "@/pages/stores-page";
 import { IncubatorHostPage } from "@/pages/incubator-host-page";
 import { LoginPage } from "@/pages/login-page";
 import { PublicRequestPage } from "@/pages/public-request-page";
+import { PublicTrackPage } from "@/pages/public-track-page";
 import { ComplaintsPage } from "@/pages/complaints-page";
 import { NewOrderPage } from "@/pages/new-order-page";
 import { ForbiddenPage } from "@/pages/forbidden-page";
@@ -48,6 +49,10 @@ export const router = createBrowserRouter([
   {
     path: "/request/:ownerCode",
     element: <PublicRequestPage />,
+  },
+  {
+    path: "/track/:trackingToken",
+    element: <PublicTrackPage />,
   },
   {
     path: "/forbidden",

@@ -1299,6 +1299,30 @@
       "small": "חבילה קטנה",
       "other": "אחר"
     },
+    "customerOrder": {
+      "socket": {
+        "statusLabel": {
+          "orderReceived": "ההזמנה התקבלה",
+          "orderAccepted": "ההזמנה אושרה",
+          "captainAssigned": "שויך שליח",
+          "captainEnRoutePickup": "השליח בדרך לאיסוף",
+          "pickedUp": "החבילה נאספה",
+          "enRouteToCustomer": "בדרך אליך",
+          "delivered": "נמסרה",
+          "canceled": "בוטלה"
+        },
+        "message": {
+          "orderReceived": "קיבלנו את ההזמנה ונטפל בה בקרוב.",
+          "orderAccepted": "ההזמנה אושרה.",
+          "captainAssigned": "שוייך שליח להזמנה שלך.",
+          "captainEnRoutePickup": "השליח בדרך לאסוף את המשלוח.",
+          "pickedUp": "המשלוח נאסף מנקודת האיסוף.",
+          "enRouteToCustomer": "המשלוח בדרך לכתובת שלך.",
+          "delivered": "ההזמנה נמסרה.",
+          "canceled": "ההזמנה בוטלה."
+        }
+      }
+    },
     "orderExperience": {
       "settings": "הגדרות",
       "closeMenu": "סגור",
@@ -1425,6 +1449,7 @@
       "successTimeline_picked": "נאסף",
       "successTimeline_transit": "בדרך למסירה",
       "successTimeline_delivered": "נמסר",
+      "successTimeline_cancelled": "ההזמנה בוטלה",
       "successTitle": "ההזמנה התקבלה בהצלחה",
       "successMapNote": "המפה מציגה מסלול משוער; לשימוש בווייז למעקב חי.",
       "storesLabel": "סכום קניות",
@@ -1450,7 +1475,28 @@
       "minutesToArrive": "~{{n}} דק'",
       "etaToPickup": " — מסלול לאיסוף",
       "etaToDropoff": " — מסלול למסירה",
-      "etaSentence": "זמן נסיעה משוער (~{{minutes}} דק'{{suffix}})."
+      "etaSentence": "זמן נסיעה משוער (~{{minutes}} דק'{{suffix}}).",
+      "liveConnectionRealtime": "ערוץ חי פעיל — המעקב מתעדכן בזמן שהלשונית פתוחה.",
+      "liveConnectionPolling": "ערוץ חי לא זמין — ריענון כאן בערך כל 12 שניות כשהדף נשאר פתוח.",
+      "offlinePushHeading": "אופציונלי: התראות מחוץ ללשונית",
+      "offlinePushBody": "כשהדף פתוח בדפדפן, המפה והסטטוס מתעדכנים כאן אוטומטית (כשמתאפשר צ׳אנל חי, אחרת ריענון מחזורי). אחרי שעוזבים את האתר, התראות יגיעות רק אם הדפדפן והמערכת תומכים בהתראות דחיפה (Web Push), ונטלת הרשאה — אין התחייבות שהן יפעלו בכל המכשירים.",
+      "offlinePushLimitationsLead": "אין לנו להבטיח שאפשר לקבל התראות מחוץ לדפדפן בכל דפדפן או בכל טלפון.",
+      "offlinePushIosPwaTitle": "ב‑‏iPhone / ‏iPad",
+      "offlinePushIosPwaBody": "קודם הוסיפו את האתר למסך הבית (שתף ← הוספה למסך הבית). אחר‑כך פתחו אותו דרך האייקון במסך הבית — במצב טיפוסי זו דרישה לפני שאפשר לקבל התראות. בשלב הבא הפעילו התראות מתוך אפליקציית ה‑Web ההיא, בהתאם לתמיכת המערכת.",
+      "offlinePushIosStandaloneOk": "פתחתם מהאייקון במסך הבית. גם התראות מחוץ לטאב תלויות בתמיכת המערכת — אם מופיעה אפשרות למטה, אפשר לנסות.",
+      "offlinePushIosSafariWaitForPwa": "מטאב רגיל ב‑Safari בדרך־כלל לא מקבלים התראות מחוץ לדף. הוסיפו לאתר מקום במסך הבית, פתחו מהאייקון, ואז נסו הפעלה שם כשיש תמיכה.",
+      "offlinePushToggle": "נסו התראות כשאני לא בדף זה",
+      "offlinePushEnabling": "מבקשים הרשאה…",
+      "offlinePushEnabledLabel": "חיבור התראות ניסיוני",
+      "offlinePushEnabledToast": "בוצע ניסיון לחיבור התראות.",
+      "offlinePushEnabledToastDetail": "הגעת התראה תלויה בדפדפן, בגרסת מערכת ההפעלה ובהגדרות — לא בכל המכשירים זה מגיע. למעקב בטוח, השאירו את הלשונית פתוחה.",
+      "offlinePushUnavailableHint": "השרת לא הוגדר ל‑Web Push — השאירו את הלשונית פתוחה, המצב מתעדכן כאן.",
+      "offlinePushDeniedHint": "הבקשה נדחתה — התראות מחוץ לטאב לא יעבוד עד תיקון ההרשאה בהגדרות. כשהלשונית פתוחה העדכונים כן ממשיכים.",
+      "offlinePushUnsupportedHint": "צירוף זה של דפדפן ומערכת לא מאפשר התראות דחיפה מחוץ לדף — השאירו את העמוד פתוח והריענון ימשיך.",
+      "offlinePushProdOnlyHint": "התראות דחיפה לעדכוני הזמנה זמינות בגרסת production או ב-preview (אחרי `vite build`). השתמשו באתר המפורסם או הריצו `vite preview`.",
+      "offlinePushFailedToast": "לא הושלם חיבור התראות בדפדפן — הריענון כאן ממשיך כל עוד העמוד פתוח.",
+      "statusToastTitle": "עדכון הזמנה",
+      "statusToastGeneric": "סטטוס: {{status}}"
     }
   },
   "manualAssign": {

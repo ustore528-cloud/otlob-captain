@@ -28,8 +28,45 @@ export const PublicOrderTrackingParamsSchema = z.object({
   orderId: z.string().min(16).max(128),
 });
 
+/** Public tracking tokens match `orders.public_tracking_token` @db.VarChar(64) (typically UUID strings). */
+const publicTrackingTokenValue = z.string().min(16).max(64);
+
 export const PublicOrderTrackingQuerySchema = z.object({
-  token: z.string().min(16).max(128),
+  token: publicTrackingTokenValue,
+});
+
+export const PublicOrderByTrackingTokenParamsSchema = z.object({
+  trackingToken: publicTrackingTokenValue,
+});
+
+const pushSubscriptionInnerSchema = z.object({
+  endpoint: z.string().url().max(2048),
+  expirationTime: z.number().nullable().optional(),
+  keys: z.object({
+    p256dh: z.string().min(16).max(2048),
+    auth: z.string().min(8).max(256),
+  }),
+});
+
+export const PublicWebPushSubscribeBodySchema = z.object({
+  ownerCode: ownerCodeParam,
+  orderId: z.string().min(16).max(128),
+  trackingToken: publicTrackingTokenValue,
+  locale: z.enum(["ar", "en", "he"]).optional(),
+  userAgent: z.string().max(4096).optional(),
+  platform: z.string().max(128).optional(),
+  subscription: pushSubscriptionInnerSchema,
+});
+
+export const PublicWebPushSubscribeByTokenParamsSchema = z.object({
+  trackingToken: publicTrackingTokenValue,
+});
+
+export const PublicWebPushSubscribeByTokenBodySchema = z.object({
+  locale: z.enum(["ar", "en", "he"]).optional(),
+  userAgent: z.string().max(4096).optional(),
+  platform: z.string().max(128).optional(),
+  subscription: pushSubscriptionInnerSchema,
 });
 
 /** Same money rules as `CreateOrderBodySchema` — enforced in `ordersService.create`. */
