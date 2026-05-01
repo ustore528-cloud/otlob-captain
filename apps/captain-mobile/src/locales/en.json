@@ -96,6 +96,13 @@
       "whatsappUnavailableBody": "Could not open WhatsApp for this number. You can try calling instead.",
       "invalidPhoneTitle": "Cannot open WhatsApp",
       "invalidPhoneBody": "Enter a valid mobile number (e.g. 05xxxxxxxx or +972… / +970…)."
+    },
+    "location": {
+      "permissionRequiredTitle": "Location access required",
+      "permissionRequiredBody": "Allow location access so we can track you while you work and send nearby orders.",
+      "trackingActive": "Location is updated automatically while you are online.",
+      "trackingInactive": "Location sharing is paused while you are offline.",
+      "trackingError": "Could not send your location — we will retry in the background when possible."
     }
   },
   "location": {
@@ -270,12 +277,15 @@
     "rangeDesc30d": "Orders delivered in the last thirty days",
     "rangeDescMonth": "Orders delivered since the start of this month",
     "emptyTitle": "No data in this period",
-    "emptyBody": "After you complete deliveries, collection totals will appear here. Try “all periods” or change the range.",
-    "totalCollection": "Total to collect",
-    "totalCollectionHint": "Sum of amounts to collect from delivered orders",
+    "emptyBody": "After you complete deliveries, delivery earnings and totals will appear here. Try “all periods” or change the range.",
+    "deliveryEarnings": "Delivery earnings",
+    "deliveryEarningsHint": "Sum of delivery fees on your delivered orders — this is your delivery-side earnings, not store order value.",
+    "totalCollection": "Total cash to collect",
+    "totalCollectionHint": "Sum of cash collection shown on orders (often amount + fee). Informational — not your delivery earnings.",
     "statDelivered": "Delivered orders",
-    "statOrderValue": "Order value",
-    "note": "Figures are from the server for orders in “delivered” status in the selected period. They may differ from your actual balance depending on settlements.",
+    "statOrderProductsValue": "Orders product total",
+    "statOrderProductsValueHint": "Sum of store/customer product amounts only — not your delivery fee or profit.",
+    "note": "Delivery earnings use delivery fees only (plus legacy fee inference when the fee was not stored). Store order totals and cash collection are shown for reference. Figures are for “delivered” orders in the selected period and may differ from your balance after settlements.",
     "noteSectionTitle": "Note"
   },
   "openExternal": {
@@ -456,7 +466,8 @@
     "lead": "Enter the phone or email and password on file.",
     "fieldIdentifier": "Phone or email",
     "fieldPassword": "Password",
-    "submit": "Sign in"
+    "submit": "Sign in",
+    "guestCta": "Continue as guest"
   },
   "screenHeader": {
     "back": "Back"
@@ -573,6 +584,39 @@
     "hubAppNotifLabel": "App notifications",
     "hubAppNotifHint": "Coming soon — sound and visibility preferences",
     "hubQuickHomeLabel": "Quick dashboard",
-    "hubQuickHomeHint": "Status summary and latest alert — optional"
+    "hubQuickHomeHint": "Status summary and latest alert — optional",
+    "hubDeleteAccountLabel": "Delete account",
+    "hubDeleteAccountHint": "Permanently deactivate this captain login"
+  },
+  "accountDelete": {
+    "hubLabel": "Delete account",
+    "hubHint": "Permanently deactivate this captain login",
+    "title": "Delete account",
+    "intro": "This permanently deactivates your captain account. You will not be able to sign in again with this account. Your past orders and financial history stay on file for records.",
+    "reasonLabel": "Optional feedback",
+    "reasonPlaceholder": "Tell us why you are leaving (optional)",
+    "understandLabel": "I understand this cannot be undone",
+    "openConfirm": "Continue",
+    "modalTitle": "Confirm account deletion",
+    "modalBody": "Your account will be deactivated immediately. Active sessions will stop working.",
+    "modalCancel": "Not now",
+    "modalContinue": "Proceed to final confirmation",
+    "finalTitle": "Delete account?",
+    "finalMessage": "This is your last step. Your captain login will be disabled.",
+    "finalConfirm": "Delete my account",
+    "finalCancel": "Cancel",
+    "deleting": "Deleting…",
+    "errorGeneric": "We could not delete your account. Check your connection and try again."
+  },
+  "guestMode": {
+    "title": "Guest preview",
+    "lead": "You are browsing a limited preview. Sign in as a captain to work on real orders.",
+    "body": "Guest mode does not connect to live dispatch, earnings, or your profile. Nothing you do here changes real data.",
+    "signInCta": "Sign in or register",
+    "previewProtectedCta": "Try a captain-only feature",
+    "signInAction": "Sign in",
+    "stayAsGuest": "Stay as guest",
+    "loginRequiredTitle": "Sign in required",
+    "loginRequiredBody": "Please sign in with your captain account to use this action."
   }
 }

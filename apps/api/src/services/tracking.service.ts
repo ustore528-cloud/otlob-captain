@@ -23,6 +23,13 @@ export const trackingService = {
     longitude: number,
     meta?: { heading?: number | null; speed?: number | null; accuracy?: number | null; timestamp?: string | null },
   ) {
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+      throw new AppError(400, "Invalid latitude", "BAD_REQUEST");
+    }
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      throw new AppError(400, "Invalid longitude", "BAD_REQUEST");
+    }
+
     // eslint-disable-next-line no-console
     console.info("[api-location] received", {
       userId,

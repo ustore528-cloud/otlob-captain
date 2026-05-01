@@ -18,6 +18,7 @@ import { WorkStatusBanner } from "@/features/work-status";
 import { QueryErrorState } from "@/components/ui/query-error-state";
 import { ScreenContainer, SectionCard } from "@/components/ui";
 import { alertMutationError } from "@/lib/alert-mutation-error";
+import { ensureLocationPermissionForGoingOnline } from "@/features/tracking/location-online-guard";
 import { captainSpacing, captainUiTheme } from "@/theme/captain-ui-theme";
 
 export function HomeScreen() {
@@ -54,7 +55,11 @@ export function HomeScreen() {
   }, [meQuery.data?.captain.availabilityStatus]);
 
   const onAvailability = useCallback(
-    (next: CaptainAvailabilityStatus) => {
+    async (next: CaptainAvailabilityStatus) => {
+      if (next !== "OFFLINE") {
+        const ok = await ensureLocationPermissionForGoingOnline();
+        if (!ok) return;
+      }
       updateAv.mutate(next, {
         onError: (e) => alertMutationError(t("profile.updateErrorTitle"), e, t("profile.updateErrorHint")),
       });

@@ -2,6 +2,44 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { queryKeys } from "@/lib/api/query-keys";
 import { createDashboardSocket } from "@/lib/socket";
+import type { ActiveMapCaptain } from "@/types/api";
+
+function parseCaptainLocationPayload(raw: unknown): {
+  captainId: string;
+  latitude: number;
+  longitude: number;
+  recordedAt: string;
+} | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const o = raw as Record<string, unknown>;
+  const captainId = typeof o.captainId === "string" ? o.captainId : null;
+  const latitude = typeof o.latitude === "number" && Number.isFinite(o.latitude) ? o.latitude : null;
+  const longitude = typeof o.longitude === "number" && Number.isFinite(o.longitude) ? o.longitude : null;
+  if (!captainId || latitude === null || longitude === null) return null;
+  const recordedAt = typeof o.recordedAt === "string" ? o.recordedAt : new Date().toISOString();
+  return { captainId, latitude, longitude, recordedAt };
+}
+
+function mergeCaptainLocationOnActiveMap(
+  prev: ActiveMapCaptain[] | undefined,
+  p: NonNullable<ReturnType<typeof parseCaptainLocationPayload>>,
+): ActiveMapCaptain[] | undefined {
+  if (!prev?.length) return prev;
+  const idx = prev.findIndex((c) => c.id === p.captainId);
+  if (idx === -1) return prev;
+  const next = [...prev];
+  const row = next[idx];
+  next[idx] = {
+    ...row,
+    lastLocation: {
+      captainId: p.captainId,
+      latitude: p.latitude,
+      longitude: p.longitude,
+      recordedAt: p.recordedAt,
+    },
+  };
+  return next;
+}
 
 /** إبطال ذاكرة React Query عند أحداث Socket.IO للوحة التشغيل */
 export function useDashboardSocketInvalidate(token: string | null) {
@@ -22,14 +60,24 @@ export function useDashboardSocketInvalidate(token: string | null) {
       void qc.invalidateQueries({ queryKey: queryKeys.stores.root });
     };
     /**
-     * تحديث موقع الكابتن فقط — لا يغيّر قوائم الطلبات؛ يكفي الخريطة النشطة + سجل النشاط (يُسجَّل موقع في الخادم).
-     * يقلّل الضغط عن التكرار مع `invalidateOrderDistributionDomain` بعد التعيين وعن إعادة جلب غير لازمة مع كل ping.
+     * موقع الكابتن من Socket — دمج في كاش الخريطة النشطة لتقليل refetch عند pings كل ثوانٍ.
      */
-    const bumpCaptainLocationOnly = (payload: unknown) => {
+    const onCaptainLocationSocket = (payload: unknown) => {
       // eslint-disable-next-line no-console
-      console.info("[tracking-map] received", { event: "captain:location", payload });
-      void qc.invalidateQueries({ queryKey: queryKeys.tracking.activeMap() });
-      void qc.invalidateQueries({ queryKey: queryKeys.activity.root });
+      console.info("[tracking-map] received", { events: ["captain:location", "captain:location:update"], payload });
+      const parsed = parseCaptainLocationPayload(payload);
+      if (!parsed) {
+        void qc.invalidateQueries({ queryKey: queryKeys.tracking.activeMap() });
+        return;
+      }
+      const mapKey = queryKeys.tracking.activeMap();
+      const cur = qc.getQueryData<ActiveMapCaptain[]>(mapKey);
+      const merged = mergeCaptainLocationOnActiveMap(cur, parsed);
+      if (merged === undefined) {
+        void qc.invalidateQueries({ queryKey: mapKey });
+        return;
+      }
+      qc.setQueryData(mapKey, merged);
     };
     socket.on("order:created", bumpOrderDomain);
     const onOrderUpdated = (payload: unknown) => {
@@ -54,11 +102,13 @@ export function useDashboardSocketInvalidate(token: string | null) {
       bumpOrderDomain();
     };
     socket.on("order:updated", onOrderUpdated);
-    socket.on("captain:location", bumpCaptainLocationOnly);
+    socket.on("captain:location", onCaptainLocationSocket);
+    socket.on("captain:location:update", onCaptainLocationSocket);
     return () => {
       socket.off("order:created", bumpOrderDomain);
       socket.off("order:updated", onOrderUpdated);
-      socket.off("captain:location", bumpCaptainLocationOnly);
+      socket.off("captain:location", onCaptainLocationSocket);
+      socket.off("captain:location:update", onCaptainLocationSocket);
       /**
        * Defer disconnect to the next microtask so we don’t abort a transport mid-handshake.
        * React 18 Strict Mode runs mount → cleanup → mount in dev; immediate disconnect caused noisy warnings.

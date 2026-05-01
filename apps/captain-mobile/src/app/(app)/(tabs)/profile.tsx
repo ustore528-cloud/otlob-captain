@@ -1,6 +1,7 @@
+import { useRouter, type Href } from "expo-router";
 import { useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ScreenHeader } from "@/components/screen-header";
 import { WorkStatusBanner } from "@/features/work-status";
@@ -13,13 +14,18 @@ import {
 } from "@/features/availability";
 import { homeTheme } from "@/features/home/theme";
 import { alertMutationError } from "@/lib/alert-mutation-error";
+import { ensureLocationPermissionForGoingOnline } from "@/features/tracking/location-online-guard";
 import { screenStyles } from "@/theme/screen-styles";
 import { useCaptainMe } from "@/hooks/api/use-captain-me";
 import { useAuth } from "@/hooks/use-auth";
 import type { CaptainAvailabilityStatus } from "@/services/api/dto";
+import { CAPTAIN_TABLET_MIN_WIDTH, captainWideContentStyle } from "@/theme/captain-wide-layout";
 
 export default function ProfileTab() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const wide = width >= CAPTAIN_TABLET_MIN_WIDTH;
   const { user, captain, signOut, isAuthenticated } = useAuth();
   const goBack = useInnerToolBack();
   const meQuery = useCaptainMe({ enabled: isAuthenticated, staleTime: 20_000 });
@@ -31,7 +37,11 @@ export default function ProfileTab() {
   }, [meQuery.data?.captain.availabilityStatus, captain?.availabilityStatus]);
 
   const onAvailability = useCallback(
-    (next: CaptainAvailabilityStatus) => {
+    async (next: CaptainAvailabilityStatus) => {
+      if (next !== "OFFLINE") {
+        const ok = await ensureLocationPermissionForGoingOnline();
+        if (!ok) return;
+      }
       updateAv.mutate(next, {
         onError: (e) => alertMutationError(t("profile.updateErrorTitle"), e, t("profile.updateErrorHint")),
       });
@@ -44,6 +54,7 @@ export default function ProfileTab() {
       <WorkStatusBanner />
       <ScreenHeader title={t("profile.title")} onBack={goBack} />
       <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={wide ? captainWideContentStyle : undefined}>
         <Text style={styles.screenSub}>{t("profile.sub")}</Text>
 
         <View style={styles.card}>
@@ -73,6 +84,16 @@ export default function ProfileTab() {
         >
           <Text style={styles.outText}>{t("profile.signOut")}</Text>
         </Pressable>
+
+        <Pressable
+          style={styles.deleteLink}
+          onPress={() => {
+            router.push("/(app)/account-delete" as Href);
+          }}
+        >
+          <Text style={styles.deleteLinkText}>{t("accountDelete.title")}</Text>
+        </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -129,4 +150,16 @@ const styles = StyleSheet.create({
     backgroundColor: homeTheme.surface,
   },
   outText: { color: homeTheme.danger, fontWeight: "700", fontSize: 15 },
+  deleteLink: {
+    marginTop: 12,
+    alignSelf: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  deleteLinkText: {
+    color: homeTheme.danger,
+    fontWeight: "700",
+    fontSize: 14,
+    textDecorationLine: "underline",
+  },
 });

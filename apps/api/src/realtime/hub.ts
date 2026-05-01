@@ -138,11 +138,12 @@ export function emitOrderCreated(payload: unknown, scope: DispatcherTenantScope)
 export function emitCaptainLocation(payload: unknown, scope: DispatcherTenantScope): void {
   // eslint-disable-next-line no-console
   console.info("[socket-location] emitted", {
-    event: "captain:location",
+    events: ["captain:location", "captain:location:update"],
     companyId: scope.companyId,
     branchId: scope.branchId ?? null,
   });
   emitToDispatchers("captain:location", payload, scope);
+  emitToDispatchers("captain:location:update", payload, scope);
 }
 
 export function emitOperationalGlobal(event: string, payload: unknown, options: { explicitGlobal: true }): void {

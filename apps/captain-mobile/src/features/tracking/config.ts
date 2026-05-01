@@ -4,9 +4,14 @@
  */
 export const TRACKING_CONFIG = {
   /** فترة إرسال الموقع أثناء عمل التطبيق في المقدّمة */
-  intervalMsForeground: 30_000,
+  intervalMsForeground: 3_000,
   /** أقل فترة مسموحة (حماية من إفراط في الطلبات) */
-  minIntervalMs: 10_000,
+  minIntervalMs: 3_000,
+  /**
+   * عندما لا يوجد طلب ACTIVE: تجاهُل الإرسال إذا لم يتحرّك أكثر من ~5 أمتار.
+   * مع طلب ACTIVE يُرسَم دومًا لتفادي تأخّر لوحة التحكم.
+   */
+  minMovementSkipMeters: 5,
   /** محاولات إرسال لكل نقطة عند فشل مؤقت */
   sendMaxAttempts: 4,
   /** تأخير أسيّي بين المحاولات (ملّي ثانية) */
