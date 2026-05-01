@@ -8,9 +8,17 @@ import { Platform } from "react-native";
  */
 const defaultApiUrl = Platform.OS === "android" ? "http://10.0.2.2:4000" : "http://localhost:4000";
 const raw = (process.env.EXPO_PUBLIC_API_URL ?? defaultApiUrl).replace(/\/$/, "");
+/** Site origin for the React web app that serves `/join-captain` (no trailing slash). */
+const webOrigin = (process.env.EXPO_PUBLIC_WEB_APP_URL ?? "").replace(/\/$/, "");
 
 export const env = {
   apiUrl: raw,
+  /** For opening `/join-captain` in the device browser */
+  webAppOrigin: webOrigin,
+  captainJoinWebUrl(): string {
+    if (!webOrigin) return "";
+    return `${webOrigin}/join-captain`;
+  },
 } as const;
 
 if (__DEV__ && Platform.OS !== "web") {

@@ -468,7 +468,8 @@
     "fieldIdentifier": "رقم الجوال أو البريد",
     "fieldPassword": "كلمة المرور",
     "submit": "تسجيل الدخول",
-    "guestCta": "متابعة كضيف"
+    "joinCaptainCta": "ليس لديك حساب؟ انضم ككابتن",
+    "joinCaptainUrlMissing": "لم يُضبط عنوان الويب. أضف EXPO_PUBLIC_WEB_APP_URL في إعدادات البناء."
   },
   "screenHeader": {
     "back": "رجوع"

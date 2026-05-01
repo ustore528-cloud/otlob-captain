@@ -71,6 +71,14 @@ export const paths = {
     /** POST اشتراك دفع عبر `trackingToken` فقط في المسار */
     ordersPushSubscription: (trackingToken: string) =>
       `${API_V1}/public/orders/${encodeURIComponent(trackingToken.trim())}/push-subscription`,
+    /** POST — بدون JWT؛ طلب انضمام ككابتن (مراجعة إدارية فقط) */
+    captainApplications: `${API_V1}/public/captain-applications`,
+  },
+  /** Super Admin — طلبات انضمام الكباتن */
+  adminCaptainApplications: {
+    root: `${API_V1}/admin/captain-applications`,
+    status: (id: string) =>
+      `${API_V1}/admin/captain-applications/${encodeURIComponent(id)}/status`,
   },
   complaints: {
     root: `${API_V1}/complaints`,

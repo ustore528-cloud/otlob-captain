@@ -9,6 +9,8 @@ import { LoginPage } from "@/pages/login-page";
 import { PublicRequestPage } from "@/pages/public-request-page";
 import { PublicTrackPage } from "@/pages/public-track-page";
 import { ComplaintsPage } from "@/pages/complaints-page";
+import { CaptainApplicationsAdminPage } from "@/pages/captain-applications-admin-page";
+import { JoinCaptainPage } from "@/pages/join-captain-page";
 import { NewOrderPage } from "@/pages/new-order-page";
 import { ForbiddenPage } from "@/pages/forbidden-page";
 import {
@@ -21,6 +23,7 @@ import {
   ordersLoader,
   reportsLoader,
   complaintsLoader,
+  captainApplicationsLoader,
   usersLoader,
 } from "@/router/loaders";
 
@@ -45,6 +48,10 @@ export const router = createBrowserRouter([
         <LoginPage />
       </RequireGuest>
     ),
+  },
+  {
+    path: "/join-captain",
+    element: <JoinCaptainPage />,
   },
   {
     path: "/request/:ownerCode",
@@ -123,6 +130,11 @@ export const router = createBrowserRouter([
         path: "complaints",
         element: <ComplaintsPage />,
         loader: complaintsLoader,
+      },
+      {
+        path: "captain-applications",
+        element: <CaptainApplicationsAdminPage />,
+        loader: captainApplicationsLoader,
       },
     ],
   },

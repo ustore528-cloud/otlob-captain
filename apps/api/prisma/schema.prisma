@@ -108,6 +108,20 @@ enum PublicPageComplaintStatus {
   RESOLVED
 }
 
+/** طلب انضمام ككابتن — مراجعة إدارية فقط (لا ربط تلقائي بالتوزيع أو إنشاء كابتن) */
+enum CaptainApplicationStatus {
+  PENDING
+  REVIEWING
+  APPROVED
+  REJECTED
+  CONVERTED_TO_CAPTAIN
+}
+
+enum CaptainApplicationAvailability {
+  FULL_TIME
+  PART_TIME
+}
+
 /**
  * أحداث دفتر الأستاذ الموحد (Slice 0 — نطاق minimal).
  * موجب = رصيد لصالح المحفظة، سالب = خصم من المحفظة.
@@ -198,6 +212,9 @@ model User {
 
   /** Optional UI-only localized labels (JSON); canonical `full_name` unchanged. */
   displayI18n Json? @map("display_i18n")
+
+  /** طلبات انضمام كابتن راجعها هذا المستخدم (Super Admin فقط عمليًا) */
+  captainApplicationsReviewed CaptainApplication[] @relation("CaptainApplicationReviewer")
 
   @@index([role, isActive])
   @@index([companyId])
@@ -791,4 +808,41 @@ model DashboardSettings {
   updatedAt                            DateTime @updatedAt @map("updated_at")
 
   @@map("dashboard_settings")
+}
+
+/**
+ * طلب انضمام كابتن (مرحلة أولى) — بيانات للمراجعة فقط؛ لا يُنشئ Captain ولا يؤثر على التوزيع.
+ */
+model CaptainApplication {
+  id                 String                           @id @default(cuid())
+  fullName           String                           @map("full_name") @db.VarChar(200)
+  primaryPhone       String                           @map("primary_phone") @db.VarChar(32)
+  whatsappPhone      String                           @map("whatsapp_phone") @db.VarChar(32)
+  /** يُملأ واحدًا على الأقل مع ageYears وفق تعريف الـ API */
+  dateOfBirth        DateTime?                        @map("date_of_birth") @db.Date
+  ageYears           Int?                             @map("age_years")
+  city               String                           @db.VarChar(120)
+  fullAddress        String                           @map("full_address") @db.Text
+  /** مصفوفة JSON لأسماء اللغات التي يتحدثها المتقدّم */
+  languagesSpoken    Json                             @map("languages_spoken")
+  vehicleType        String                           @map("vehicle_type") @db.VarChar(80)
+  vehicleNumber      String?                          @map("vehicle_number") @db.VarChar(64)
+  preferredWorkAreas String                           @map("preferred_work_areas") @db.Text
+  /** مستقبلًا: قواعد تشغيل / توزيع — حاليًا معلومات فقط */
+  canEnterJerusalem  Boolean                          @map("can_enter_jerusalem")
+  canEnterInterior   Boolean                          @map("can_enter_interior")
+  availability       CaptainApplicationAvailability   @map("availability")
+  notes              String?                          @db.Text
+  status             CaptainApplicationStatus         @default(PENDING)
+  internalNotes      String?                          @map("internal_notes") @db.Text
+  reviewedByUserId   String?                          @map("reviewed_by_user_id")
+  reviewedBy         User?                            @relation("CaptainApplicationReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt         DateTime?                        @map("reviewed_at")
+  createdAt          DateTime                         @default(now()) @map("created_at")
+  updatedAt          DateTime                         @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([primaryPhone])
+  @@index([city])
+  @@map("captain_applications")
 }

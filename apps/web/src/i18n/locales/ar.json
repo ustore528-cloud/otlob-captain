@@ -468,7 +468,8 @@
     "users": "المستخدمون",
     "finance": "المالية",
     "reports": "التقارير",
-    "complaints": "الشكاوى"
+    "complaints": "الشكاوى",
+    "captainApplications": "طلبات انضمام الكباتن"
   },
   "complaints": {
     "page": {
@@ -1497,6 +1498,104 @@
       "offlinePushFailedToast": "لم نكمِّل ضبط التنبيهات — هذا التبويب لا يزال يُجدِّد الحالة طالما مفتوح.",
       "statusToastTitle": "تحديث الطلب",
       "statusToastGeneric": "الحالة: {{status}}"
+    }
+  },
+  "captainJoin": {
+    "customerCta": "انضم ككابتن",
+    "customerCtaHint": "قدِّم للعمل كسائق توصيل مع 2in — المراجعة من فريقنا؛ لا يتم إنشاء حساب كابتن تلقائياً.",
+    "pageTitle": "طلب الانضمام ككابتن",
+    "pageIntro": "أدخل تفاصيلك لمراجعتها. هذا النموذج لا يفعِّل حساب كابتن ولا يشبكك بالتوزيع الآلي للطلبات.",
+    "phaseNote": "المرحلة الأولى: البيانات للمراجعة الإدارية فقط.",
+    "successTitle": "تم استلام الطلب",
+    "successBody": "شكرًا لك. سيتواصل فريقنا عند الحاجة لمعلومات إضافية.",
+    "backOrderHome": "مساعدة بخصوص الطلب",
+    "submit": "إرسال الطلب",
+    "yes": "نعم",
+    "no": "لا",
+    "toast": {
+      "success": "تم الإرسال بنجاح.",
+      "error": "تعذّر الإرسال. تأكَّد من الاتصال وحاول مجدداً."
+    },
+    "validation": {
+      "dobOrAge": "أدخل تاريخ الميلاد أو العمر.",
+      "ageYears": "يجب أن يكون العمر رقماً صحيحاً بين 16 و90.",
+      "languages": "اختر لغة واحدة على الأقل."
+    },
+    "field": {
+      "fullName": "الاسم الكامل",
+      "primaryPhone": "رقم الهاتف الأساسي",
+      "whatsappPhone": "رقم واتساب",
+      "dateOfBirth": "تاريخ الميلاد (اختياري إذا أدخلت العمر)",
+      "ageYearsPlaceholder": "العمر (اختياري إذا أدخلت تاريخ الميلاد)",
+      "city": "المدينة",
+      "fullAddress": "العنوان الكامل",
+      "languages": "اللغات التي تتحدثها",
+      "languagesExtra": "لغات أخرى (مفصولة بفواصل)",
+      "languagesPlaceholder": "مثل: Russian, French",
+      "vehicleType": "نوع المركبة",
+      "vehicleNumber": "رقم اللوحة / تسجيل المركبة (اختياري)",
+      "preferredWorkAreas": "مناطق العمل المفضّلة",
+      "canEnterJerusalem": "هل تستطيع الدخول إلى القدس؟",
+      "canEnterInterior": "هل تستطيع الدخول إلى المناطق الداخلية (محتاة / الداخل)؟",
+      "availability": "نوع التوفر",
+      "notes": "ملاحظات إضافية"
+    },
+    "lang": {
+      "ar": "العربية",
+      "en": "الإنجليزية",
+      "he": "العبرية"
+    },
+    "availability": {
+      "FULL_TIME": "دوام كامل",
+      "PART_TIME": "دوام جزئي"
+    },
+    "vehicle": {
+      "motorcycle": "دراجة نارية",
+      "car": "سيارة",
+      "bicycle": "دراجة هوائية",
+      "scooter": "سكوتر كهربائي",
+      "other": "أخرى"
+    },
+    "detail": {
+      "dob": "تاريخ الميلاد"
+    },
+    "admin": {
+      "title": "طلبات انضمام الكباتن",
+      "description": "مراجعة الطلبات الواردة — لا ترتبط هذه السجلات بالتوجيه أو بإنشاء كابتن.",
+      "search": "بحث",
+      "searchPlaceholder": "اسم، هاتف، مدينة…",
+      "apply": "تطبيق المرشّحات",
+      "statusFilter": "الحالة",
+      "allStatuses": "الكل",
+      "count": "الإجمالي {{total}}",
+      "tableTitle": "الطلبات",
+      "loading": "جاري التحميل…",
+      "loadError": "تعذّر تحميل الطلبات.",
+      "patchError": "تعذّر تحديث الطلب.",
+      "col": {
+        "name": "الاسم",
+        "phone": "الهاتف",
+        "city": "المدينة",
+        "status": "الحالة",
+        "created": "تاريخ الإنشاء",
+        "actions": "إجراءات"
+      },
+      "open": "التفاصيل",
+      "prev": "الصفحة السابقة",
+      "next": "الصفحة التالية",
+      "detailTitle": "تفاصيل الطلب",
+      "statusLabel": "الحالة",
+      "internalNotes": "ملاحظات داخلية للإدارة",
+      "close": "إغلاق",
+      "save": "حفظ",
+      "saveClose": "حفظ وإغلاق",
+      "status": {
+        "PENDING": "معلّق",
+        "REVIEWING": "قيد المراجعة",
+        "APPROVED": "مقبول",
+        "REJECTED": "مرفوض",
+        "CONVERTED_TO_CAPTAIN": "تم التحويل إلى كابتن"
+      }
     }
   },
   "manualAssign": {

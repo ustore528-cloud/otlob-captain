@@ -10,6 +10,7 @@ import {
   canAccessUsersPage,
   canListOrdersRole,
   isDispatchRole,
+  isSuperAdminRole,
 } from "@/lib/rbac-roles";
 import { queryClient } from "@/lib/query-client";
 import { useAuthStore } from "@/stores/auth-store";
@@ -151,5 +152,13 @@ export async function complaintsLoader() {
   const role = useAuthStore.getState().user?.role;
   if (!token) return redirect("/login");
   if (!isAdminPanelRole(role) || !canAccessComplaintsPage(role)) return redirect("/forbidden");
+  return null;
+}
+
+export async function captainApplicationsLoader() {
+  const token = useAuthStore.getState().token;
+  const role = useAuthStore.getState().user?.role;
+  if (!token) return redirect("/login");
+  if (!isSuperAdminRole(role)) return redirect("/forbidden");
   return null;
 }

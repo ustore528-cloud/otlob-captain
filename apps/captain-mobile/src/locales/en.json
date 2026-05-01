@@ -467,7 +467,8 @@
     "fieldIdentifier": "Phone or email",
     "fieldPassword": "Password",
     "submit": "Sign in",
-    "guestCta": "Continue as guest"
+    "joinCaptainCta": "Don't have an account? Join as captain",
+    "joinCaptainUrlMissing": "Web app URL is not set. Add EXPO_PUBLIC_WEB_APP_URL in the build profile."
   },
   "screenHeader": {
     "back": "Back"

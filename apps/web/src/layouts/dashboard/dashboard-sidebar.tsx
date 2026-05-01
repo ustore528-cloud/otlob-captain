@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Heart,
+  UserPlus,
   LayoutDashboard,
   LogOut,
   MapPinned,
@@ -32,6 +33,7 @@ export type DashboardNavFlags = {
   canIncubatorHost: boolean;
   canOrders: boolean;
   canCaptains: boolean;
+  canCaptainApplications: boolean;
   canStores: boolean;
   canUsers: boolean;
   canFinance: boolean;
@@ -126,6 +128,12 @@ export function DashboardSidebar({ userLabel, nav, onLogout }: Props) {
           <NavLink className={navClass} to="/complaints">
             <MessageSquare className="size-4 shrink-0" />
             {t("nav.complaints")}
+          </NavLink>
+        ) : null}
+        {nav.canCaptainApplications ? (
+          <NavLink className={navClass} to="/captain-applications">
+            <UserPlus className="size-4 shrink-0" />
+            {t("nav.captainApplications")}
           </NavLink>
         ) : null}
       </nav>

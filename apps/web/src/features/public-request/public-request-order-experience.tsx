@@ -61,6 +61,7 @@ import { toast } from "@/lib/toast";
 import { isReasonableFlexiblePhone } from "@captain/shared";
 import { isValidLatLng } from "@/lib/geo-validation";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 function formatPublicOrderApiErrorMessage(e: ApiError): string {
   if (e.code === "COMPANY_BRANCH_REQUIRED" && e.details && typeof e.details === "object") {
@@ -620,6 +621,13 @@ export function PublicRequestOrderExperience({
           >
             <p className="text-sm font-bold text-slate-900">{t("public.orderExperience.settings")}</p>
             <LanguageSwitcher />
+            <Link
+              to="/join-captain"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm font-bold text-primary underline-offset-4 hover:underline"
+              onClick={() => setMenuOpen(false)}
+            >
+              {t("captainJoin.customerCta")}
+            </Link>
             <button
               type="button"
               className="mt-auto text-sm font-medium text-primary underline"

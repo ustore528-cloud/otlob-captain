@@ -18,9 +18,17 @@ import {
   PublicComplaintParamsSchema,
 } from "../../validators/complaints.schemas.js";
 import { GeocodeReverseQuerySchema } from "../../validators/geocode.schemas.js";
+import { PublicCaptainApplicationCreateBodySchema } from "../../validators/captain-application.schemas.js";
+import { captainApplicationController } from "../../controllers/captain-application.controller.js";
 import { publicRequestController } from "../../controllers/public-request.controller.js";
 
 const router = Router();
+
+router.post(
+  "/captain-applications",
+  validate("body", PublicCaptainApplicationCreateBodySchema),
+  asyncHandler(captainApplicationController.createPublic.bind(captainApplicationController)),
+);
 
 router.get(
   "/request-context/:code",

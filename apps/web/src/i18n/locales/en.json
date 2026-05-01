@@ -475,7 +475,8 @@
     "users": "Users",
     "finance": "Finance",
     "reports": "Reports",
-    "complaints": "Complaints"
+    "complaints": "Complaints",
+    "captainApplications": "Captain join requests"
   },
   "complaints": {
     "page": {
@@ -1504,6 +1505,104 @@
       "offlinePushFailedToast": "Could not complete alert setup — this tab will still refresh while it’s open.",
       "statusToastTitle": "Order update",
       "statusToastGeneric": "Status: {{status}}"
+    }
+  },
+  "captainJoin": {
+    "customerCta": "Join as captain",
+    "customerCtaHint": "Apply to deliver with 2in — reviewed by our team; no automatic captain account.",
+    "pageTitle": "Captain application",
+    "pageIntro": "Submit your details so we can review your request. This form does not activate a captain login or connect you to automated dispatch.",
+    "phaseNote": "Phase 1: data is for admin review only.",
+    "successTitle": "Application received",
+    "successBody": "Thank you. Our team will reach out if we need more information.",
+    "backOrderHome": "Order help",
+    "submit": "Submit application",
+    "yes": "Yes",
+    "no": "No",
+    "toast": {
+      "success": "Submitted successfully.",
+      "error": "Could not submit. Check your connection and try again."
+    },
+    "validation": {
+      "dobOrAge": "Enter your date of birth or your age.",
+      "ageYears": "Age must be a whole number between 16 and 90.",
+      "languages": "Select at least one language."
+    },
+    "field": {
+      "fullName": "Full name",
+      "primaryPhone": "Primary phone",
+      "whatsappPhone": "WhatsApp number",
+      "dateOfBirth": "Date of birth (optional if you enter age)",
+      "ageYearsPlaceholder": "Age (optional if you entered date of birth)",
+      "city": "City",
+      "fullAddress": "Full address",
+      "languages": "Languages you speak",
+      "languagesExtra": "Other languages (comma separated)",
+      "languagesPlaceholder": "e.g. Russian, French",
+      "vehicleType": "Vehicle type",
+      "vehicleNumber": "Vehicle registration / plate (optional)",
+      "preferredWorkAreas": "Preferred work areas",
+      "canEnterJerusalem": "Can you enter Jerusalem?",
+      "canEnterInterior": "Can you enter Israel proper / interior?",
+      "availability": "Availability",
+      "notes": "Additional notes"
+    },
+    "lang": {
+      "ar": "Arabic",
+      "en": "English",
+      "he": "Hebrew"
+    },
+    "availability": {
+      "FULL_TIME": "Full-time",
+      "PART_TIME": "Part-time"
+    },
+    "vehicle": {
+      "motorcycle": "Motorcycle / scooter bike",
+      "car": "Car",
+      "bicycle": "Bicycle",
+      "scooter": "Electric scooter",
+      "other": "Other"
+    },
+    "detail": {
+      "dob": "Date of birth"
+    },
+    "admin": {
+      "title": "Captain join requests",
+      "description": "Review inbound applications — these records are not wired to routing or captain creation.",
+      "search": "Search",
+      "searchPlaceholder": "Name, phone, city…",
+      "apply": "Apply filters",
+      "statusFilter": "Status",
+      "allStatuses": "All",
+      "count": "{{total}} total",
+      "tableTitle": "Applications",
+      "loading": "Loading…",
+      "loadError": "Could not load applications.",
+      "patchError": "Could not update application.",
+      "col": {
+        "name": "Name",
+        "phone": "Phone",
+        "city": "City",
+        "status": "Status",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "open": "Details",
+      "prev": "Previous page",
+      "next": "Next page",
+      "detailTitle": "Application details",
+      "statusLabel": "Status",
+      "internalNotes": "Internal notes (admin only)",
+      "close": "Close",
+      "save": "Save",
+      "saveClose": "Save & close",
+      "status": {
+        "PENDING": "Pending",
+        "REVIEWING": "Under review",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "CONVERTED_TO_CAPTAIN": "Converted to captain"
+      }
     }
   },
   "manualAssign": {

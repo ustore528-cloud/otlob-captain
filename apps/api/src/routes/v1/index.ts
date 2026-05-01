@@ -21,9 +21,11 @@ import { companiesRoutes } from "./companies.routes.js";
 import { publicRoutes } from "./public.routes.js";
 import { complaintsRoutes } from "./complaints.routes.js";
 import { companyPublicPageRoutes } from "./company-public-page.routes.js";
+import { adminCaptainApplicationsRoutes } from "./admin-captain-applications.routes.js";
 
 const v1Router = Router();
 
+v1Router.use("/admin/captain-applications", adminCaptainApplicationsRoutes);
 v1Router.use("/public", publicRoutes);
 v1Router.use("/", companyPublicPageRoutes);
 v1Router.use("/complaints", complaintsRoutes);

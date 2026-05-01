@@ -8,7 +8,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://captainapi-production.up.railway.app",
-        "EXPO_PUBLIC_SOCKET_URL": "https://captainapi-production.up.railway.app"
+        "EXPO_PUBLIC_SOCKET_URL": "https://captainapi-production.up.railway.app",
+        "EXPO_PUBLIC_WEB_APP_URL": "https://my-project-web-azure.vercel.app"
       },
       "android": {
         "buildType": "apk"
@@ -17,7 +18,8 @@
     "production": {
       "env": {
         "EXPO_PUBLIC_API_URL": "https://captainapi-production.up.railway.app",
-        "EXPO_PUBLIC_SOCKET_URL": "https://captainapi-production.up.railway.app"
+        "EXPO_PUBLIC_SOCKET_URL": "https://captainapi-production.up.railway.app",
+        "EXPO_PUBLIC_WEB_APP_URL": "https://my-project-web-azure.vercel.app"
       },
       "android": {
         "buildType": "app-bundle"

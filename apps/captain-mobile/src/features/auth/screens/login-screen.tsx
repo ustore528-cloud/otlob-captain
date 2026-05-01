@@ -1,6 +1,9 @@
 import { router } from "expo-router";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import * as Linking from "expo-linking";
+import { Alert } from "react-native";
+import { env } from "@/utils/env";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -63,8 +66,8 @@ export function LoginScreen() {
           <TextField
             label={t("login.fieldIdentifier")}
             value={identifier}
-            onChangeText={(t) => {
-              setIdentifier(t);
+            onChangeText={(txt) => {
+              setIdentifier(txt);
               setFieldErrors((e) => ({ ...e, identifier: undefined }));
             }}
             error={fieldErrors.identifier}
@@ -77,8 +80,8 @@ export function LoginScreen() {
           <TextField
             label={t("login.fieldPassword")}
             value={password}
-            onChangeText={(t) => {
-              setPassword(t);
+            onChangeText={(txt) => {
+              setPassword(txt);
               setFieldErrors((e) => ({ ...e, password: undefined }));
             }}
             error={fieldErrors.password}
@@ -105,6 +108,21 @@ export function LoginScreen() {
             ) : (
               <Text style={styles.primaryText}>{t("login.submit")}</Text>
             )}
+          </Pressable>
+
+          <Pressable
+            style={styles.secondaryLink}
+            onPress={() => {
+              const url = env.captainJoinWebUrl();
+              if (!url) {
+                Alert.alert("", t("login.joinCaptainUrlMissing"));
+                return;
+              }
+              void Linking.openURL(url);
+            }}
+            accessibilityRole="link"
+          >
+            <Text style={styles.secondaryLinkText}>{t("login.joinCaptainCta")}</Text>
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -149,4 +167,17 @@ const styles = StyleSheet.create({
   },
   primaryDisabled: { opacity: 0.75 },
   primaryText: { color: homeTheme.onAccent, fontWeight: "800", fontSize: 16 },
+  secondaryLink: {
+    marginTop: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  secondaryLinkText: {
+    color: homeTheme.accent,
+    fontWeight: "700",
+    fontSize: 14,
+    textAlign: "center",
+    textDecorationLine: "underline",
+  },
 });

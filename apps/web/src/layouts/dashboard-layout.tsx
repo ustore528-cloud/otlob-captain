@@ -12,6 +12,7 @@ import {
   canListOrdersRole,
   isAdminPanelRole,
   isDispatchRole,
+  isSuperAdminRole,
 } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import { useTranslation } from "react-i18next";
@@ -42,6 +43,7 @@ export function DashboardLayout() {
     canIncubatorHost: canIncubator,
     canOrders,
     canCaptains,
+    canCaptainApplications: Boolean(isSuperAdminRole(role)),
     canStores: canStoresNav,
     canUsers,
     canFinance,

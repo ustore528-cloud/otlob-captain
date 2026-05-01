@@ -468,7 +468,8 @@
     "fieldIdentifier": "טלפון או אימייל",
     "fieldPassword": "סיסמה",
     "submit": "התחברות",
-    "guestCta": "המשך כאורח"
+    "joinCaptainCta": "אין לך חשבון? הצטרף כקפטן",
+    "joinCaptainUrlMissing": "לא הוגדר כתובת האתר. הוסף EXPO_PUBLIC_WEB_APP_URL בפרופיל הבנייה."
   },
   "screenHeader": {
     "back": "חזרה"

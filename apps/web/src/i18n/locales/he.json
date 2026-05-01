@@ -468,7 +468,8 @@
     "users": "משתמשים",
     "finance": "כספים",
     "reports": "דוחות",
-    "complaints": "תלונות"
+    "complaints": "תלונות",
+    "captainApplications": "בקשות הצטרפות שליחים"
   },
   "complaints": {
     "page": {
@@ -1497,6 +1498,104 @@
       "offlinePushFailedToast": "לא הושלם חיבור התראות בדפדפן — הריענון כאן ממשיך כל עוד העמוד פתוח.",
       "statusToastTitle": "עדכון הזמנה",
       "statusToastGeneric": "סטטוס: {{status}}"
+    }
+  },
+  "captainJoin": {
+    "customerCta": "הצטרף כקפטן",
+    "customerCtaHint": "הגש בקשה לעבודת משלוחים עם 2in — נבדק ע״י הצוות שלנו; לא נוצר אוטומטית חשבון שליח.",
+    "pageTitle": "בקשת הצטרפות כשליח",
+    "pageIntro": "מלאו פרטים כדי שנבחן את הבקשה. הטופס הזה לא מפעיל כניסת שליח ולא מחבר למערכת שיבוץ אוטומטית.",
+    "phaseNote": "שלב 1: הנתונים מיועדים לבדיקת משרד בלבד.",
+    "successTitle": "הבקשה התקבלה",
+    "successBody": "תודה. ניצור קשר אם נזדקק למידע נוסף.",
+    "backOrderHome": "עזרה בהזמנה",
+    "submit": "שליחת הבקשה",
+    "yes": "כן",
+    "no": "לא",
+    "toast": {
+      "success": "נשלח בהצלחה.",
+      "error": "שליחה נכשלה. בדקו חיבור ונסו שוב."
+    },
+    "validation": {
+      "dobOrAge": "הזינו תאריך לידה או גיל.",
+      "ageYears": "הגיל חייב להיות מספר שלם בין 16 ל־90.",
+      "languages": "בחרו לפחות שפה אחת."
+    },
+    "field": {
+      "fullName": "שם מלא",
+      "primaryPhone": "טלפון ראשי",
+      "whatsappPhone": "מספר וואטסאפ",
+      "dateOfBirth": "תאריך לידה (לא חובה אם מילאת גיל)",
+      "ageYearsPlaceholder": "גיל (לא חובה אם מילאת תאריך לידה)",
+      "city": "עיר",
+      "fullAddress": "כתובת מלאה",
+      "languages": "שפות שאתם דוברים",
+      "languagesExtra": "שפות נוספות (מופרדות בפסיקים)",
+      "languagesPlaceholder": "למשל רוסית, צרפתית",
+      "vehicleType": "סוג כלי הרכב",
+      "vehicleNumber": "מספר רישוי / לוחית (לא חובה)",
+      "preferredWorkAreas": "אזורי עבודה מועדפים",
+      "canEnterJerusalem": "האם ניתן לכם להיכנס לירושלים?",
+      "canEnterInterior": "האם ניתן לכם להיכנס לפרפר / פנים הארץ?",
+      "availability": "סוג זמינות",
+      "notes": "הערות נוספות"
+    },
+    "lang": {
+      "ar": "ערבית",
+      "en": "אנגלית",
+      "he": "עברית"
+    },
+    "availability": {
+      "FULL_TIME": "משרה מלאה",
+      "PART_TIME": "משרה חלקית"
+    },
+    "vehicle": {
+      "motorcycle": "אופנוע / קטנוע",
+      "car": "רכב",
+      "bicycle": "אופניים",
+      "scooter": "קורקינט חשמלי",
+      "other": "אחר"
+    },
+    "detail": {
+      "dob": "תאריך לידה"
+    },
+    "admin": {
+      "title": "בקשות הצטרפות שליחים",
+      "description": "ביקור בבקשות נכנסות — הרשומות האלה לא מחוברות לניתוב או ליצירת שליח.",
+      "search": "חיפוש",
+      "searchPlaceholder": "שם, טלפון, עיר…",
+      "apply": "החלת מסננים",
+      "statusFilter": "סטטוס",
+      "allStatuses": "הכל",
+      "count": "סה\"כ {{total}}",
+      "tableTitle": "בקשות",
+      "loading": "טוען…",
+      "loadError": "לא ניתן לטעון את הבקשות.",
+      "patchError": "לא ניתן לעדכן את הבקשה.",
+      "col": {
+        "name": "שם",
+        "phone": "טלפון",
+        "city": "עיר",
+        "status": "סטטוס",
+        "created": "נוצר בתאריך",
+        "actions": "פעולות"
+      },
+      "open": "פרטים",
+      "prev": "עמוד קודם",
+      "next": "עמוד הבא",
+      "detailTitle": "פרטי הבקשה",
+      "statusLabel": "סטטוס",
+      "internalNotes": "הערות פנימיות (מנהלה בלבד)",
+      "close": "סגירה",
+      "save": "שמירה",
+      "saveClose": "שמירה וסגירה",
+      "status": {
+        "PENDING": "ממתין",
+        "REVIEWING": "בבדיקה",
+        "APPROVED": "אושר",
+        "REJECTED": "נדחה",
+        "CONVERTED_TO_CAPTAIN": "הומר לשליח"
+      }
     }
   },
   "manualAssign": {
