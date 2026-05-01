@@ -77,6 +77,8 @@ export const ordersService = {
       branchId?: string;
       customerName: string;
       customerPhone: string;
+      senderFullName?: string;
+      senderPhone?: string;
       pickupAddress: string;
       dropoffAddress: string;
       area: string;
@@ -194,11 +196,16 @@ export const ordersService = {
       cashCollection: input.cashCollection,
     });
 
+    const senderNm = input.senderFullName?.trim();
+    const senderPh = input.senderPhone?.trim();
+
     const order = await orderRepository.createWithDisplaySequence(
       {
         orderNumber: generateOrderNumber(),
         customerName: input.customerName,
         customerPhone: input.customerPhone,
+        ...(senderNm ? { senderFullName: senderNm } : {}),
+        ...(senderPh ? { senderPhone: senderPh } : {}),
         company: { connect: { id: store.companyId } },
         branch: { connect: { id: store.branchId } },
         store: { connect: { id: resolvedStoreId } },

@@ -999,7 +999,8 @@
       "empty": "אין נתוני הזמנה",
       "emptyDesc": "ייתכן שההזמנה אינה זמינה או שהרשימה התעדכנה.",
       "paymentLabel": "תשלום:",
-      "notesTitle": "הערות / הוראות"
+      "notesTitle": "הערות / הוראות",
+      "senderPartyTitle": "מי ביצע את הבקשה"
     }
   },
   "newOrder": {
@@ -1233,6 +1234,38 @@
     "profitOrCommission": "רווח / עמלה",
     "pickupNotRecordedCell": "לא נרשם"
   },
+  "publicRequest": {
+    "senderSection": {
+      "title": "פרטי השולח ומיקום האיסוף",
+      "description": "הזן את פרטי השולח ומיקום האיסוף, ואז המשך לפרטי הנמסר ומסירת המשלוח."
+    },
+    "sender": {
+      "nameLabel": "שם מלא של השולח",
+      "namePlaceholder": "שם פרטי ומשפחה",
+      "phoneLabel": "טלפון השולח",
+      "phonePlaceholder": "למשל 05xxxxxxxx או +972xxxxxxxx",
+      "pickupLabel": "מיקום איסוף"
+    },
+    "customerSection": {
+      "title": "פרטי הלקוח / הנמסר",
+      "description": "הזן את שם הנמסר, טלפון וכתובת המסירה."
+    },
+    "customer": {
+      "nameLabel": "שם הלקוח / הנמסר",
+      "namePlaceholder": "שם הנמסר במלואו",
+      "phoneLabel": "טלפון הלקוח / הנמסר",
+      "phonePlaceholder": "למשל 05xxxxxxxx או +972xxxxxxxx",
+      "deliveryLabel": "כתובת מסירה"
+    },
+    "actions": {
+      "nextCustomer": "הבא: פרטי לקוח",
+      "submitOrder": "אישור ושליחת ההזמנה"
+    },
+    "validation": {
+      "customerPhoneInvalid": "הזינו מספר תקין (9–15 ספרות), למשל קו נייח/נייד עם קידומת (05xxxxxxxx או +972…) — ללא אותיות או תווים מיותרים.",
+      "senderPhoneInvalid": "הזינו מספר שולח תקין (9–15 ספרות), למשל 05xxxxxxxx או בינלאומי +972."
+    }
+  },
   "public": {
     "loading": "טוען…",
     "invalidLink": "קישור לא תקין.",
@@ -1285,21 +1318,31 @@
       "step1Badge": "1",
       "step2Badge": "2",
       "stepIndicator": "{{current}} מתוך {{total}}",
-      "step1Title": "שולח ואיסוף",
-      "step2Title": "נמסר ומשלוח",
-      "orderDetailsLead": "הזן מיקום איסוף ופרטי שולח, ואז כתובת מסירה ותמחור.",
+      "step1Title": "איסוף ופרטי קשר שלך",
+      "step2Title": "פרטי מסירה",
+      "orderDetailsLead": "שלב ראשון: כתובת איסוף ודרך להשיג אותך. שלב הבא: כתובת מסירה, סוג חבילה וסיכום תשלום.",
       "nextStep": "הבא",
       "prevStep": "חזרה",
       "fromPickupLabel": "מאיפה (איסוף)",
-      "pickupPlaceholder": "כתובת איסוף",
-      "senderInfoTitle": "פרטי שולח",
-      "fullNameLabel": "שם מלא",
-      "customerPlaceholder": "שם הלקוח",
-      "phoneLabel": "טלפון",
-      "phonePlaceholderHint": "+972… או נייד",
-      "recipientSectionTitle": "כתובת מסירה",
-      "toDropoffLabel": "לאן (מסירה)",
-      "dropoffPlaceholder": "כתובת מסירה",
+      "pickupPlaceholder": "רחוב, בניין או שם עסק…",
+      "senderInfoTitle": "עם מי ליצור קשר לגבי המשלוח?",
+      "senderRememberHint": "איסוף ופרטי קשר זמינים לזיכור בדפדפן זה בלבד — ללא הרשמה או שמירה בשרתים שלנו.",
+      "senderProfileSaveCheckbox": "שמירת הנתונים שלי להזמנות הבאות",
+      "senderProfileEditSaved": "עריכת מידע שמור",
+      "senderProfileClearSaved": "מחיקת מידע שמור",
+      "senderProfileActionsGroupAria": "קיצורי דרך לפרטים שמורים (איסוף וקשר)",
+      "fullNameLabel": "השם שלך",
+      "customerPlaceholder": "שם פרטי ושם משפחה",
+      "phoneLabel": "טלפון נייד שלך",
+      "phonePlaceholderHint": "יש לכלול קידומת ארץ (+972…)",
+      "recipientSectionTitle": "פרט את כתובת המסירה. אם משהו אחר מקבל — הוסף מספר טלפון של הנמסר כדי שנוסיף אותו להערות ההזמנה לשליח.",
+      "recipientPhoneLabel": "נייד הנמסר",
+      "recipientPhonePlaceholder": "מספר ליצירת קשר במסירה (אופציונלי)",
+      "recipientPhoneHint": "ייכנס להערות לשליח רק אם מולא. השאר ריק אם אתה המקבל.",
+      "recipientPhoneInvalid": "מספר הנמסר קצר מדי; הזינו טלפון מלא או השאירו ריק.",
+      "recipientPhoneInNotes": "נייד הנמסר: {{phone}}",
+      "toDropoffLabel": "כתובת מסירה",
+      "dropoffPlaceholder": "כתובת מלאה והנחיות (קומה, ציון דרך…)",
       "packageTypeLabel": "סוג משלוח",
       "notesOptionalLabel": "הערות (אופציונלי)",
       "notesPlaceholder": "הנחיות נוספות…",

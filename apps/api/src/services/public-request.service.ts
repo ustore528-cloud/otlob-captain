@@ -196,6 +196,8 @@ export async function createOrderFromPublicPage(body: {
   storeId?: string;
   customerName: string;
   customerPhone: string;
+  senderFullName: string;
+  senderPhone: string;
   pickupAddress: string;
   dropoffAddress: string;
   area: string;
@@ -287,6 +289,8 @@ export async function createOrderFromPublicPage(body: {
       storeId: body.storeId,
       customerName: body.customerName,
       customerPhone: body.customerPhone,
+      senderFullName: body.senderFullName.trim(),
+      senderPhone: body.senderPhone.trim(),
       pickupAddress: body.pickupAddress,
       dropoffAddress: body.dropoffAddress,
       area: body.area,

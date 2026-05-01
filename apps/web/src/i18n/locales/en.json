@@ -1006,7 +1006,8 @@
       "empty": "No order data available",
       "emptyDesc": "The order may be unavailable or the list was refreshed.",
       "paymentLabel": "Payment:",
-      "notesTitle": "Notes / instructions"
+      "notesTitle": "Notes / instructions",
+      "senderPartyTitle": "Who placed the request"
     }
   },
   "newOrder": {
@@ -1240,6 +1241,38 @@
     "profitOrCommission": "Profit / Commission",
     "pickupNotRecordedCell": "Not recorded"
   },
+  "publicRequest": {
+    "senderSection": {
+      "title": "Sender details and pickup location",
+      "description": "Enter the sender's details and pickup location, then continue with the customer and delivery information."
+    },
+    "sender": {
+      "nameLabel": "Sender full name",
+      "namePlaceholder": "First and family name",
+      "phoneLabel": "Sender phone number",
+      "phonePlaceholder": "e.g. 05xxxxxxxx or +972xxxxxxxx",
+      "pickupLabel": "Pickup location"
+    },
+    "customerSection": {
+      "title": "Customer / recipient details",
+      "description": "Enter the customer's name, phone number, and delivery location."
+    },
+    "customer": {
+      "nameLabel": "Customer / recipient name",
+      "namePlaceholder": "Recipient first and family name",
+      "phoneLabel": "Customer phone number",
+      "phonePlaceholder": "e.g. 05xxxxxxxx or +972xxxxxxxx",
+      "deliveryLabel": "Delivery location"
+    },
+    "actions": {
+      "nextCustomer": "Next: Customer Details",
+      "submitOrder": "Confirm and Submit Order"
+    },
+    "validation": {
+      "customerPhoneInvalid": "Enter a valid number (9–15 digits), for example a local Israeli line (05xxxxxxxx) or international (+972xxxxxxxx). Letters and stray symbols are not allowed.",
+      "senderPhoneInvalid": "Enter a valid sender number (9–15 digits), for example a local Israeli line (05xxxxxxxx) or international (+972xxxxxxxx)."
+    }
+  },
   "public": {
     "loading": "Loading…",
     "invalidLink": "Invalid link.",
@@ -1292,21 +1325,31 @@
       "step1Badge": "1",
       "step2Badge": "2",
       "stepIndicator": "{{current}} of {{total}}",
-      "step1Title": "Sender & pickup",
-      "step2Title": "Recipient & delivery",
-      "orderDetailsLead": "Enter pickup location and sender info, then delivery address and pricing.",
+      "step1Title": "Pickup & your details",
+      "step2Title": "Delivery details",
+      "orderDetailsLead": "First: pickup address and how we reach you. Next: delivery address, parcel type, and payment summary.",
       "nextStep": "Next",
       "prevStep": "Back",
       "fromPickupLabel": "From (pickup)",
-      "pickupPlaceholder": "Pickup address",
-      "senderInfoTitle": "Sender details",
-      "fullNameLabel": "Full name",
-      "customerPlaceholder": "Customer name",
-      "phoneLabel": "Phone number",
-      "phonePlaceholderHint": "+966… or mobile",
-      "recipientSectionTitle": "Delivery address",
-      "toDropoffLabel": "To (drop-off)",
-      "dropoffPlaceholder": "Delivery address",
+      "pickupPlaceholder": "Street, building or business name…",
+      "senderInfoTitle": "Who should we update about this delivery?",
+      "senderRememberHint": "Pickup and sender details can be recalled on this browser only—they are never sent for registration or login.",
+      "senderProfileSaveCheckbox": "Save my information for future orders",
+      "senderProfileEditSaved": "Edit saved information",
+      "senderProfileClearSaved": "Clear saved information",
+      "senderProfileActionsGroupAria": "Saved pickup and sender shortcuts",
+      "fullNameLabel": "Your name",
+      "customerPlaceholder": "First and family name",
+      "phoneLabel": "Your mobile number",
+      "phonePlaceholderHint": "Include country code (e.g. +972…)",
+      "recipientSectionTitle": "Tell us where we're delivering and share a recipient phone number if someone else receives the shipment.",
+      "recipientPhoneLabel": "Recipient mobile",
+      "recipientPhonePlaceholder": "Number used at delivery (optional)",
+      "recipientPhoneHint": "Adds a short line to dispatch notes—only if entered. Leave blank when you are receiving it yourself.",
+      "recipientPhoneInvalid": "Recipient phone looks too short—enter a complete number or leave the field blank.",
+      "recipientPhoneInNotes": "Recipient phone: {{phone}}",
+      "toDropoffLabel": "Drop-off address",
+      "dropoffPlaceholder": "Full address / instructions (floor, landmark…)",
       "packageTypeLabel": "Order / parcel type",
       "notesOptionalLabel": "Notes (optional)",
       "notesPlaceholder": "Extra instructions…",

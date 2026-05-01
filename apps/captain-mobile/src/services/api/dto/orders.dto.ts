@@ -38,6 +38,8 @@ export type OrderDetailDto = {
   status: OrderStatusDto;
   customerName: string;
   customerPhone: string;
+  senderFullName?: string | null;
+  senderPhone?: string | null;
   pickupAddress: string;
   dropoffAddress: string;
   area: string;

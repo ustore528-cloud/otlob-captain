@@ -480,6 +480,11 @@ model Order {
   displayOrderNo          Int?                        @map("display_order_no")
   customerName            String                      @map("customer_name")
   customerPhone           String                      @map("customer_phone")
+  /**
+   * Public link / who's placing the order — optional additive (recipient stays `customer*`).
+   */
+  senderFullName          String?                     @map("sender_full_name") @db.VarChar(200)
+  senderPhone             String?                     @map("sender_phone") @db.VarChar(32)
   companyId               String                      @map("company_id")
   company                 Company                     @relation(fields: [companyId], references: [id], onDelete: Restrict)
   branchId                String                      @map("branch_id")

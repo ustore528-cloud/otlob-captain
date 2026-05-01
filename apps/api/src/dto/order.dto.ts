@@ -109,6 +109,8 @@ export type OrderDetailDto = {
   branchId: string;
   customerName: string;
   customerPhone: string;
+  senderFullName: string | null;
+  senderPhone: string | null;
   pickupAddress: string;
   dropoffAddress: string;
   pickupLat: number | null;
@@ -182,6 +184,8 @@ type OrderWithStore = {
   branchId: string;
   customerName: string;
   customerPhone: string;
+  senderFullName?: string | null;
+  senderPhone?: string | null;
   pickupAddress: string;
   dropoffAddress: string;
   pickupLat: number | null;
@@ -276,6 +280,8 @@ export function toOrderDetailDto(order: OrderWithStore): OrderDetailDto {
     branchId: order.branchId,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
+    senderFullName: order.senderFullName ?? null,
+    senderPhone: order.senderPhone ?? null,
     pickupAddress: order.pickupAddress,
     dropoffAddress: order.dropoffAddress,
     pickupLat: order.pickupLat ?? null,

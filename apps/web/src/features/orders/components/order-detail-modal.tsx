@@ -120,6 +120,26 @@ function OrderDetailContent({
             {order.customerPhone}
           </span>
         </div>
+        {order.senderFullName?.trim() || order.senderPhone?.trim() ? (
+          <div className="rounded-md border border-dashed border-card-border px-3 py-2 text-xs">
+            <div className="font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("orders.detailModal.senderPartyTitle")}
+            </div>
+            <div className="mt-1 text-foreground">
+              {order.senderFullName?.trim() ? (
+                <span className="font-medium">{order.senderFullName.trim()}</span>
+              ) : null}
+              {order.senderFullName?.trim() && order.senderPhone?.trim() ? (
+                <span className="mx-2 text-muted">·</span>
+              ) : null}
+              {order.senderPhone?.trim() ? (
+                <span dir="ltr" className="font-mono tabular-nums">
+                  {order.senderPhone.trim()}
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         <div className="text-xs text-muted-foreground">
           <div>
             {t("orders.detailModal.pickup")}: {loc.pickupAddress}

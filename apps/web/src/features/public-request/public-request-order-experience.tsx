@@ -1,4 +1,13 @@
-import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlignLeft,
@@ -41,9 +50,15 @@ import {
 } from "@/lib/api/services/public-request";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { isRtlLang } from "@/i18n/i18n";
+import { isReasonableFlexiblePhone } from "@captain/shared";
 import { isValidLatLng } from "@/lib/geo-validation";
 import { useTranslation } from "react-i18next";
 import { PublicTrackingLeaflet, type MapPoint } from "@/features/public-request/public-tracking-leaflet";
+import {
+  loadPublicRequestSenderProfile,
+  removePublicRequestSenderProfile,
+  savePublicRequestSenderProfile,
+} from "@/features/public-request/public-sender-storage";
 
 /** Preview map: fixed 5 km aerial / haversine radius for “nearby captains” markers. */
 const CAPTAIN_MAP_PREVIEW_RADIUS_KM = 5;
@@ -144,6 +159,8 @@ export function PublicRequestOrderExperience({
   const { i18n, t } = useTranslation();
   const rtl = isRtlLang(i18n.resolvedLanguage ?? i18n.language);
   const orderSectionRef = useRef<HTMLDivElement | null>(null);
+  const senderPickupStepAnchorRef = useRef<HTMLDivElement | null>(null);
+  const pickupAddressInputRef = useRef<HTMLInputElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [step, setStep] = useState<Step>("form");
@@ -153,8 +170,15 @@ export function PublicRequestOrderExperience({
   const [pickupLatStr, setPickupLatStr] = useState("");
   const [pickupLngStr, setPickupLngStr] = useState("");
   const [selectedZoneId, setSelectedZoneId] = useState("");
-  const [customerName, setCustomerName] = useState("");
+  const [senderFullName, setSenderFullName] = useState("");
+  const [senderPhone, setSenderPhone] = useState("");
+  /** Recipient / delivery contact (API `customerName` / `customerPhone`). */
+  const [customerFullName, setCustomerFullName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [senderPhoneError, setSenderPhoneError] = useState<string | null>(null);
+  const [customerPhoneError, setCustomerPhoneError] = useState<string | null>(null);
+  /** When true, stepping forward or succeeding an order persists sender + pickup locally. */
+  const [saveSenderProfileChecked, setSaveSenderProfileChecked] = useState(false);
   const [packageTypeId, setPackageTypeId] = useState<PackageTypeId>(PACKAGE_OPTIONS[0].id);
   const [notesExtra, setNotesExtra] = useState("");
   const [storeAmountStr, setStoreAmountStr] = useState("");
@@ -216,6 +240,72 @@ export function PublicRequestOrderExperience({
   const showBenefitsUi = ctx.publicPage?.showBenefitsRow !== false;
 
   const [nearbyMapBundle, setNearbyMapBundle] = useState<{ caption: string; points: MapPoint[] } | null>(null);
+
+  useEffect(() => {
+    const code = ownerCode.trim();
+    if (!code) return;
+    const saved = loadPublicRequestSenderProfile(code);
+    setSaveSenderProfileChecked(!!saved);
+    if (saved) {
+      setSenderFullName((prev) => (prev.trim() ? prev : saved.fullName));
+      setSenderPhone((prev) => (prev.trim() ? prev : saved.phone));
+      setPickupAddress((prev) => (prev.trim() ? prev : saved.pickupAddress ?? ""));
+      if (saved.pickupLatitude?.trim() && saved.pickupLongitude?.trim()) {
+        setPickupLatStr((prev) => (prev.trim() ? prev : saved.pickupLatitude!));
+        setPickupLngStr((prev) => (prev.trim() ? prev : saved.pickupLongitude!));
+      }
+    }
+  }, [ownerCode]);
+
+  const persistSenderPickupProfileGate = useCallback(() => {
+    const code = ownerCode.trim();
+    if (!code) return;
+    if (!saveSenderProfileChecked) {
+      removePublicRequestSenderProfile(code);
+      return;
+    }
+    savePublicRequestSenderProfile(code, {
+      fullName: senderFullName.trim(),
+      phone: senderPhone.trim(),
+      pickupAddress: pickupAddress.trim() || undefined,
+      ...(pickupLatStr.trim() && pickupLngStr.trim()
+        ? { pickupLatitude: pickupLatStr.trim(), pickupLongitude: pickupLngStr.trim() }
+        : {}),
+    });
+  }, [
+    ownerCode,
+    saveSenderProfileChecked,
+    senderFullName,
+    senderPhone,
+    pickupAddress,
+    pickupLatStr,
+    pickupLngStr,
+  ]);
+
+  const editSavedSenderPickup = useCallback(() => {
+    setOrderWizardStep(1);
+    void window.requestAnimationFrame(() => {
+      senderPickupStepAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      pickupAddressInputRef.current?.focus({ preventScroll: true });
+    });
+  }, []);
+
+  const clearSavedSenderPickup = useCallback(() => {
+    removePublicRequestSenderProfile(ownerCode.trim());
+    setSaveSenderProfileChecked(false);
+    setSenderFullName("");
+    setSenderPhone("");
+    setCustomerFullName("");
+    setCustomerPhone("");
+    setSenderPhoneError(null);
+    setCustomerPhoneError(null);
+    setPickupAddress("");
+    setPickupLatStr("");
+    setPickupLngStr("");
+    setLocating(false);
+    setGeoHint("idle");
+    setGeoError(null);
+  }, [ownerCode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -391,7 +481,14 @@ export function PublicRequestOrderExperience({
   /** Prepared for wiring — calls real `createPublicOrder` with existing payload rules. */
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!pickupAddress.trim() || !dropoffAddress.trim() || !customerName.trim() || !customerPhone.trim()) return;
+    if (!pickupAddress.trim() || !dropoffAddress.trim() || !senderFullName.trim() || !senderPhone.trim()) return;
+    if (!customerFullName.trim()) return;
+    setCustomerPhoneError(null);
+    const custPhone = customerPhone.trim();
+    if (!isReasonableFlexiblePhone(custPhone)) {
+      setCustomerPhoneError(t("publicRequest.validation.customerPhoneInvalid"));
+      return;
+    }
     setComplaintsPageOpen(false);
 
     const storeAmountNum = parseProductsAmountInput(storeAmountStr);
@@ -413,8 +510,10 @@ export function PublicRequestOrderExperience({
 
     const body = {
       ownerCode: ownerCode.trim(),
-      customerName: customerName.trim(),
-      customerPhone: customerPhone.trim(),
+      senderFullName: senderFullName.trim(),
+      senderPhone: senderPhone.trim(),
+      customerName: customerFullName.trim(),
+      customerPhone: custPhone,
       pickupAddress: pickupAddress.trim(),
       dropoffAddress: dropoffAddress.trim(),
       area: dropoffAddress.trim() || "General",
@@ -427,6 +526,7 @@ export function PublicRequestOrderExperience({
 
     try {
       const created = await createPublicOrder(body);
+      persistSenderPickupProfileGate();
       const receipt = buildReceipt(created, {
         storeNum: storeAmountNum,
         feePreview: feeNum,
@@ -461,7 +561,14 @@ export function PublicRequestOrderExperience({
   const displayCompanyTitle = ctx.company?.name?.trim() ? ctx.company.name.trim() : t("public.defaultCompanyTitle");
 
   const goToOrderStep2 = () => {
-    if (!pickupAddress.trim() || !customerName.trim() || !customerPhone.trim()) return;
+    setSenderPhoneError(null);
+    if (!pickupAddress.trim() || !senderFullName.trim() || !senderPhone.trim()) return;
+    const sp = senderPhone.trim();
+    if (!isReasonableFlexiblePhone(sp)) {
+      setSenderPhoneError(t("publicRequest.validation.senderPhoneInvalid"));
+      return;
+    }
+    persistSenderPickupProfileGate();
     setOrderWizardStep(2);
   };
 
@@ -815,23 +922,29 @@ export function PublicRequestOrderExperience({
                         </p>
                       ) : null}
 
-                      <div className="rounded-3xl border border-[color:var(--brand-border)] bg-white p-5 shadow-[0_4px_28px_-12px_rgba(142,27,27,0.06)] sm:p-7">
+                      <div
+                        ref={senderPickupStepAnchorRef}
+                        className="rounded-3xl border border-[color:var(--brand-border)] bg-white p-5 shadow-[0_6px_32px_-14px_rgba(142,27,27,0.09)] ring-1 ring-primary/[0.07] sm:p-7"
+                      >
                         <div className="mb-4">
-                          <span className="rounded-full bg-primary px-3 py-0.5 text-[11px] font-bold text-primary-foreground">
+                          <span className="rounded-full bg-primary px-3 py-0.5 text-[11px] font-bold tracking-wide text-primary-foreground">
                             {t("public.orderExperience.stepIndicator", { current: 1, total: 2 })}
                           </span>
                         </div>
-                        <h2 className="mb-1 flex items-center gap-2 text-lg font-bold text-primary">
-                          <ClipboardList className="size-5 shrink-0" strokeWidth={2} />
-                          {t("public.orderExperience.step1Title")}
+                        <h2 className="mb-1 flex items-center gap-2 text-lg font-bold tracking-tight text-primary">
+                          <ClipboardList className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+                          {t("publicRequest.senderSection.title")}
                         </h2>
-                        <p className="mb-6 text-xs text-muted-foreground">{t("public.orderExperience.orderDetailsLead")}</p>
+                        <p className="mb-6 text-[13px] leading-relaxed text-muted-foreground">
+                          {t("publicRequest.senderSection.description")}
+                        </p>
 
                         <div className="space-y-4">
-                          <Field label={t("public.orderExperience.fromPickupLabel")}>
+                          <Field label={t("publicRequest.sender.pickupLabel")}>
                             <div className="relative">
                               <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/85 rtl:left-auto rtl:right-3" />
                               <input
+                                ref={pickupAddressInputRef}
                                 required
                                 value={pickupAddress}
                                 onChange={(e) => setPickupAddress(e.target.value)}
@@ -841,33 +954,84 @@ export function PublicRequestOrderExperience({
                             </div>
                           </Field>
 
-                          <p className="text-[13px] font-semibold text-slate-700">{t("public.orderExperience.senderInfoTitle")}</p>
-                          <div className="grid gap-4 sm:grid-cols-2">
-                            <Field label={t("public.orderExperience.fullNameLabel")}>
-                              <div className="relative">
-                                <UserRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/85 rtl:left-auto rtl:right-3" />
-                                <input
-                                  required
-                                  value={customerName}
-                                  onChange={(e) => setCustomerName(e.target.value)}
-                                  placeholder={t("public.orderExperience.customerPlaceholder")}
-                                  className={`${INPUT_CLASS} pl-10 rtl:pl-4 rtl:pr-10`}
-                                />
+                          <div className="rounded-2xl border border-slate-100/90 bg-[color:var(--brand-light-primary)]/40 p-4 sm:p-5">
+                            <p className="text-[13px] font-semibold text-slate-800">{t("public.orderExperience.senderInfoTitle")}</p>
+                            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-600">
+                              {t("public.orderExperience.senderRememberHint")}
+                            </p>
+                            <div
+                              className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2"
+                              role="group"
+                              aria-label={t("public.orderExperience.senderProfileActionsGroupAria")}
+                            >
+                              <button
+                                type="button"
+                                className="text-[12px] font-semibold text-primary underline underline-offset-2 hover:text-[color:var(--brand-primary-dark)]"
+                                onClick={editSavedSenderPickup}
+                              >
+                                {t("public.orderExperience.senderProfileEditSaved")}
+                              </button>
+                              <button
+                                type="button"
+                                className="text-[12px] font-semibold text-slate-600 underline underline-offset-2 hover:text-slate-900"
+                                onClick={clearSavedSenderPickup}
+                              >
+                                {t("public.orderExperience.senderProfileClearSaved")}
+                              </button>
+                            </div>
+                            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                              <Field label={t("publicRequest.sender.nameLabel")}>
+                                <div className="relative">
+                                  <UserRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/85 rtl:left-auto rtl:right-3" />
+                                  <input
+                                    required
+                                    autoComplete="name"
+                                    value={senderFullName}
+                                    onChange={(e) => {
+                                      setSenderFullName(e.target.value);
+                                    }}
+                                    placeholder={t("publicRequest.sender.namePlaceholder")}
+                                    className={`${INPUT_CLASS} pl-10 rtl:pl-4 rtl:pr-10`}
+                                  />
+                                </div>
+                              </Field>
+                              <div className="space-y-1.5">
+                                <Field label={t("publicRequest.sender.phoneLabel")}>
+                                  <div className="relative">
+                                    <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/85 rtl:left-auto rtl:right-3" />
+                                    <input
+                                      required
+                                      dir="ltr"
+                                      value={senderPhone}
+                                      onChange={(e) => {
+                                        setSenderPhone(e.target.value);
+                                        setSenderPhoneError(null);
+                                      }}
+                                      placeholder={t("publicRequest.sender.phonePlaceholder")}
+                                      autoComplete="tel"
+                                      className={`${INPUT_CLASS} pl-10 text-left rtl:pl-4 rtl:pr-10`}
+                                      aria-invalid={senderPhoneError != null || undefined}
+                                    />
+                                  </div>
+                                </Field>
+                                {senderPhoneError ? (
+                                  <p role="alert" className="text-[11px] font-medium leading-relaxed text-red-700">
+                                    {senderPhoneError}
+                                  </p>
+                                ) : null}
                               </div>
-                            </Field>
-                            <Field label={t("public.orderExperience.phoneLabel")}>
-                              <div className="relative">
-                                <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/85 rtl:left-auto rtl:right-3" />
-                                <input
-                                  required
-                                  dir="ltr"
-                                  value={customerPhone}
-                                  onChange={(e) => setCustomerPhone(e.target.value)}
-                                  placeholder={t("public.orderExperience.phonePlaceholderHint")}
-                                  className={`${INPUT_CLASS} text-left`}
-                                />
-                              </div>
-                            </Field>
+                            </div>
+                            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200/80 bg-white/60 px-3 py-2.5 transition hover:bg-white/95">
+                              <input
+                                type="checkbox"
+                                checked={saveSenderProfileChecked}
+                                onChange={(e) => setSaveSenderProfileChecked(e.target.checked)}
+                                className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-primary focus:ring-primary/30"
+                              />
+                              <span className="text-[13px] font-medium leading-snug text-slate-800">
+                                {t("public.orderExperience.senderProfileSaveCheckbox")}
+                              </span>
+                            </label>
                           </div>
                         </div>
 
@@ -879,27 +1043,70 @@ export function PublicRequestOrderExperience({
                             onClick={goToOrderStep2}
                             className="inline-flex w-full items-center justify-center rounded-[1.25rem] bg-primary px-8 py-3.5 text-base font-extrabold text-primary-foreground shadow-[0_10px_28px_-8px_rgba(198,40,40,0.35)] transition-colors hover:bg-[color:var(--brand-primary-dark)] sm:w-auto sm:min-w-[180px]"
                           >
-                            {t("public.orderExperience.nextStep")}
+                            {t("publicRequest.actions.nextCustomer")}
                           </motion.button>
                         </div>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="rounded-3xl border border-[color:var(--brand-border)] bg-white p-5 shadow-[0_4px_28px_-12px_rgba(142,27,27,0.06)] sm:p-7">
+                      <div className="rounded-3xl border border-[color:var(--brand-border)] bg-white p-5 shadow-[0_6px_32px_-14px_rgba(142,27,27,0.09)] ring-1 ring-primary/[0.07] sm:p-7">
                         <div className="mb-4">
-                          <span className="rounded-full bg-primary px-3 py-0.5 text-[11px] font-bold text-primary-foreground">
+                          <span className="rounded-full bg-primary px-3 py-0.5 text-[11px] font-bold tracking-wide text-primary-foreground">
                             {t("public.orderExperience.stepIndicator", { current: 2, total: 2 })}
                           </span>
                         </div>
-                        <h2 className="mb-1 flex flex-wrap items-center gap-2 text-lg font-bold text-primary">
-                          <MapPin className="size-5 shrink-0" strokeWidth={2} />
-                          {t("public.orderExperience.step2Title")}
+                        <h2 className="mb-1 flex flex-wrap items-center gap-2 text-lg font-bold tracking-tight text-primary">
+                          <MapPin className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+                          {t("publicRequest.customerSection.title")}
                         </h2>
-                        <p className="mb-6 text-[13px] font-medium text-slate-800">{t("public.orderExperience.recipientSectionTitle")}</p>
+                        <p className="mb-6 text-[13px] leading-relaxed text-slate-700">
+                          {t("publicRequest.customerSection.description")}
+                        </p>
 
                         <div className="space-y-4">
-                          <Field label={t("public.orderExperience.toDropoffLabel")}>
+                          <Field label={t("publicRequest.customer.nameLabel")}>
+                            <div className="relative">
+                              <UserRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/85 rtl:left-auto rtl:right-3" />
+                              <input
+                                required
+                                autoComplete="name"
+                                value={customerFullName}
+                                onChange={(e) => setCustomerFullName(e.target.value)}
+                                placeholder={t("publicRequest.customer.namePlaceholder")}
+                                className={`${INPUT_CLASS} pl-10 rtl:pl-4 rtl:pr-10`}
+                              />
+                            </div>
+                          </Field>
+                          <div className="space-y-1.5">
+                            <Field label={t("publicRequest.customer.phoneLabel")}>
+                              <div className="relative">
+                                <Phone className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/85 rtl:left-auto rtl:right-3" />
+                                <input
+                                  type="tel"
+                                  required
+                                  inputMode="tel"
+                                  dir="ltr"
+                                  autoComplete="tel"
+                                  value={customerPhone}
+                                  onChange={(e) => {
+                                    setCustomerPhone(e.target.value);
+                                    setCustomerPhoneError(null);
+                                  }}
+                                  placeholder={t("publicRequest.customer.phonePlaceholder")}
+                                  className={`${INPUT_CLASS} pl-10 rtl:pl-4 rtl:pr-10 text-left`}
+                                  aria-invalid={customerPhoneError != null || undefined}
+                                />
+                              </div>
+                            </Field>
+                            {customerPhoneError ? (
+                              <p role="alert" className="text-[11px] font-medium leading-relaxed text-red-700">
+                                {customerPhoneError}
+                              </p>
+                            ) : null}
+                          </div>
+
+                          <Field label={t("publicRequest.customer.deliveryLabel")}>
                             <div className="relative">
                               <MapPin className="pointer-events-none absolute left-3 top-3 size-4 text-primary/85 rtl:left-auto rtl:right-3" />
                               <textarea
@@ -908,7 +1115,7 @@ export function PublicRequestOrderExperience({
                                 value={dropoffAddress}
                                 onChange={(e) => setDropoffAddress(e.target.value)}
                                 placeholder={t("public.orderExperience.dropoffPlaceholder")}
-                                className={`${INPUT_CLASS} resize-y pl-10 rtl:pl-4 rtl:pr-10`}
+                                className={`${INPUT_CLASS} min-h-[5.25rem] resize-y pl-10 rtl:pl-4 rtl:pr-10`}
                               />
                             </div>
                           </Field>
@@ -1025,7 +1232,7 @@ export function PublicRequestOrderExperience({
                           whileTap={{ scale: submitting ? 1 : 0.98 }}
                           className="order-1 inline-flex flex-1 items-center justify-center rounded-[1.25rem] bg-primary px-8 py-4 text-lg font-extrabold text-primary-foreground shadow-[0_10px_28px_-8px_rgba(198,40,40,0.38)] transition-colors hover:bg-[color:var(--brand-primary-dark)] disabled:opacity-70 sm:order-2 sm:max-w-none sm:flex-initial sm:min-w-[240px]"
                         >
-                          {submitting ? t("public.submitting") : t("public.submit")}
+                          {submitting ? t("public.submitting") : t("publicRequest.actions.submitOrder")}
                         </motion.button>
                       </div>
                     </>
@@ -1066,11 +1273,25 @@ export function PublicRequestOrderExperience({
 const INPUT_CLASS =
   "w-full rounded-2xl border border-gray-100 bg-white px-4 py-3.5 text-sm text-slate-800 shadow-[0_2px_8px_-2px_rgba(15,23,42,0.06)] outline-none transition focus:border-primary focus:ring-[3px] focus:ring-primary/20 placeholder:text-slate-400";
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({
+  label,
+  children,
+  hint,
+}: {
+  label: string;
+  children: ReactNode;
+  hint?: string;
+}) {
+  const hintId = useId();
   return (
     <div className="space-y-1.5">
       <label className="text-[13px] font-semibold tracking-tight text-slate-600">{label}</label>
       {children}
+      {hint ? (
+        <p id={hintId} className="text-[11px] leading-relaxed text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

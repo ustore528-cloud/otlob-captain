@@ -62,6 +62,9 @@ export function getPublicRequestContext(ownerCode: string): Promise<PublicReques
 
 export type PublicCreateOrderBody = {
   ownerCode: string;
+  senderFullName: string;
+  senderPhone: string;
+  /** Recipient contact (delivery party). */
   customerName: string;
   customerPhone: string;
   pickupAddress: string;

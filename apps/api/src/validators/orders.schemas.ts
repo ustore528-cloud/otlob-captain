@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { OrderStatus, DistributionMode, $Enums } from "@prisma/client";
+import { isReasonableFlexiblePhone } from "@captain/shared";
 import { PaginationQuerySchema } from "./pagination.schemas.js";
 import { StoreIdSchema } from "./stores.schemas.js";
 
@@ -39,7 +40,16 @@ export const CreateOrderBodySchema = z.object({
   notes: z.string().max(2000).optional(),
   distributionMode: z.nativeEnum(DistributionMode).optional(),
   zoneId: z.string().cuid().optional(),
-});
+  /** Sender / ordering party — optional additive; public link may set. */
+  senderFullName: z.string().min(1).max(200).optional(),
+  senderPhone: z.string().min(1).max(32).optional(),
+})
+  .superRefine((body, ctx) => {
+    const s = body.senderPhone?.trim();
+    if (s && !isReasonableFlexiblePhone(s)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["senderPhone"], message: "INVALID_SENDER_PHONE" });
+    }
+  });
 
 export const ListOrdersQuerySchema = PaginationQuerySchema.extend({
   storeId: StoreIdSchema.optional(),

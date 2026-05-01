@@ -123,6 +123,8 @@ export type OrderDetail = {
   branchId: string;
   customerName: string;
   customerPhone: string;
+  senderFullName?: string | null;
+  senderPhone?: string | null;
   pickupAddress: string;
   dropoffAddress: string;
   pickupLat: number | null;

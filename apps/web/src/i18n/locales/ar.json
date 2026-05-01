@@ -999,7 +999,8 @@
       "empty": "لا تتوفر بيانات للطلب",
       "emptyDesc": "قد يكون الطلب غير متاح الآن أو تم تحديث القائمة.",
       "paymentLabel": "طريقة الدفع:",
-      "notesTitle": "ملاحظات / تعليمات"
+      "notesTitle": "ملاحظات / تعليمات",
+      "senderPartyTitle": "مقدّم الطلب"
     }
   },
   "newOrder": {
@@ -1233,6 +1234,38 @@
     "profitOrCommission": "الربح / العمولة",
     "pickupNotRecordedCell": "غير مسجّل"
   },
+  "publicRequest": {
+    "senderSection": {
+      "title": "تفاصيل المُرسِل وموقع الاستلام",
+      "description": "أدخل بيانات المُرسِل وعنوان موقع الاستلام، ثم تابع لخطوة عميل المُستلِم ومعلومات التسليم."
+    },
+    "sender": {
+      "nameLabel": "الاسم الكامل للمُرسِل",
+      "namePlaceholder": "الاسم والعائلة",
+      "phoneLabel": "هاتف المُرسِل",
+      "phonePlaceholder": "مثال: 05xxxxxxxx أو +966… أو +972…",
+      "pickupLabel": "موقع الاستلام"
+    },
+    "customerSection": {
+      "title": "تفاصيل العميل / المُستَلِم",
+      "description": "أدخل اسم المُستَلِم ورقم الجوال وموقع التسليم."
+    },
+    "customer": {
+      "nameLabel": "اسم العميل / المُستَلِم",
+      "namePlaceholder": "اسم المُستَلِم بالكامل",
+      "phoneLabel": "رقم جوال العميل / المُستَلِم",
+      "phonePlaceholder": "مثال: 05xxxxxxxx أو +972…",
+      "deliveryLabel": "موقع التسليم"
+    },
+    "actions": {
+      "nextCustomer": "التالي: تفاصيل العميل",
+      "submitOrder": "تأكيد وإرسال الطلب"
+    },
+    "validation": {
+      "customerPhoneInvalid": "يرجى إدخال رقم صالح من 9 إلى 15 رقمًا (مثل 05xxxxxxxx أو +972…) دون أحرف أو رموز غير مسموحة.",
+      "senderPhoneInvalid": "يرجى إدخال رقم هاتف مرسل صالح من 9 إلى 15 رقمًا (مثل 05xxxxxxxx أو +972…)."
+    }
+  },
   "public": {
     "loading": "جارٍ التحميل…",
     "invalidLink": "رابط غير صالح.",
@@ -1285,21 +1318,31 @@
       "step1Badge": "1",
       "step2Badge": "2",
       "stepIndicator": "{{current}} من {{total}}",
-      "step1Title": "المرسل ومكان الاستلام",
-      "step2Title": "المستلم والتسليم",
-      "orderDetailsLead": "أدخل بيانات الاستلام ومعلومات المُرسِل، ثم أكمل عنوان التسليم والدفع.",
+      "step1Title": "الاستلام وتفاصيلك",
+      "step2Title": "تفاصيل التسليم",
+      "orderDetailsLead": "الخطوة الأولى: عنوان الاستلام وطريقة التواصل معك. الخطوة التالية: عنوان التسليم ونوع الشحنة وسيتم حساب رسوم الخدمة.",
       "nextStep": "التالي",
       "prevStep": "السابق",
       "fromPickupLabel": "من (مكان الاستلام)",
-      "pickupPlaceholder": "عنوان الاستلام",
-      "senderInfoTitle": "معلومات المُرسِل",
-      "fullNameLabel": "الاسم الكامل",
-      "customerPlaceholder": "اسم العميل",
-      "phoneLabel": "رقم الهاتف",
-      "phonePlaceholderHint": "+966… أو رقم المحمول",
-      "recipientSectionTitle": "العنوان والتسليم",
-      "toDropoffLabel": "إلى (مكان التسليم)",
-      "dropoffPlaceholder": "عنوان التسليم",
+      "pickupPlaceholder": "الشارع، المبنى أو اسم المتجر…",
+      "senderInfoTitle": "من نتواصل معه بخصوص الطلب؟",
+      "senderRememberHint": "يمكن تذكّر عنوان الاستلام ومعلومات المرسل على هذا المتصفّح فقط — لا حساب وليس تخزيناً على خوادمنا.",
+      "senderProfileSaveCheckbox": "احفظ معلوماتي للطلبات القادمة",
+      "senderProfileEditSaved": "تعديل المعلومات المحفوظة",
+      "senderProfileClearSaved": "مسح المعلومات المحفوظة",
+      "senderProfileActionsGroupAria": "اختصارات بيانات الاستلام والمُرسِل المحفوظة",
+      "fullNameLabel": "اسمك",
+      "customerPlaceholder": "الاسم والعائلة",
+      "phoneLabel": "رقم جوالك",
+      "phonePlaceholderHint": "يشمل كود الدولة (+966… أو مثيله)",
+      "recipientSectionTitle": "صف عنوان التسليم بوضوح. إذا سيستلم الطرد شخص آخر، أضِف جوالاً للمستلم ليتم إدراجه ضمن ملاحظات الطلب للكابتن.",
+      "recipientPhoneLabel": "جوال المستلم",
+      "recipientPhonePlaceholder": "رقم المستلم (اختياري)",
+      "recipientPhoneHint": "يُنسَخ إلى ملاحظات الطلب للتشغيل فقط إن أُدخل. اتركه فارغاً إن كنت المستلم.",
+      "recipientPhoneInvalid": "رقم المستلم قصير جداً؛ أدخِل رقمَ جوال صحيحاً أو اتركه فارغاً.",
+      "recipientPhoneInNotes": "جوال المستلم: {{phone}}",
+      "toDropoffLabel": "عنوان التسليم",
+      "dropoffPlaceholder": "عنوان كامل مع تعليمات (طابق، معلم مرجعي…)",
       "packageTypeLabel": "نوع الطلب / نوع الشحنة",
       "notesOptionalLabel": "ملاحظات (اختياري)",
       "notesPlaceholder": "تعليمات إضافية…",
