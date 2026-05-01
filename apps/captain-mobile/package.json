@@ -15,6 +15,7 @@
     "build:android:production": "eas build -p android --profile production",
     "assemble:android:debug": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/assemble-debug-android.ps1",
     "assemble:android:release": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/assemble-release-android.ps1",
+    "eas-build-pre-install": "node ./scripts/eas-copy-google-services.js",
     "prepare:eas:fcm-v1-upload": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/prepare-eas-fcm-v1-upload.ps1",
     "validate:financial-logic": "tsx scripts/validate-financial-logic.ts",
     "verify:phone-whatsapp-normalize": "tsx scripts/verify-phone-whatsapp-normalize.ts"
