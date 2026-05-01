@@ -1,0 +1,32 @@
+{
+  "name": "2in Order",
+  "short_name": "2in",
+  "description": "إرسال ومتابعة طلب التوصيل للزبائن — 2in",
+  "display": "standalone",
+  "start_url": "/customer-order?source=homescreen",
+  "scope": "/",
+  "orientation": "portrait-primary",
+  "theme_color": "#0f172a",
+  "background_color": "#f8fafc",
+  "categories": ["food", "shopping"],
+  "icons": [
+    {
+      "src": "/customer-order-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/customer-order-icon-512-any.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/customer-order-icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

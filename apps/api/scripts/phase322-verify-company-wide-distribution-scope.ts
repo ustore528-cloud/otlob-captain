@@ -254,7 +254,13 @@ async function main() {
       );
       checks.push({ id: "ca_cannot_assign_cross_company_captain", pass: false });
     } catch (e) {
-      if (e instanceof AppError && (e.code === "FORBIDDEN" || e.code === "TENANT_MISMATCH")) {
+      if (
+        e instanceof AppError &&
+        (e.code === "FORBIDDEN" ||
+          e.code === "TENANT_MISMATCH" ||
+          e.code === "TENANT_COMPANY_MISMATCH" ||
+          e.code === "ASSIGN_DIFFERENT_COMPANY")
+      ) {
         checks.push({ id: "ca_cannot_assign_cross_company_captain", pass: true, details: { code: e.code } });
       } else {
         assertForbidden(e);

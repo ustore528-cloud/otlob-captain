@@ -34,7 +34,7 @@ function resolveOpenUrl(parsed) {
   } else if (trackingToken) {
     rawUrl = `/track/${encodeURIComponent(trackingToken)}`;
   } else {
-    rawUrl = "/";
+    rawUrl = "/customer-order";
   }
 
   if (/^https?:\/\//i.test(rawUrl)) {
@@ -103,7 +103,7 @@ worker.addEventListener("notificationclick", (event) => {
       try {
         target = new URL(targetAbs);
       } catch {
-        return worker.clients.openWindow(worker.location.origin + "/");
+        return worker.clients.openWindow(worker.location.origin + "/customer-order");
       }
 
       for (const client of clientList) {

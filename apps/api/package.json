@@ -64,6 +64,7 @@
     "phase322:verify-company-wide-distribution-scope": "tsx scripts/phase322-verify-company-wide-distribution-scope.ts",
     "phase323:verify-company-admin-distribution-actions": "tsx scripts/phase323-verify-company-admin-distribution-actions.ts",
     "phase324:verify-company-admin-auto-distribution": "tsx scripts/phase324-verify-company-admin-auto-distribution.ts",
+    "verify:assignment-eligibility-sample": "tsx scripts/verify-assignment-eligibility-sample.ts",
     "phase330:preview-company-delete-archive": "tsx scripts/phase330-preview-company-delete-archive.ts",
     "phase331:verify-company-archive": "tsx scripts/phase331-verify-company-archive.ts",
     "phase340:preview-user-cleanup": "tsx scripts/phase340-preview-user-cleanup.ts",

@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "generate:customer-pwa-icons": "node ./scripts/generate-customer-order-pwa-icons.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
@@ -37,6 +38,7 @@
     "@types/react": "18.3.28",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.4.1",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.1.4",
     "typescript": "^5.7.3",
     "vite": "^6.3.3"

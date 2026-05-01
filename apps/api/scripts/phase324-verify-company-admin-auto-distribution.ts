@@ -9,9 +9,9 @@ import { spawnSync } from "node:child_process";
 import { UserRole } from "@prisma/client";
 import { prisma } from "../src/lib/prisma.js";
 import {
+  captainPoolWhereAutoDistribution,
   distributionService,
   getAutoPoolOfferTelemetry,
-  eligibleCaptainsForAutoDistribution,
 } from "../src/services/distribution/index.js";
 import type { DistributionRequestContext } from "../src/services/distribution/distribution-engine.js";
 import { isCompanyAdminRole, isSuperAdminRole, isLegacyAdminRole, type AppRole } from "../src/lib/rbac-roles.js";
@@ -27,6 +27,7 @@ function mergeForTest(
 ): DistributionRequestContext {
   return {
     ...ctx,
+    actorRole: actor.role,
     bypassSupervisorLinkScope:
       isSuperAdminRole(actor.role) || isCompanyAdminRole(actor.role) || isLegacyAdminRole(actor.role),
     bypassOrderOwnerCaptainFleetForCompanyAdmin: isCompanyAdminRole(actor.role),
@@ -91,7 +92,11 @@ async function main() {
     const telDisp = dispCtx ? await getAutoPoolOfferTelemetry(orderA.id, dispCtx, "OVERRIDE_MULTI_ORDER") : null;
 
     if (telCa) {
-      const wherePool = eligibleCaptainsForAutoDistribution(orderA.branchId, null);
+      const wherePool = captainPoolWhereAutoDistribution({
+        orderCompanyId: orderA.companyId,
+        orderBranchId: orderA.branchId,
+        restrictToOrderBranch: true,
+      });
       const inBranch = await prisma.captain.findMany({ where: wherePool, select: { id: true, companyId: true } });
       const allSameCompany = inBranch.length === 0 || inBranch.every((c) => c.companyId === orderA.companyId);
       checks.push({
@@ -127,7 +132,12 @@ async function main() {
 
       checks.push({
         id: "prepaid_depleted_increases_skipped_telemetry",
-        pass: telCa.skippedForPrepaid + telCa.eligibleCaptainCount + telCa.skippedForCapacity === telCa.scopedCaptainCount,
+        pass:
+          telCa.skippedForPrepaid +
+            telCa.eligibleCaptainCount +
+            telCa.skippedForCapacity +
+            telCa.skippedForOther ===
+          telCa.scopedCaptainCount,
         details: { tel: telCa },
       });
 

@@ -560,9 +560,13 @@ See also: [Overflow Behavior Spec](./overflow-behavior-spec.md)
 - `from` (اختياري) — تاريخ ISO، يطبَّق على `updatedAt >= from`
 - `to` (اختياري) — تاريخ ISO، يطبَّق على `updatedAt <= to`
 
-> يتم احتساب الربح من الطلبات:
+> يتم جمع الأرقام من الطلبات:
 > - `status = DELIVERED`
 > - `assignedCaptainId = الكابتن الحالي`
+>
+> **`totalDeliveryFees`** = مجموع رسوم التوصيل للكابتن (أرباح التوصيل): يُستخدم `delivery_fee` إن وُجد؛ وإلا يُشتق كما في `resolveDeliveryFeeForCommission` (`max(0, cash_collection - amount)`).
+> **`totalOrderValue`** مجموع حقول المنتجات `amount` — للإعلام فقط، وليس أرباح الكابتن.
+> **`totalCashCollection`** مجموع التحصيل — للإعلام فقط وليس أرباح التوصيل.
 
 #### Response (200)
 
@@ -571,7 +575,8 @@ See also: [Overflow Behavior Spec](./overflow-behavior-spec.md)
   "success": true,
   "data": {
     "deliveredCount": 12,
-    "totalAmount": "1200.00",
+    "totalDeliveryFees": "240.00",
+    "totalOrderValue": "1200.00",
     "totalCashCollection": "800.00"
   }
 }
