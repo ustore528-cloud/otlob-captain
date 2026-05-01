@@ -12,8 +12,6 @@ import { captainService } from "@/services/api/services/captain.service";
 import { useAuthStore } from "@/store/auth-store";
 
 const ANDROID_CHANNEL_ID = "captain-orders-v9-strong";
-/** Must match system UI / release checklist (Settings → Notifications → channel name). */
-const ANDROID_CHANNEL_NAME = "Captain Orders Strong Alerts";
 const ORDER_NOTIFICATION_SOUND = "new_order_strong_alert";
 const FOREGROUND_LOCAL_ECHO = "captainForegroundLocalEcho";
 const NOTIFICATION_VIBRATION_PATTERN = [0, 280, 120, 280, 120, 360] as const;
@@ -53,7 +51,7 @@ async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== "android") return;
   // Before any push token work or inbound handling: create high-priority channel (FCM maps by channelId).
   await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
-    name: ANDROID_CHANNEL_NAME,
+    name: i18n.t("push.androidChannelName"),
     importance: Notifications.AndroidImportance.MAX,
     sound: ORDER_NOTIFICATION_SOUND,
     vibrationPattern: [...NOTIFICATION_VIBRATION_PATTERN],
@@ -358,7 +356,15 @@ export function CaptainPushSync() {
       receivedSub.remove();
       tapSub.remove();
     };
-  }, [isAuthed, i18nInstance.language, i18nInstance.resolvedLanguage, projectId, router]);
+  }, [
+    isAuthed,
+    accessToken,
+    captain,
+    i18nInstance.language,
+    i18nInstance.resolvedLanguage,
+    projectId,
+    router,
+  ]);
 
   return null;
 }

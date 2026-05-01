@@ -64,15 +64,24 @@ function InlineOrderSummary({
       >
         <View style={styles.detailsCardBody}>
           <Text style={styles.detailsCardTitle}>{t("assignmentBar.orderDetailsTitle")}</Text>
+          {order.senderFullName?.trim() ? (
+            <Text style={styles.detailsLine} numberOfLines={1}>
+              {t("orderDetail.senderLine", { name: order.senderFullName.trim() })}
+            </Text>
+          ) : null}
           {order.customerName ? (
             <Text style={styles.detailsLine} numberOfLines={1}>
               {order.customerName}
             </Text>
           ) : null}
-          <View style={styles.detailsPhoneRow}>
-            <Ionicons name="call-outline" size={14} color={captainUiTheme.accent} />
-            <Text style={styles.detailsPhone}>{order.customerPhone}</Text>
-          </View>
+          {order.customerPhone?.trim() ? (
+            <View style={styles.detailsPhoneRow}>
+              <Ionicons name="call-outline" size={14} color={captainUiTheme.accent} />
+              <Text style={styles.detailsPhone}>{order.customerPhone.trim()}</Text>
+            </View>
+          ) : (
+            <Text style={styles.detailsHint}>{t("orderDetail.customerPhoneMissing")}</Text>
+          )}
           <Text style={styles.detailsPay} numberOfLines={2}>
             {pay}
           </Text>

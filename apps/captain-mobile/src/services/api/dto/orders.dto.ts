@@ -42,6 +42,12 @@ export type OrderDetailDto = {
   senderPhone?: string | null;
   pickupAddress: string;
   dropoffAddress: string;
+  /** Pickup / store-side pin when the server stored coordinates */
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  /** Customer drop-off pin when stored */
+  dropoffLat?: number | null;
+  dropoffLng?: number | null;
   area: string;
   amount: string;
   cashCollection: string;

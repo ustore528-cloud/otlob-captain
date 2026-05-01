@@ -1,26 +1,35 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { OrderDetailDto } from "@/services/api/dto";
-import { ActionRow, SectionCard, StatusBadge } from "@/components/ui";
+import { ActionRow, SectionCard, StatusBadge, type ActionRowItem } from "@/components/ui";
 import { captainSpacing, captainTypography, captainUiTheme } from "@/theme/captain-ui-theme";
-import { locationI18nKey } from "@/lib/order-location-i18n";
 import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
 import { formatOrderEventTime } from "@/lib/order-timestamps";
 import { OrderFinancialSection } from "@/components/order/order-financial-section";
 import { shouldShowOrderFinancialSection } from "@/lib/order-payment-ui-visibility";
-import { openMapSearch, openPhoneDialer, openWhatsAppChat } from "@/lib/open-external";
+import { hasMapCoordinates, openOrderMapNav, openPhoneDialer, openWhatsAppChat } from "@/lib/open-external";
 import { AssignmentLogsTimeline } from "./components/assignment-logs-timeline";
 import { DetailRow } from "./components/detail-row";
 import { OrderStatusProgress } from "./components/order-status-progress";
 import { isRtlLng } from "@/i18n/i18n";
 import { formatOrderSerial } from "@/lib/order-serial";
 import { mapOrderStatusDtoToBadgeVariant } from "@/lib/map-order-status-to-badge-variant";
+import { resolveOrderFinancialBreakdownDto } from "@/lib/order-financial-breakdown";
 
 export type OrderDetailContentProps = {
   order: OrderDetailDto;
   offerHint?: string | null;
   showAssignmentLogs?: boolean;
 };
+
+function trimOrNull(s: string | null | undefined): string | null {
+  const x = (s ?? "").trim();
+  return x || null;
+}
+
+function formatCoord(n: number): string {
+  return Number.isFinite(n) ? n.toFixed(5) : String(n);
+}
 
 /**
  * عرض موحّد لبيانات الطلب — بطاقات مدمجة للموبايل.
@@ -33,54 +42,107 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
   const statusBadgeVariant = mapOrderStatusDtoToBadgeVariant(order.status);
   const showFinancial = shouldShowOrderFinancialSection(order.status);
 
-  const heroContactItems = [
+  const senderPhone = trimOrNull(order.senderPhone);
+  const senderName = trimOrNull(order.senderFullName);
+  const customerPhone = trimOrNull(order.customerPhone);
+  const customerName = trimOrNull(order.customerName);
+  const notes = trimOrNull(order.notes);
+
+  const pickupAddr = trimOrNull(order.pickupAddress) ?? "";
+  const dropAddr = trimOrNull(order.dropoffAddress) ?? trimOrNull(order.area) ?? "";
+
+  const canNavigatePickup =
+    Boolean(pickupAddr) || hasMapCoordinates(order.pickupLat, order.pickupLng);
+  const canNavigateDrop =
+    Boolean(dropAddr) || hasMapCoordinates(order.dropoffLat, order.dropoffLng);
+
+  const financialDto = resolveOrderFinancialBreakdownDto({
+    amount: order.amount,
+    cashCollection: order.cashCollection,
+    deliveryFee: order.deliveryFee ?? null,
+    financialBreakdown: order.financialBreakdown,
+  });
+  const paymentMethodLabel = financialDto.isCashOnDelivery
+    ? t("orderDetail.paymentMethodCod")
+    : t("orderDetail.paymentMethodPrepaid");
+
+  const pickupCoordLine = hasMapCoordinates(order.pickupLat, order.pickupLng)
+    ? t("orderDetail.coordinatesLine", {
+        lat: formatCoord(order.pickupLat as number),
+        lng: formatCoord(order.pickupLng as number),
+      })
+    : null;
+
+  const dropCoordLine = hasMapCoordinates(order.dropoffLat, order.dropoffLng)
+    ? t("orderDetail.coordinatesLine", {
+        lat: formatCoord(order.dropoffLat as number),
+        lng: formatCoord(order.dropoffLng as number),
+      })
+    : null;
+
+  const senderToolbar: ActionRowItem[] = [
     {
-      key: "wa",
-      icon: "logo-whatsapp" as const,
-      onPress: () => void openWhatsAppChat(order.customerPhone),
-      accessibilityLabel: t("whatsapp.a11y", { phone: order.customerPhone }),
+      key: "sender-call",
+      icon: "call-outline",
+      disabled: !senderPhone,
+      onPress: () => {
+        if (senderPhone) void openPhoneDialer(senderPhone);
+      },
+      accessibilityLabel: t("orderDetail.callSenderA11y", { phone: senderPhone ?? t("common.emDash") }),
     },
     {
-      key: "call",
-      icon: "call-outline" as const,
-      onPress: () => void openPhoneDialer(order.customerPhone),
-      accessibilityLabel: t("orderDetail.callA11y", { phone: order.customerPhone }),
+      key: "sender-wa",
+      icon: "logo-whatsapp",
+      disabled: !senderPhone,
+      onPress: () => {
+        if (senderPhone) void openWhatsAppChat(senderPhone);
+      },
+      accessibilityLabel: t("orderDetail.whatsappSenderA11y", { phone: senderPhone ?? t("common.emDash") }),
     },
     {
-      key: "drop-map",
-      icon: "map-outline" as const,
-      onPress: () => void openMapSearch(order.dropoffAddress),
-      accessibilityLabel: t("orderDetail.mapHintDropoff"),
+      key: "sender-map",
+      icon: "map-outline",
+      disabled: !canNavigatePickup,
+      onPress: () =>
+        void openOrderMapNav({
+          address: pickupAddr,
+          lat: order.pickupLat,
+          lng: order.pickupLng,
+        }),
+      accessibilityLabel: t("orderDetail.mapNavPickupA11y"),
     },
   ];
 
-  const restaurantMapItems = [
+  const customerToolbar: ActionRowItem[] = [
     {
-      key: "pickup-map",
-      icon: "map-outline" as const,
-      onPress: () => void openMapSearch(order.pickupAddress),
-      accessibilityLabel: t("orderDetail.mapHintPickup"),
-    },
-  ];
-
-  const customerPanelItems = [
-    {
-      key: "wa2",
-      icon: "logo-whatsapp" as const,
-      onPress: () => void openWhatsAppChat(order.customerPhone),
-      accessibilityLabel: t("whatsapp.a11y", { phone: order.customerPhone }),
+      key: "cust-call",
+      icon: "call-outline",
+      disabled: !customerPhone,
+      onPress: () => {
+        if (customerPhone) void openPhoneDialer(customerPhone);
+      },
+      accessibilityLabel: t("orderDetail.callA11y", { phone: customerPhone ?? t("common.emDash") }),
     },
     {
-      key: "call2",
-      icon: "call-outline" as const,
-      onPress: () => void openPhoneDialer(order.customerPhone),
-      accessibilityLabel: t("orderDetail.callA11y", { phone: order.customerPhone }),
+      key: "cust-wa",
+      icon: "logo-whatsapp",
+      disabled: !customerPhone,
+      onPress: () => {
+        if (customerPhone) void openWhatsAppChat(customerPhone);
+      },
+      accessibilityLabel: t("whatsapp.a11y", { phone: customerPhone ?? t("common.emDash") }),
     },
     {
-      key: "drop-map2",
-      icon: "map-outline" as const,
-      onPress: () => void openMapSearch(order.dropoffAddress),
-      accessibilityLabel: t("orderDetail.mapHintDropoff"),
+      key: "cust-map",
+      icon: "map-outline",
+      disabled: !canNavigateDrop,
+      onPress: () =>
+        void openOrderMapNav({
+          address: dropAddr,
+          lat: order.dropoffLat,
+          lng: order.dropoffLng,
+        }),
+      accessibilityLabel: t("orderDetail.mapNavDeliveryA11y"),
     },
   ];
 
@@ -105,21 +167,6 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
             </Text>
           </View>
         ) : null}
-        <View style={styles.customerBlock}>
-          <Text style={styles.customerNameLine} numberOfLines={2}>
-            {t("orderDetail.customerLine", { name: order.customerName })}
-          </Text>
-          <ActionRow items={heroContactItems} style={styles.actionRowTight} />
-          <Pressable
-            onPress={() => void openWhatsAppChat(order.customerPhone)}
-            hitSlop={8}
-            accessibilityRole="link"
-            accessibilityLabel={t("orderDetail.callA11y", { phone: order.customerPhone })}
-            style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
-          >
-            <Text style={styles.phoneLink}>{order.customerPhone}</Text>
-          </Pressable>
-        </View>
         <Text style={styles.inlineMeta} numberOfLines={1}>
           {t("orderDetail.areaLine", { area: order.area })}
         </Text>
@@ -138,78 +185,137 @@ export function OrderDetailContent({ order, offerHint, showAssignmentLogs = true
               variant="default"
               hideTitle
             />
+            <Text style={styles.paymentMethodLine}>{t("orderDetail.paymentMethodLabel")}</Text>
+            <Text style={styles.paymentMethodValue}>{paymentMethodLabel}</Text>
           </View>
         ) : null}
         <OrderStatusProgress status={order.status} compact />
       </SectionCard>
 
-      <View style={styles.infoGrid}>
-        <SectionCard title={t("orderDetail.sectionRestaurant")} icon="storefront-outline" compact>
-          <View style={styles.infoPanel}>
-            <Text style={styles.infoTitle}>{order.store.name}</Text>
-            <Text style={styles.infoSub}>{order.store.area}</Text>
-            <ActionRow items={restaurantMapItems} style={styles.actionRowTight} />
+      <SectionCard title={t("orderDetail.sectionPickupSender")} icon="cube-outline" compact>
+        <View style={styles.infoPanel}>
+          {senderName ? (
+            <Text style={styles.infoTitle} numberOfLines={2}>
+              {senderName}
+            </Text>
+          ) : null}
+          {senderPhone ? (
             <Pressable
-              onPress={() => void openMapSearch(order.pickupAddress)}
-              hitSlop={8}
-              style={({ pressed }) => [styles.addressButton, pressed && styles.phonePressed]}
-            >
-              <Text style={styles.addressButtonText}>{order.pickupAddress}</Text>
-            </Pressable>
-          </View>
-        </SectionCard>
-
-        <SectionCard title={t("orderDetail.sectionCustomer")} icon="person-outline" compact>
-          <View style={styles.infoPanel}>
-            <Text style={styles.infoTitle}>{order.customerName}</Text>
-            <ActionRow items={customerPanelItems} style={styles.actionRowTight} />
-            <Pressable
-              onPress={() => void openWhatsAppChat(order.customerPhone)}
+              onPress={() => void openPhoneDialer(senderPhone)}
               hitSlop={8}
               accessibilityRole="link"
-              accessibilityLabel={t("orderDetail.callA11y", { phone: order.customerPhone })}
+              accessibilityLabel={t("orderDetail.callSenderA11y", { phone: senderPhone })}
               style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
             >
-              <Text style={styles.phoneLink}>{order.customerPhone}</Text>
+              <Text style={styles.phoneLink}>{senderPhone}</Text>
             </Pressable>
+          ) : null}
+          <Text style={styles.toolbarCaption}>{t("orderDetail.toolbarPickup")}</Text>
+          <ActionRow items={senderToolbar} style={styles.actionRowTight} />
+          {pickupAddr ? (
             <Pressable
-              onPress={() => void openMapSearch(order.dropoffAddress)}
+              onPress={() =>
+                void openOrderMapNav({
+                  address: pickupAddr,
+                  lat: order.pickupLat,
+                  lng: order.pickupLng,
+                })
+              }
               hitSlop={8}
               style={({ pressed }) => [styles.addressButton, pressed && styles.phonePressed]}
             >
-              <Text style={styles.addressButtonText}>{order.dropoffAddress}</Text>
+              <Text style={styles.addressButtonText}>{pickupAddr}</Text>
             </Pressable>
-          </View>
-        </SectionCard>
-      </View>
-
-      <SectionCard title={t("orderDetail.sectionAddresses")} icon="map-outline" compact>
-        <DetailRow
-          compact
-          isFirst
-          label={t(locationI18nKey.pickup)}
-          value={order.pickupAddress}
-          addressEmphasis
-          hint={t("orderDetail.hintFromStore")}
-          onPressValue={() => void openMapSearch(order.pickupAddress)}
-          valueAccessibilityHint={t("orderDetail.mapHintPickup")}
-        />
-        <DetailRow
-          compact
-          label={t(locationI18nKey.dropoff)}
-          value={order.dropoffAddress}
-          addressEmphasis
-          hint={t("orderDetail.hintCustomerAddress")}
-          onPressValue={() => void openMapSearch(order.dropoffAddress)}
-          valueAccessibilityHint={t("orderDetail.mapHintDropoff")}
-        />
+          ) : hasMapCoordinates(order.pickupLat, order.pickupLng) ? (
+            <Pressable
+              onPress={() =>
+                void openOrderMapNav({
+                  address: "",
+                  lat: order.pickupLat,
+                  lng: order.pickupLng,
+                })
+              }
+              hitSlop={8}
+              style={({ pressed }) => [styles.addressButton, pressed && styles.phonePressed]}
+            >
+              <Text style={styles.addressButtonText}>{pickupCoordLine}</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.mutedLine}>{t("orderDetail.addressMissingPickup")}</Text>
+          )}
+          {pickupCoordLine && pickupAddr ? (
+            <Text style={styles.coordLine} numberOfLines={2}>
+              {pickupCoordLine}
+            </Text>
+          ) : null}
+        </View>
       </SectionCard>
 
-      {order.notes ? (
-        <SectionCard title={t("orderDetail.sectionNotes")} icon="document-text-outline" compact>
-          <DetailRow compact isFirst label={t("orderDetail.notesField")} value={order.notes} />
-        </SectionCard>
-      ) : null}
+      <SectionCard title={t("orderDetail.sectionDeliveryCustomer")} icon="person-outline" compact>
+        <View style={styles.infoPanel}>
+          {customerName ? (
+            <Text style={styles.infoTitle} numberOfLines={2}>
+              {customerName}
+            </Text>
+          ) : null}
+          {customerPhone ? (
+            <Pressable
+              onPress={() => void openPhoneDialer(customerPhone)}
+              hitSlop={8}
+              accessibilityRole="link"
+              accessibilityLabel={t("orderDetail.callA11y", { phone: customerPhone })}
+              style={({ pressed }) => [styles.phonePress, pressed && styles.phonePressed]}
+            >
+              <Text style={styles.phoneLink}>{customerPhone}</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.mutedLine}>{t("orderDetail.customerPhoneMissing")}</Text>
+          )}
+          <Text style={styles.toolbarCaption}>{t("orderDetail.toolbarDelivery")}</Text>
+          <ActionRow items={customerToolbar} style={styles.actionRowTight} />
+          {dropAddr ? (
+            <Pressable
+              onPress={() =>
+                void openOrderMapNav({
+                  address: dropAddr,
+                  lat: order.dropoffLat,
+                  lng: order.dropoffLng,
+                })
+              }
+              hitSlop={8}
+              style={({ pressed }) => [styles.addressButton, pressed && styles.phonePressed]}
+            >
+              <Text style={styles.addressButtonText}>{dropAddr}</Text>
+            </Pressable>
+          ) : hasMapCoordinates(order.dropoffLat, order.dropoffLng) ? (
+            <Pressable
+              onPress={() =>
+                void openOrderMapNav({
+                  address: "",
+                  lat: order.dropoffLat,
+                  lng: order.dropoffLng,
+                })
+              }
+              hitSlop={8}
+              style={({ pressed }) => [styles.addressButton, pressed && styles.phonePressed]}
+            >
+              <Text style={styles.addressButtonText}>{dropCoordLine}</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.mutedLine}>{t("orderDetail.addressMissingDelivery")}</Text>
+          )}
+          {dropCoordLine && dropAddr ? (
+            <Text style={styles.coordLine} numberOfLines={2}>
+              {dropCoordLine}
+            </Text>
+          ) : null}
+          {notes ? (
+            <View style={styles.notesBlock}>
+              <DetailRow compact isFirst label={t("orderDetail.deliveryNotesLabel")} value={notes} />
+            </View>
+          ) : null}
+        </View>
+      </SectionCard>
 
       {showAssignmentLogs ? <AssignmentLogsTimeline logs={order.assignmentLogs} compact /> : null}
     </View>
@@ -258,11 +364,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginBottom: captainSpacing.xs,
   },
-  customerBlock: {
-    alignItems: "flex-end",
-    gap: captainSpacing.xs,
-    marginBottom: captainSpacing.xs,
-  },
   actionRowTight: {
     paddingVertical: captainSpacing.xs,
     alignSelf: "stretch",
@@ -280,8 +381,17 @@ const styles = StyleSheet.create({
     color: captainUiTheme.textMuted,
     textAlign: "right",
   },
-  infoGrid: {
-    gap: captainSpacing.md,
+  paymentMethodLine: {
+    ...captainTypography.caption,
+    color: captainUiTheme.textMuted,
+    textAlign: "right",
+    marginTop: captainSpacing.sm,
+  },
+  paymentMethodValue: {
+    color: captainUiTheme.text,
+    fontSize: 13,
+    fontWeight: "800",
+    textAlign: "right",
   },
   infoPanel: {
     gap: captainSpacing.sm,
@@ -293,11 +403,12 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textAlign: "right",
   },
-  infoSub: {
+  toolbarCaption: {
+    ...captainTypography.caption,
     color: captainUiTheme.textSubtle,
-    fontSize: 12,
-    fontWeight: "700",
     textAlign: "right",
+    alignSelf: "stretch",
+    marginTop: captainSpacing.xs,
   },
   addressButton: {
     width: "100%",
@@ -313,21 +424,31 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: "right",
   },
-  customerNameLine: {
+  coordLine: {
     color: captainUiTheme.textSubtle,
     fontSize: 11,
     textAlign: "right",
     lineHeight: 16,
     width: "100%",
   },
+  mutedLine: {
+    color: captainUiTheme.textMuted,
+    fontSize: 12,
+    textAlign: "right",
+    width: "100%",
+  },
   phonePress: { alignSelf: "flex-end" },
   phonePressed: { opacity: 0.85 },
   phoneLink: {
     color: captainUiTheme.accent,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "800",
     textDecorationLine: "underline",
     textDecorationColor: captainUiTheme.accentMuted,
-    lineHeight: 16,
+    lineHeight: 18,
+  },
+  notesBlock: {
+    width: "100%",
+    marginTop: captainSpacing.xs,
   },
 });

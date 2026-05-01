@@ -27,6 +27,7 @@ import { captainService } from "@/services/api/services/captain.service";
 import { env } from "@/utils/env";
 import { resolveCaptainPushLanguage } from "@/i18n/i18n";
 import { captainRadius, captainSpacing, captainTypography, captainUiTheme } from "@/theme/captain-ui-theme";
+import { resolveNotificationDisplay } from "@/features/notifications/resolve-notification-display";
 
 const ANDROID_CHANNEL_ID = "captain-orders-v9-strong";
 const ORDER_NOTIFICATION_SOUND = "new_order_strong_alert";
@@ -52,8 +53,8 @@ function bucketLabel(iso: string, now: Date, tr: TFunction): string {
   const t0 = startOfDay(now).getTime();
   const tDay = startOfDay(d).getTime();
   const dayMs = 86400000;
-  if (tDay === t0) return tr("notifications.today");
-  if (tDay === t0 - dayMs) return tr("notifications.yesterday");
+  if (tDay === t0) return tr("captain.notifications.today");
+  if (tDay === t0 - dayMs) return tr("captain.notifications.yesterday");
   return formatNotificationSectionDateLabel(iso);
 }
 
@@ -111,12 +112,12 @@ export function NotificationsListScreen() {
       const finalPerm =
         currentPerm.status === "granted" ? currentPerm : await Notifications.requestPermissionsAsync();
       if (finalPerm.status !== "granted") {
-        Alert.alert(t("notifications.retryPushDeniedTitle"), t("notifications.retryPushDeniedBody"));
+        Alert.alert(t("captain.notifications.retryPushDeniedTitle"), t("captain.notifications.retryPushDeniedBody"));
         return;
       }
       const projectId = resolveProjectId();
       if (!projectId) {
-        Alert.alert(t("notifications.retryPushNoProjectTitle"), t("notifications.retryPushNoProjectBody"));
+        Alert.alert(t("captain.notifications.retryPushNoProjectTitle"), t("captain.notifications.retryPushNoProjectBody"));
         return;
       }
       const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
@@ -128,15 +129,15 @@ export function NotificationsListScreen() {
         language,
       });
       Alert.alert(
-        result.registered ? t("notifications.retryPushOkTitle") : t("notifications.retryPushFailTitle"),
+        result.registered ? t("captain.notifications.retryPushOkTitle") : t("captain.notifications.retryPushFailTitle"),
         result.registered
-          ? `${t("notifications.retryPushOkBody")}\n${t("notifications.apiLine", { url: env.apiUrl })}`
-          : `${t("notifications.retryPushRejectedBody")}\n${t("notifications.apiLine", { url: env.apiUrl })}`,
+          ? t("captain.notifications.retryPushOkBody", { url: env.apiUrl })
+          : t("captain.notifications.retryPushRejectedBody", { url: env.apiUrl }),
       );
     } catch (error) {
       Alert.alert(
-        t("notifications.retryPushErrorTitle"),
-        t("notifications.retryPushErrorBody", {
+        t("captain.notifications.retryPushErrorTitle"),
+        t("captain.notifications.retryPushErrorBody", {
           message: error instanceof Error ? error.message : t("errors.unexpected"),
         }),
       );
@@ -152,6 +153,11 @@ export function NotificationsListScreen() {
 
   const renderItem = ({ item }: { item: NotificationItemDto }) => {
     const tappable = Boolean(item.orderId);
+    const { title: displayTitle, body: displayBody } = resolveNotificationDisplay(
+      item,
+      t,
+      i18n.resolvedLanguage ?? i18n.language,
+    );
     return (
       <Pressable
         style={({ pressed }) => [styles.card, pressed && tappable && styles.cardPressed]}
@@ -162,33 +168,33 @@ export function NotificationsListScreen() {
         <View style={styles.cardTop}>
           <View style={styles.metaRow}>
             {!item.isRead ? (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{t("notifications.new")}</Text>
+              <View style={styles.unreadBadge} accessibilityLabel={t("captain.notifications.status.unread")}>
+                <Text style={styles.unreadBadgeText}>{t("captain.notifications.status.new")}</Text>
               </View>
             ) : (
               <View style={styles.readBadge}>
-                <Text style={styles.readBadgeText}>{t("notifications.read")}</Text>
+                <Text style={styles.readBadgeText}>{t("captain.notifications.status.read")}</Text>
               </View>
             )}
             {item.orderId ? (
               <View style={styles.orderBadge}>
                 <Ionicons name="receipt-outline" size={14} color={captainUiTheme.accent} />
-                <Text style={styles.orderBadgeText}>{t("notifications.orderLinked")}</Text>
+                <Text style={styles.orderBadgeText}>{t("captain.notifications.orderLinked")}</Text>
               </View>
             ) : (
               <View style={styles.infoBadge}>
-                <Text style={styles.infoBadgeText}>{t("notifications.notLinked")}</Text>
+                <Text style={styles.infoBadgeText}>{t("captain.notifications.noLinkedOrder")}</Text>
               </View>
             )}
           </View>
           <Text style={styles.time}>{formatNotificationTime(item.createdAt)}</Text>
         </View>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.cardBody}>{item.body}</Text>
+        <Text style={styles.cardTitle}>{displayTitle}</Text>
+        <Text style={styles.cardBody}>{displayBody}</Text>
         {tappable ? (
-          <Text style={styles.hint}>{t("notifications.hintTappable")}</Text>
+          <Text style={styles.hint}>{t("captain.notifications.hintTappable")}</Text>
         ) : (
-          <Text style={styles.mutedHint}>{t("notifications.hintGeneral")}</Text>
+          <Text style={styles.mutedHint}>{t("captain.notifications.hintGeneral")}</Text>
         )}
       </Pressable>
     );
@@ -205,8 +211,8 @@ export function NotificationsListScreen() {
       <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
         <WorkStatusBanner />
         <View style={styles.screenHead}>
-          <Text style={styles.title}>{t("notifications.title")}</Text>
-          <Text style={styles.sub}>{t("notifications.subLoading")}</Text>
+          <Text style={styles.title}>{t("captain.notifications.title")}</Text>
+          <Text style={styles.sub}>{t("captain.notifications.subLoading")}</Text>
         </View>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={captainUiTheme.accent} />
@@ -221,10 +227,15 @@ export function NotificationsListScreen() {
       <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
         <WorkStatusBanner />
         <View style={styles.screenHead}>
-          <Text style={styles.title}>{t("notifications.title")}</Text>
-          <Text style={styles.sub}>{t("notifications.sub")}</Text>
+          <Text style={styles.title}>{t("captain.notifications.title")}</Text>
+          <Text style={styles.sub}>{t("captain.notifications.sub")}</Text>
         </View>
-        <QueryErrorState error={query.error} onRetry={() => void query.refetch()} />
+        <QueryErrorState
+          title={t("captain.notifications.loadErrorTitle")}
+          fallbackMessage={t("captain.notifications.loadErrorBody")}
+          error={query.error}
+          onRetry={() => void query.refetch()}
+        />
       </ScreenContainer>
     );
   }
@@ -233,17 +244,17 @@ export function NotificationsListScreen() {
     <ScreenContainer edges={["top", "left", "right"]} contentStyle={{ flex: 1 }}>
       <WorkStatusBanner />
       <View style={styles.screenHead}>
-        <Text style={styles.title}>{t("notifications.title")}</Text>
-        <Text style={styles.sub}>{t("notifications.sub")}</Text>
+        <Text style={styles.title}>{t("captain.notifications.title")}</Text>
+        <Text style={styles.sub}>{t("captain.notifications.sub")}</Text>
         <SecondaryButton
           compact
-          label={retryingPush ? t("notifications.retryPushProgress") : t("notifications.retryPushCta")}
+          label={retryingPush ? t("captain.notifications.retryPushProgress") : t("captain.notifications.retryPushCta")}
           onPress={() => void retryPushRegistration()}
           disabled={retryingPush}
           icon="notifications-outline"
           style={styles.retrySecondary}
         />
-        <Text style={styles.apiHint}>{t("notifications.apiLine", { url: env.apiUrl })}</Text>
+        <Text style={styles.apiHint}>{t("captain.notifications.apiLine", { url: env.apiUrl })}</Text>
       </View>
       <SectionList
         sections={sections}
@@ -259,6 +270,7 @@ export function NotificationsListScreen() {
             tintColor={captainUiTheme.accent}
             colors={[captainUiTheme.accent]}
             progressBackgroundColor={captainUiTheme.surfaceElevated}
+            accessibilityLabel={t("captain.notifications.refresh")}
           />
         }
         ListEmptyComponent={
@@ -268,7 +280,8 @@ export function NotificationsListScreen() {
                 <Ionicons name="notifications-off-outline" size={44} color={captainUiTheme.textSubtle} />
               </View>
             }
-            title={t("notifications.empty")}
+            title={t("captain.notifications.emptyTitle")}
+            body={t("captain.notifications.emptyBody")}
             minHeight={220}
           />
         }

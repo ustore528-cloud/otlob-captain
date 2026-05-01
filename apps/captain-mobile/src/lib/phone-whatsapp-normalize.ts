@@ -4,22 +4,28 @@
  * - International numbers (970 / 972), including optional trunk zero after country code
  *   - e.g. 972054... -> 97254...
  * - Local Israel mobile format 05xxxxxxxx -> 9725xxxxxxxx
+ *
+ * Strips spaces, dashes, parentheses, dots, brackets, slashes, and other non-digit noise
+ * (except an optional leading `+` before digit extraction).
  */
 
 const WA_MIN = 11;
 const WA_MAX = 15;
 
+/** Visible and common invisible separators; keep `+` for international prefix. */
+const PHONE_NOISE = /[\s\u200e\u200f\u202a\u202c\-().\[\]/\\|_~]/g;
+
 function preprocess(raw: string): string {
-  let s = raw.trim().replace(/[\s\u200e\u200f\-().]/g, "");
+  let s = raw.trim().replace(PHONE_NOISE, "");
   s = s.replace(/\./g, "");
   return s;
 }
 
 /**
- * **Accepted:** Full international strings after cleanup, starting with **972** or **970**,
- * length 11–15 digits (E.164-style), optional leading `+` or `00`.
+ * **Accepted:** After cleanup: **972** or **970** international (11–15 digits), optional `+` / `00`;
+ * or Israeli local **05xxxxxxxx** (mapped to **9725xxxxxxxx**).
  *
- * **Rejected:** Anything else — callers show Arabic guidance.
+ * **Rejected:** Anything else — callers show i18n guidance.
  */
 export function normalizePhoneForWhatsApp(phone: string): string | null {
   const pre = preprocess(phone);

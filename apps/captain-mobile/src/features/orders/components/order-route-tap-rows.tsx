@@ -3,26 +3,32 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { homeTheme } from "@/features/home/theme";
 import { locationI18nKey } from "@/lib/order-location-i18n";
-import { openMapSearch } from "@/lib/open-external";
+import { hasMapCoordinates, openOrderMapNav } from "@/lib/open-external";
 
 type RowProps = {
   label: string;
   value: string;
+  lat?: number | null;
+  lng?: number | null;
   tone?: "pickup" | "dropoff";
   compact?: boolean;
   dense?: boolean;
   mapHint: string;
 };
 
-function LocationTapRow({ label, value, tone = "pickup", compact, dense, mapHint }: RowProps) {
+function LocationTapRow({ label, value, lat, lng, tone = "pickup", compact, dense, mapHint }: RowProps) {
   const v = value.trim();
-  if (!v) return null;
+  const coordsOnly = hasMapCoordinates(lat, lng);
+  if (!v && !coordsOnly) return null;
+  const displayValue =
+    v ||
+    (coordsOnly ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}` : "");
   const pickupTone = tone === "pickup";
   const iconName = pickupTone ? ("navigate-circle-outline" as const) : ("flag-outline" as const);
   const iconColor = pickupTone ? homeTheme.accent : homeTheme.gold;
   return (
     <Pressable
-      onPress={() => void openMapSearch(v)}
+      onPress={() => void openOrderMapNav({ address: v || displayValue, lat, lng })}
       style={({ pressed }) => [
         styles.row,
         pickupTone ? styles.rowPickup : styles.rowDropoff,
@@ -32,7 +38,7 @@ function LocationTapRow({ label, value, tone = "pickup", compact, dense, mapHint
         pressed && styles.pressed,
       ]}
       accessibilityRole="link"
-      accessibilityLabel={`${label}: ${v}`}
+      accessibilityLabel={`${label}: ${displayValue}`}
       accessibilityHint={mapHint}
     >
       <View style={styles.rowShell}>
@@ -42,7 +48,7 @@ function LocationTapRow({ label, value, tone = "pickup", compact, dense, mapHint
             style={[styles.value, compact && styles.valueCompact, dense && styles.valueDense]}
             numberOfLines={compact || dense ? 2 : 4}
           >
-            {v}
+            {displayValue}
           </Text>
         </View>
         <Ionicons
@@ -59,6 +65,10 @@ function LocationTapRow({ label, value, tone = "pickup", compact, dense, mapHint
 type Props = {
   pickupAddress: string;
   dropoffAddress: string;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  dropoffLat?: number | null;
+  dropoffLng?: number | null;
   /** إذا كان العنوان الفارغ — عرض المنطقة كاحتياطي للتسليم */
   areaFallback?: string;
   /** أقل ارتفاعًا — بطاقة مضغوطة أو شريط سفلي يقتسمان الشاشة */
@@ -67,7 +77,17 @@ type Props = {
   dense?: boolean;
 };
 
-export function OrderRouteTapRows({ pickupAddress, dropoffAddress, areaFallback, compact, dense }: Props) {
+export function OrderRouteTapRows({
+  pickupAddress,
+  dropoffAddress,
+  pickupLat,
+  pickupLng,
+  dropoffLat,
+  dropoffLng,
+  areaFallback,
+  compact,
+  dense,
+}: Props) {
   const { t } = useTranslation();
   const drop = dropoffAddress.trim() || areaFallback?.trim() || "";
   const tight = Boolean(compact || dense);
@@ -76,6 +96,8 @@ export function OrderRouteTapRows({ pickupAddress, dropoffAddress, areaFallback,
       <LocationTapRow
         label={t(locationI18nKey.pickup)}
         value={pickupAddress}
+        lat={pickupLat}
+        lng={pickupLng}
         tone="pickup"
         compact={tight}
         dense={dense}
@@ -84,6 +106,8 @@ export function OrderRouteTapRows({ pickupAddress, dropoffAddress, areaFallback,
       <LocationTapRow
         label={t(locationI18nKey.dropoff)}
         value={drop}
+        lat={dropoffLat}
+        lng={dropoffLng}
         tone="dropoff"
         compact={tight}
         dense={dense}

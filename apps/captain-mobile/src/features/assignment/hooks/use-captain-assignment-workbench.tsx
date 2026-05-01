@@ -1,6 +1,5 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { logCaptainAssignment } from "@/lib/captain-assignment-debug";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -18,8 +17,8 @@ import type { OrderFinancialBreakdownDto } from "@/lib/order-financial-breakdown
 import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
 import { orderStatusAccent } from "@/features/orders/utils/order-status-accent";
 import { locationI18nKey } from "@/lib/order-location-i18n";
-import { openMapSearch, openPhoneDialer } from "@/lib/open-external";
-import { openWhatsAppChat } from "@/lib/open-external";
+import { ActionRow, type ActionRowItem } from "@/components/ui";
+import { hasMapCoordinates, openOrderMapNav, openPhoneDialer, openWhatsAppChat } from "@/lib/open-external";
 import { OrderFinancialSection } from "@/components/order/order-financial-section";
 import { shouldShowOrderFinancialSection } from "@/lib/order-payment-ui-visibility";
 import { workflowAdvanceLabelKey } from "../utils/captain-order-actions";
@@ -36,7 +35,15 @@ type NormalizedCurrentOrder = {
   merchantName: string;
   pickup: string;
   dropoff: string;
+  customerName: string;
   customerPhone: string;
+  senderFullName: string | null;
+  senderPhone: string | null;
+  pickupLat: number | null;
+  pickupLng: number | null;
+  dropoffLat: number | null;
+  dropoffLng: number | null;
+  notes: string | null;
   amount: string;
   deliveryFee: string | null;
   cashCollection: string;
@@ -44,6 +51,10 @@ type NormalizedCurrentOrder = {
   financialBreakdown?: OrderFinancialBreakdownDto | null;
   offerExpiresAt: string | null;
 };
+
+function trimStr(s: string | null | undefined): string {
+  return (s ?? "").trim();
+}
 
 function normalizeOrderId(id: unknown): string {
   return String(id ?? "").trim();
@@ -116,7 +127,15 @@ export function useCaptainAssignmentWorkbench() {
         merchantName: row.merchantName,
         pickup: row.pickup,
         dropoff: row.dropoff,
+        customerName: row.customerName,
         customerPhone: row.customerPhone,
+        senderFullName: row.senderFullName,
+        senderPhone: row.senderPhone,
+        pickupLat: row.pickupLat,
+        pickupLng: row.pickupLng,
+        dropoffLat: row.dropoffLat,
+        dropoffLng: row.dropoffLng,
+        notes: row.notes,
         amount: row.amount,
         deliveryFee: row.deliveryFee,
         cashCollection: row.cashCollection,
@@ -137,7 +156,15 @@ export function useCaptainAssignmentWorkbench() {
         merchantName: primary.order.store?.name?.trim() || "—",
         pickup: primary.order.pickupAddress,
         dropoff: primary.order.dropoffAddress,
+        customerName: primary.order.customerName ?? "",
         customerPhone: primary.order.customerPhone,
+        senderFullName: primary.order.senderFullName ?? null,
+        senderPhone: primary.order.senderPhone ?? null,
+        pickupLat: primary.order.pickupLat ?? null,
+        pickupLng: primary.order.pickupLng ?? null,
+        dropoffLat: primary.order.dropoffLat ?? null,
+        dropoffLng: primary.order.dropoffLng ?? null,
+        notes: primary.order.notes ?? null,
         amount: primary.order.amount,
         deliveryFee: primary.order.deliveryFee ?? null,
         cashCollection: primary.order.cashCollection,
@@ -155,7 +182,15 @@ export function useCaptainAssignmentWorkbench() {
         merchantName: activeOrder.store?.name?.trim() || "—",
         pickup: activeOrder.pickupAddress,
         dropoff: activeOrder.dropoffAddress,
+        customerName: activeOrder.customerName ?? "",
         customerPhone: activeOrder.customerPhone,
+        senderFullName: activeOrder.senderFullName ?? null,
+        senderPhone: activeOrder.senderPhone ?? null,
+        pickupLat: activeOrder.pickupLat ?? null,
+        pickupLng: activeOrder.pickupLng ?? null,
+        dropoffLat: activeOrder.dropoffLat ?? null,
+        dropoffLng: activeOrder.dropoffLng ?? null,
+        notes: activeOrder.notes ?? null,
         amount: activeOrder.amount,
         deliveryFee: activeOrder.deliveryFee ?? null,
         cashCollection: activeOrder.cashCollection,
@@ -175,7 +210,15 @@ export function useCaptainAssignmentWorkbench() {
         merchantName: item.storeName || "—",
         pickup: item.pickupAddress,
         dropoff: item.dropoffAddress,
+        customerName: "",
         customerPhone: item.customerPhone,
+        senderFullName: null,
+        senderPhone: null,
+        pickupLat: null,
+        pickupLng: null,
+        dropoffLat: null,
+        dropoffLng: null,
+        notes: null,
         amount: item.amount,
         deliveryFee: item.deliveryFee,
         cashCollection: item.cashCollection,
@@ -229,7 +272,15 @@ export function useCaptainAssignmentWorkbench() {
         merchantName={card.merchantName}
         pickup={card.pickup}
         dropoff={card.dropoff}
+        customerName={card.customerName}
         customerPhone={card.customerPhone}
+        senderFullName={card.senderFullName}
+        senderPhone={card.senderPhone}
+        pickupLat={card.pickupLat}
+        pickupLng={card.pickupLng}
+        dropoffLat={card.dropoffLat}
+        dropoffLng={card.dropoffLng}
+        notes={card.notes}
         amount={card.amount}
         deliveryFee={card.deliveryFee}
         cashCollection={card.cashCollection}
@@ -314,7 +365,15 @@ function BundleOfferCard({
   merchantName,
   pickup,
   dropoff,
+  customerName,
   customerPhone,
+  senderFullName,
+  senderPhone,
+  pickupLat,
+  pickupLng,
+  dropoffLat,
+  dropoffLng,
+  notes,
   amount,
   deliveryFee,
   cashCollection,
@@ -337,7 +396,15 @@ function BundleOfferCard({
   merchantName: string;
   pickup: string;
   dropoff: string;
+  customerName: string;
   customerPhone: string;
+  senderFullName: string | null;
+  senderPhone: string | null;
+  pickupLat: number | null;
+  pickupLng: number | null;
+  dropoffLat: number | null;
+  dropoffLng: number | null;
+  notes: string | null;
   amount: string;
   deliveryFee: string | null;
   cashCollection: string;
@@ -354,6 +421,79 @@ function BundleOfferCard({
 }) {
   const { t } = useTranslation();
   const dash = t("common.emDash");
+  const sp = trimStr(senderPhone) || null;
+  const cp = trimStr(customerPhone) || null;
+  const cn = trimStr(customerName);
+  const sfn = trimStr(senderFullName);
+  const pickupNav = Boolean(trimStr(pickup)) || hasMapCoordinates(pickupLat, pickupLng);
+  const dropNav = Boolean(trimStr(dropoff)) || hasMapCoordinates(dropoffLat, dropoffLng);
+  const notesLine = trimStr(notes);
+
+  const pickupToolbar: ActionRowItem[] = [
+    {
+      key: "s-call",
+      icon: "call-outline",
+      disabled: !sp,
+      onPress: () => {
+        if (sp) void openPhoneDialer(sp);
+      },
+      accessibilityLabel: t("orderDetail.callSenderA11y", { phone: sp ?? dash }),
+    },
+    {
+      key: "s-wa",
+      icon: "logo-whatsapp",
+      disabled: !sp,
+      onPress: () => {
+        if (sp) void openWhatsAppChat(sp);
+      },
+      accessibilityLabel: t("orderDetail.whatsappSenderA11y", { phone: sp ?? dash }),
+    },
+    {
+      key: "p-map",
+      icon: "map-outline",
+      disabled: !pickupNav,
+      onPress: () =>
+        void openOrderMapNav({
+          address: pickup,
+          lat: pickupLat,
+          lng: pickupLng,
+        }),
+      accessibilityLabel: t("orderDetail.mapNavPickupA11y"),
+    },
+  ];
+
+  const deliveryToolbar: ActionRowItem[] = [
+    {
+      key: "c-call",
+      icon: "call-outline",
+      disabled: !cp,
+      onPress: () => {
+        if (cp) void openPhoneDialer(cp);
+      },
+      accessibilityLabel: t("orderDetail.callA11y", { phone: cp ?? dash }),
+    },
+    {
+      key: "c-wa",
+      icon: "logo-whatsapp",
+      disabled: !cp,
+      onPress: () => {
+        if (cp) void openWhatsAppChat(cp);
+      },
+      accessibilityLabel: t("whatsapp.a11y", { phone: cp ?? dash }),
+    },
+    {
+      key: "d-map",
+      icon: "map-outline",
+      disabled: !dropNav,
+      onPress: () =>
+        void openOrderMapNav({
+          address: dropoff,
+          lat: dropoffLat,
+          lng: dropoffLng,
+        }),
+      accessibilityLabel: t("orderDetail.mapNavDeliveryA11y"),
+    },
+  ];
   const isOffer = kind === "OFFER";
   const statusAccent = orderStatusAccent(status);
   const statusLabel = t(orderStatusTranslationKey(status));
@@ -417,13 +557,38 @@ function BundleOfferCard({
       </View>
 
       <View style={styles.sectionDivider} />
+      {sfn || sp ? (
+        <View style={styles.senderBlock}>
+          <Text style={styles.sectionTitle}>{t("orderDetail.sectionPickupSender")}</Text>
+          {sfn ? (
+            <Text style={styles.bundleSenderName} numberOfLines={2}>
+              {sfn}
+            </Text>
+          ) : null}
+          {sp ? (
+            <Text style={styles.bundleMetaValue} numberOfLines={1}>
+              {sp}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
       <Text style={styles.sectionTitle}>{t("workbench.customer")}</Text>
+      {cn ? (
+        <Text style={styles.bundleCustomerName} numberOfLines={2}>
+          {cn}
+        </Text>
+      ) : null}
       <View style={styles.bundlePhonePill}>
         <Text style={styles.bundleMetaLabel}>{t("workbench.phone")}</Text>
         <Text style={styles.bundleMetaValue} numberOfLines={1}>
           {customerPhone || dash}
         </Text>
       </View>
+      {notesLine ? (
+        <Text style={styles.bundleNotesPreview} numberOfLines={3}>
+          {notesLine}
+        </Text>
+      ) : null}
       {shouldShowOrderFinancialSection(status) ? (
         <View style={styles.financialOnCard}>
           <OrderFinancialSection
@@ -439,42 +604,10 @@ function BundleOfferCard({
       ) : null}
 
       <View style={styles.sectionDivider} />
-      <Text style={styles.sectionTitle}>{t("workbench.quickActions")}</Text>
-      <View style={styles.bundleQuickActions}>
-        <Pressable
-          style={({ pressed }) => [styles.quickMapBtn, pressed && styles.pressed]}
-          onPress={() => void openMapSearch(pickup)}
-        >
-          <View style={styles.quickBtnInner}>
-            <Ionicons name="navigate-outline" size={14} color={homeTheme.text} />
-            <Text style={styles.quickMapBtnText}>{t("workbench.mapPickup")}</Text>
-          </View>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.quickMapBtn, pressed && styles.pressed]}
-          onPress={() => void openMapSearch(dropoff)}
-        >
-          <View style={styles.quickBtnInner}>
-            <Ionicons name="location-outline" size={14} color={homeTheme.text} />
-            <Text style={styles.quickMapBtnText}>{t("workbench.mapDropoff")}</Text>
-          </View>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.quickMapBtn, pressed && styles.pressed]}
-          onPress={() => void openWhatsAppChat(customerPhone)}
-        >
-          <View style={styles.quickBtnInner}>
-            <Ionicons name="logo-whatsapp" size={14} color="#128C7E" />
-            <Text style={styles.quickMapBtnText}>{t("whatsapp.label")}</Text>
-          </View>
-        </Pressable>
-      </View>
-
-      <View style={styles.bundlePhoneRow}>
-        <Pressable onPress={() => void openPhoneDialer(customerPhone)} style={({ pressed }) => [pressed && styles.pressed]}>
-          <Text style={styles.phoneLink}>{customerPhone || dash}</Text>
-        </Pressable>
-      </View>
+      <Text style={styles.sectionTitle}>{t("orderDetail.toolbarPickup")}</Text>
+      <ActionRow items={pickupToolbar} style={styles.bundleActionRow} />
+      <Text style={styles.sectionTitle}>{t("orderDetail.toolbarDelivery")}</Text>
+      <ActionRow items={deliveryToolbar} style={styles.bundleActionRow} />
 
       {isOffer && offerSeconds != null ? (
         <View style={styles.bundleTimerBadge}>
@@ -663,6 +796,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     textAlign: "right",
+  },
+  bundleActionRow: {
+    paddingVertical: 6,
+    alignSelf: "stretch",
+  },
+  bundleCustomerName: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: homeTheme.text,
+    textAlign: "right",
+    marginBottom: 6,
+  },
+  senderBlock: {
+    marginBottom: 10,
+    gap: 6,
+    alignSelf: "stretch",
+  },
+  bundleSenderName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: homeTheme.text,
+    textAlign: "right",
+  },
+  bundleNotesPreview: {
+    fontSize: 11,
+    color: homeTheme.textMuted,
+    textAlign: "right",
+    marginTop: 6,
+    marginBottom: 10,
   },
   bundleQuickActions: {
     flexDirection: "row-reverse",

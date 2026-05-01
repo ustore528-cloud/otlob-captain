@@ -1,19 +1,21 @@
-import Ionicons from "@expo/vector-icons/Ionicons";
 import { useTranslation } from "react-i18next";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { OrderDetailDto } from "@/services/api/dto";
-import { SecondaryButton, StatusBadge } from "@/components/ui";
+import { ActionRow, SecondaryButton, StatusBadge, type ActionRowItem } from "@/components/ui";
 import {
   captainSpacing,
   captainTypography,
   captainUiTheme,
 } from "@/theme/captain-ui-theme";
 import { orderStatusTranslationKey } from "@/lib/order-status-i18n";
-import { WhatsAppActionButton } from "@/components/ui/whatsapp-action-button";
-import { openPhoneDialer } from "@/lib/open-external";
+import { hasMapCoordinates, openOrderMapNav, openPhoneDialer, openWhatsAppChat } from "@/lib/open-external";
 import { OrderRouteTapRows } from "./order-route-tap-rows";
 import { formatOrderSerial } from "@/lib/order-serial";
 import { mapOrderStatusDtoToBadgeVariant } from "@/lib/map-order-status-to-badge-variant";
+
+function trimOrEmpty(s: string | null | undefined): string {
+  return (s ?? "").trim();
+}
 
 type Props = {
   order: OrderDetailDto;
@@ -49,6 +51,79 @@ export function CaptainWorkbenchOrderCard({
   const customerLine = t("orderDetail.customerLine", {
     name: (order.customerName ?? "").trim() || dash,
   });
+
+  const senderPhone = trimOrEmpty(order.senderPhone) || null;
+  const customerPhone = trimOrEmpty(order.customerPhone) || null;
+  const pickupAddr = trimOrEmpty(order.pickupAddress);
+  const dropAddr = trimOrEmpty(order.dropoffAddress) || trimOrEmpty(order.area);
+  const pickupNav = Boolean(pickupAddr) || hasMapCoordinates(order.pickupLat, order.pickupLng);
+  const dropNav = Boolean(dropAddr) || hasMapCoordinates(order.dropoffLat, order.dropoffLng);
+
+  const pickupToolbar: ActionRowItem[] = [
+    {
+      key: "s-call",
+      icon: "call-outline",
+      disabled: !senderPhone,
+      onPress: () => {
+        if (senderPhone) void openPhoneDialer(senderPhone);
+      },
+      accessibilityLabel: t("orderDetail.callSenderA11y", { phone: senderPhone ?? dash }),
+    },
+    {
+      key: "s-wa",
+      icon: "logo-whatsapp",
+      disabled: !senderPhone,
+      onPress: () => {
+        if (senderPhone) void openWhatsAppChat(senderPhone);
+      },
+      accessibilityLabel: t("orderDetail.whatsappSenderA11y", { phone: senderPhone ?? dash }),
+    },
+    {
+      key: "p-map",
+      icon: "map-outline",
+      disabled: !pickupNav,
+      onPress: () =>
+        void openOrderMapNav({
+          address: order.pickupAddress,
+          lat: order.pickupLat,
+          lng: order.pickupLng,
+        }),
+      accessibilityLabel: t("orderDetail.mapNavPickupA11y"),
+    },
+  ];
+
+  const deliveryToolbar: ActionRowItem[] = [
+    {
+      key: "c-call",
+      icon: "call-outline",
+      disabled: !customerPhone,
+      onPress: () => {
+        if (customerPhone) void openPhoneDialer(customerPhone);
+      },
+      accessibilityLabel: t("orderDetail.callA11y", { phone: customerPhone ?? dash }),
+    },
+    {
+      key: "c-wa",
+      icon: "logo-whatsapp",
+      disabled: !customerPhone,
+      onPress: () => {
+        if (customerPhone) void openWhatsAppChat(customerPhone);
+      },
+      accessibilityLabel: t("whatsapp.a11y", { phone: customerPhone ?? dash }),
+    },
+    {
+      key: "d-map",
+      icon: "map-outline",
+      disabled: !dropNav,
+      onPress: () =>
+        void openOrderMapNav({
+          address: dropAddr || order.dropoffAddress,
+          lat: order.dropoffLat,
+          lng: order.dropoffLng,
+        }),
+      accessibilityLabel: t("orderDetail.mapNavDeliveryA11y"),
+    },
+  ];
 
   return (
     <View
@@ -96,6 +171,10 @@ export function CaptainWorkbenchOrderCard({
       <OrderRouteTapRows
         pickupAddress={order.pickupAddress}
         dropoffAddress={order.dropoffAddress}
+        pickupLat={order.pickupLat}
+        pickupLng={order.pickupLng}
+        dropoffLat={order.dropoffLat}
+        dropoffLng={order.dropoffLng}
         areaFallback={order.area}
         compact={compactEffective}
         dense={liveOps}
@@ -103,17 +182,12 @@ export function CaptainWorkbenchOrderCard({
 
       <View style={styles.divider} />
 
+      <Text style={styles.toolbarCaption}>{t("orderDetail.toolbarPickup")}</Text>
+      <ActionRow items={pickupToolbar} style={styles.actionRowInset} />
+      <Text style={styles.toolbarCaption}>{t("orderDetail.toolbarDelivery")}</Text>
+      <ActionRow items={deliveryToolbar} style={styles.actionRowInset} />
+
       <View style={[styles.actionsRow, liveOps && styles.actionsRowLiveOps]}>
-        <Pressable
-          onPress={() => void openPhoneDialer(order.customerPhone)}
-          style={({ pressed }) => [styles.callBtn, liveOps && styles.callBtnLiveOps, pressed && styles.pressed]}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel={t("workbenchOrderCard.callA11y", { phone: order.customerPhone })}
-        >
-          <Ionicons name="call-outline" size={liveOps ? 20 : 22} color={captainUiTheme.accent} />
-        </Pressable>
-        <WhatsAppActionButton phone={order.customerPhone} variant="icon" size={compactEffective ? "default" : "large"} />
         <SecondaryButton
           label={t("workbenchOrderCard.details")}
           onPress={onOpenDetail}
@@ -223,6 +297,18 @@ const styles = StyleSheet.create({
     backgroundColor: captainUiTheme.border,
     marginVertical: captainSpacing.sm,
   },
+  toolbarCaption: {
+    ...captainTypography.caption,
+    color: captainUiTheme.textSubtle,
+    textAlign: "right",
+    alignSelf: "stretch",
+    marginTop: captainSpacing.xs,
+    marginBottom: 2,
+  },
+  actionRowInset: {
+    paddingVertical: captainSpacing.xs,
+    alignSelf: "stretch",
+  },
   actionsRow: {
     flexDirection: "row-reverse",
     alignItems: "center",
@@ -233,20 +319,6 @@ const styles = StyleSheet.create({
   actionsRowLiveOps: {
     gap: captainSpacing.xs + 2,
     marginBottom: 0,
-  },
-  callBtn: {
-    minWidth: captainSpacing.xxxl + 12,
-    minHeight: captainSpacing.xxxl + 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: captainUiTheme.radiusMd,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: captainUiTheme.accentMuted,
-    backgroundColor: captainUiTheme.surfaceElevated,
-  },
-  callBtnLiveOps: {
-    minWidth: captainSpacing.xxxl + 8,
-    minHeight: captainSpacing.xxxl + 8,
   },
   detailBtn: {
     minHeight: captainSpacing.xxxl + 4,

@@ -53,33 +53,22 @@ function buildSnapshot(
  * الجلسة مفعّلة تلقائيًا عندما يكون التوفر ليس «غير متصل» (OFFLINE) — مثل مفتاح التوفر في الصفحة الرئيسية.
  */
 export function useCaptainTrackingState(): UseCaptainTrackingResult {
-  if (!IS_TRACKING_RUNTIME_SUPPORTED) {
-    return {
-      snapshot: buildSnapshot({
-        sessionEnabled: false,
-        permission: "unknown",
-        reachability: "unknown",
-        appInForeground: true,
-        lastFix: null,
-        lastServerAck: null,
-        pendingInOutbox: 0,
-        lastIssue: null,
-      }),
-      refreshPermission: async () => {},
-    };
-  }
+  /** Hooks must run unconditionally (web is unsupported but still mounts this hook). */
+  const trackingSupported = IS_TRACKING_RUNTIME_SUPPORTED;
 
   const reachability = useNetworkReachability();
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const availabilityStatus = useAuthStore((s) => s.captain?.availabilityStatus);
   const assignmentQ = useCaptainAssignment({
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && trackingSupported,
     refetchInterval: 20_000,
     refetchIntervalInBackground: false,
   });
   const hasActiveAssignment = assignmentQ.data?.state === "ACTIVE";
   const sessionEnabled =
-    isAuthenticated && (isAvailabilityOnlineForTracking(availabilityStatus) || hasActiveAssignment);
+    trackingSupported &&
+    isAuthenticated &&
+    (isAvailabilityOnlineForTracking(availabilityStatus) || hasActiveAssignment);
   const [permission, setPermission] = useState<ForegroundPermissionState>("unknown");
   const [appForeground, setAppForeground] = useState(true);
   const [lastFix, setLastFix] = useState<CaptainTrackingSnapshot["lastFix"]>(null);
@@ -334,6 +323,7 @@ export function useCaptainTrackingState(): UseCaptainTrackingResult {
   }, [reachability, sessionEnabled, permission, flushOutbox]);
 
   const refreshPermission = useCallback(async () => {
+    if (!trackingSupported) return;
     const p = await requestForegroundPermission();
     setPermission(p);
     if (p === "granted") {
@@ -344,7 +334,7 @@ export function useCaptainTrackingState(): UseCaptainTrackingResult {
         message: i18n.t("tracking.issuePermissionDeniedSettings"),
       });
     }
-  }, []);
+  }, [trackingSupported]);
 
   const snapshot = useMemo(
     () =>

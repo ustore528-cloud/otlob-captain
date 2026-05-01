@@ -1,3 +1,4 @@
+import i18n from "@/i18n/i18n";
 import { ApiClientError } from "@/services/api/errors";
 import type { TrackingIssue } from "./types";
 
@@ -12,19 +13,22 @@ function isFetchLikeFailure(e: unknown): boolean {
 
 export function classifySendFailure(error: unknown): TrackingIssue {
   if (isFetchLikeFailure(error)) {
-    return { kind: "network", message: "لا يوجد اتصال بالخادم أو الشبكة غير مستقرة." };
+    return { kind: "network", message: i18n.t("tracking.issueNetworkUnstable") };
   }
   if (error instanceof ApiClientError) {
     const retryable = error.status >= 500 || error.status === 408 || error.status === 429;
+    const msg = (error.message ?? "").trim();
     return {
       kind: "server",
-      message: error.message || "رفض الخادم الطلب.",
+      message: msg ? i18n.t("tracking.issueServerWithMessage", { message: msg }) : i18n.t("tracking.issueServerGeneric"),
       retryable,
     };
   }
   return {
     kind: "server",
-    message: error instanceof Error ? error.message : "فشل غير متوقع.",
+    message: error instanceof Error && error.message.trim()
+      ? i18n.t("tracking.issueUnexpectedWithMessage", { message: error.message })
+      : i18n.t("tracking.issueUnexpected"),
     retryable: true,
   };
 }

@@ -56,6 +56,8 @@ export function CaptainOrderListCard({
   const pickupLine = item.pickupAddress.trim();
   const dropForMap = (item.dropoffAddress || item.area || "").trim();
   const showOfferCountdown = typeof compactOfferCountdownSeconds === "number";
+  const customerPhoneTrim = (item.customerPhone ?? "").trim();
+  const hasCustomerPhone = Boolean(customerPhoneTrim);
 
   if (flatVisual && compactList) {
     const pickupDisplay = pickupLine || item.store?.name?.trim() || dash;
@@ -173,16 +175,18 @@ export function CaptainOrderListCard({
 
         <View style={styles.refFooterRow}>
           <View style={styles.refFooterBtns}>
-            <Pressable
-              onPress={() => void openPhoneDialer(item.customerPhone)}
-              style={({ pressed }) => [styles.refIconBtn, styles.refCallBtn, pressed && styles.pressed]}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel={t("orderCard.callA11y", { phone: item.customerPhone })}
-            >
-              <Ionicons name="call-outline" size={20} color={captainUiTheme.accent} />
-            </Pressable>
-            <WhatsAppActionButton phone={item.customerPhone} variant="icon" size="default" />
+            {hasCustomerPhone ? (
+              <Pressable
+                onPress={() => void openPhoneDialer(customerPhoneTrim)}
+                style={({ pressed }) => [styles.refIconBtn, styles.refCallBtn, pressed && styles.pressed]}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={t("orderCard.callA11y", { phone: customerPhoneTrim })}
+              >
+                <Ionicons name="call-outline" size={20} color={captainUiTheme.accent} />
+              </Pressable>
+            ) : null}
+            {hasCustomerPhone ? <WhatsAppActionButton phone={customerPhoneTrim} variant="icon" size="default" /> : null}
             {showMainCta && primary ? (
               <Pressable
                 style={({ pressed }) => [
@@ -263,16 +267,18 @@ export function CaptainOrderListCard({
 
       <View style={styles.refFooterRow}>
         <View style={styles.refFooterBtns}>
-          <Pressable
-            onPress={() => void openPhoneDialer(item.customerPhone)}
-            style={({ pressed }) => [styles.refIconBtn, styles.refCallBtn, pressed && styles.pressed]}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel={t("orderCard.callA11y", { phone: item.customerPhone })}
-          >
-            <Ionicons name="call-outline" size={20} color={captainUiTheme.accent} />
-          </Pressable>
-          <WhatsAppActionButton phone={item.customerPhone} variant="icon" size="default" />
+          {hasCustomerPhone ? (
+            <Pressable
+              onPress={() => void openPhoneDialer(customerPhoneTrim)}
+              style={({ pressed }) => [styles.refIconBtn, styles.refCallBtn, pressed && styles.pressed]}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={t("orderCard.callA11y", { phone: customerPhoneTrim })}
+            >
+              <Ionicons name="call-outline" size={20} color={captainUiTheme.accent} />
+            </Pressable>
+          ) : null}
+          {hasCustomerPhone ? <WhatsAppActionButton phone={customerPhoneTrim} variant="icon" size="default" /> : null}
           {showMainCta && primary ? (
             <Pressable
               style={({ pressed }) => [

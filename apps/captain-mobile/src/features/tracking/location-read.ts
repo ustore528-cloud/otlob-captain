@@ -1,4 +1,5 @@
 import * as Location from "expo-location";
+import i18n from "@/i18n/i18n";
 
 /**
  * قراءة موقع حالي — دقة متوازنة للبطارية.
@@ -16,8 +17,10 @@ export async function readCurrentPosition(): Promise<{ latitude: number; longitu
 export function formatLocationError(e: unknown): string {
   if (e && typeof e === "object" && "code" in e) {
     const code = String((e as { code?: string }).code ?? "");
-    if (code === "E_LOCATION_UNAVAILABLE") return "الموقع غير متاح حاليًا (GPS أو الشبكة).";
+    if (code === "E_LOCATION_UNAVAILABLE") return i18n.t("tracking.errorGpsUnavailable");
   }
-  if (e instanceof Error) return e.message;
-  return "تعذّر تحديد الموقع.";
+  if (e instanceof Error && e.message.trim()) {
+    return i18n.t("tracking.errorLocationWithDetail", { detail: e.message });
+  }
+  return i18n.t("tracking.errorLocationUnknown");
 }

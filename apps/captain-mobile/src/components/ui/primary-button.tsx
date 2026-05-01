@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import type { ComponentProps } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {

@@ -1,6 +1,11 @@
 import { paths } from "@captain/shared";
 import { authRequest, buildQueryString } from "../client";
-import type { NotificationsListQuery, NotificationsListResponse, NotificationItemDto } from "../dto";
+import type {
+  NotificationsListQuery,
+  NotificationsListResponse,
+  NotificationDisplayI18n,
+  NotificationItemDto,
+} from "../dto";
 
 /** Backend returns `[total, rows]` from Prisma transaction — normalize for the app. */
 type RawNotificationRow = {
@@ -10,6 +15,7 @@ type RawNotificationRow = {
   body: string;
   isRead: boolean;
   createdAt: string;
+  displayI18n?: NotificationDisplayI18n | null;
   orderId?: string;
 };
 
@@ -34,10 +40,12 @@ export const notificationsService = {
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const items: NotificationItemDto[] = rows.map((r) => ({
       id: r.id,
+      type: r.type,
       title: r.title,
       body: r.body,
       isRead: r.isRead,
       createdAt: toIso(r.createdAt),
+      ...(r.displayI18n ? { displayI18n: r.displayI18n } : {}),
       ...(r.orderId != null && r.orderId !== "" ? { orderId: r.orderId } : {}),
     }));
     return {

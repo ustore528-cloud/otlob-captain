@@ -28,100 +28,79 @@ export async function openPhoneDialer(phone: string): Promise<void> {
   }
 }
 
-export async function openWhatsAppChat(phone: string): Promise<void> {
+async function tryOpenUrl(url: string): Promise<boolean> {
+  try {
+    await Linking.openURL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Opens WhatsApp for a customer number. Tries in order (no `canOpenURL` gating — iOS often
+ * reports false for `whatsapp://` unless LSApplicationQueriesSchemes includes `whatsapp`):
+ * 1) whatsapp://send?phone=&lt;digits&gt;
+ * 2) https://wa.me/&lt;digits&gt;
+ * 3) tel:+&lt;digits&gt;
+ */
+export async function openWhatsAppChat(phone: string | null | undefined): Promise<void> {
+  const rawPhone = typeof phone === "string" ? phone : phone == null ? "" : String(phone);
   // eslint-disable-next-line no-console
-  console.info("[captain-whatsapp] rawPhone", { rawPhone: phone });
-  const d = normalizePhoneForWhatsApp(phone);
+  console.info("[captain-whatsapp] rawPhone", rawPhone);
+
+  const d = normalizePhoneForWhatsApp(rawPhone);
   // eslint-disable-next-line no-console
-  console.info("[captain-whatsapp] normalizedPhone", { normalizedPhone: d });
+  console.info("[captain-whatsapp] normalizedPhone", d ?? "");
+
   if (!d) {
-    Alert.alert(i18n.t("openExternal.whatsappInvalidTitle"), i18n.t("openExternal.whatsappInvalidBody"));
+    // eslint-disable-next-line no-console
+    console.info("[captain-whatsapp] openResult", "invalid");
+    Alert.alert(i18n.t("captain.external.invalidPhoneTitle"), i18n.t("captain.external.invalidPhoneBody"));
     return;
   }
 
   const whatsappUrl = `whatsapp://send?phone=${d}`;
   const waMeUrl = `https://wa.me/${d}`;
-  const sanitized = sanitizePhoneForDial(phone);
-  /** Prefer original `tel:` shape when dialable; else E.164-style from normalized digits. */
-  const telUrl = sanitized ? `tel:${sanitized}` : `tel:+${d}`;
-  // eslint-disable-next-line no-console
-  console.info("[captain-whatsapp] whatsappUrl", { whatsappUrl });
-  // eslint-disable-next-line no-console
-  console.info("[captain-whatsapp] waMeUrl", { waMeUrl });
-  // eslint-disable-next-line no-console
-  console.info("[captain-whatsapp] fallbackTel", { fallbackTel: telUrl });
+  const telUrl = `tel:+${d}`;
 
-  let whatsappCanOpen = false;
-  let waMeCanOpen = false;
-  let telCanOpen = false;
-  try {
-    whatsappCanOpen = await Linking.canOpenURL(whatsappUrl);
-  } catch {
-    whatsappCanOpen = false;
-  }
   // eslint-disable-next-line no-console
-  console.info("[captain-whatsapp] whatsappCanOpen", { whatsappCanOpen });
-
-  if (whatsappCanOpen) {
-    try {
-      await Linking.openURL(whatsappUrl);
-      // eslint-disable-next-line no-console
-      console.info("[captain-whatsapp] selectedFallback", { selectedFallback: "whatsapp" });
-      return;
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("[captain-whatsapp] whatsapp-open-failed", { error });
-    }
-  }
-
-  try {
-    waMeCanOpen = await Linking.canOpenURL(waMeUrl);
-  } catch {
-    waMeCanOpen = false;
-  }
+  console.info("[captain-whatsapp] whatsappUrl", whatsappUrl);
   // eslint-disable-next-line no-console
-  console.info("[captain-whatsapp] waMeCanOpen", { waMeCanOpen });
-
-  if (waMeCanOpen) {
-    try {
-      await Linking.openURL(waMeUrl);
-      // eslint-disable-next-line no-console
-      console.info("[captain-whatsapp] selectedFallback", { selectedFallback: "wa.me" });
-      return;
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("[captain-whatsapp] waMe-open-failed", { error });
-    }
-  }
-
-  try {
-    telCanOpen = await Linking.canOpenURL(telUrl);
-  } catch {
-    telCanOpen = false;
-  }
+  console.info("[captain-whatsapp] waMeUrl", waMeUrl);
   // eslint-disable-next-line no-console
-  console.info("[captain-whatsapp] telCanOpen", { telCanOpen });
+  console.info("[captain-whatsapp] telUrl", telUrl);
 
-  if (telCanOpen) {
-    Alert.alert(
-      i18n.t("openExternal.whatsappUnavailableTitle"),
-      i18n.t("openExternal.whatsappUnavailableBody"),
-      [
-        { text: i18n.t("openExternal.whatsappFallbackCancel"), style: "cancel" },
-        {
-          text: i18n.t("openExternal.whatsappFallbackCall"),
-          onPress: () => {
-            void Linking.openURL(telUrl).catch(() => {
-              Alert.alert(i18n.t("openExternal.phoneFailedTitle"), i18n.t("openExternal.phoneFailedBody"));
-            });
-          },
-        },
-      ],
-    );
+  if (await tryOpenUrl(whatsappUrl)) {
+    // eslint-disable-next-line no-console
+    console.info("[captain-whatsapp] openResult", "whatsapp");
     return;
   }
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] error", "whatsapp_scheme");
 
-  Alert.alert(i18n.t("openExternal.whatsappOrDialUnavailableTitle"), i18n.t("openExternal.whatsappOrDialUnavailableBody"));
+  if (await tryOpenUrl(waMeUrl)) {
+    // eslint-disable-next-line no-console
+    console.info("[captain-whatsapp] openResult", "wa.me");
+    return;
+  }
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] error", "wa_me");
+
+  if (await tryOpenUrl(telUrl)) {
+    // eslint-disable-next-line no-console
+    console.info("[captain-whatsapp] openResult", "tel");
+    return;
+  }
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] error", "tel");
+  // eslint-disable-next-line no-console
+  console.info("[captain-whatsapp] openResult", "none");
+
+  Alert.alert(
+    i18n.t("captain.external.whatsappUnavailableTitle"),
+    i18n.t("captain.external.whatsappUnavailableBody"),
+  );
 }
 
 /**
@@ -147,4 +126,22 @@ export async function openMapCoordinates(lat: number, lng: number): Promise<void
   } catch {
     Alert.alert(i18n.t("openExternal.mapFailedTitle"), i18n.t("openExternal.mapFailedBody"));
   }
+}
+
+export function hasMapCoordinates(lat: unknown, lng: unknown): boolean {
+  return typeof lat === "number" && typeof lng === "number" && Number.isFinite(lat) && Number.isFinite(lng);
+}
+
+/** Prefer a map pin when coordinates exist; otherwise open a search for the address string. */
+export async function openOrderMapNav(opts: {
+  address: string;
+  lat?: number | null;
+  lng?: number | null;
+}): Promise<void> {
+  const { address, lat, lng } = opts;
+  if (hasMapCoordinates(lat, lng)) {
+    await openMapCoordinates(lat as number, lng as number);
+    return;
+  }
+  await openMapSearch(address);
 }

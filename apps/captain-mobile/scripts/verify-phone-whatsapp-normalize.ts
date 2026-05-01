@@ -22,6 +22,7 @@ const cases: Case[] = [
   { input: " 05 431-65161 ", expected: "972543165161" },
   // Any local 05xxxxxxxx maps to 9725xxxxxxxx
   { input: "0581234567", expected: "972581234567" },
+  { input: "+972 / 54-316-51-61", expected: "972543165161" },
 ];
 
 for (const t of cases) {

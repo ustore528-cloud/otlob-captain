@@ -7,7 +7,7 @@ import { captainService } from "@/services/api/services/captain.service";
 import { queryClient } from "@/lib/query-client";
 
 /**
- * Latest admin quick work-status (same source as dashboard “تنبيه سريع عن حالة الشغل”).
+ * Latest admin quick work-status broadcast (same source as the admin dashboard quick alert).
  * Polls on an interval and refetches when the app returns to the foreground.
  */
 export function useCaptainWorkStatus() {

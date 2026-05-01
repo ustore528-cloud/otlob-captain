@@ -21,6 +21,12 @@
       "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": [
+          "whatsapp",
+          "https",
+          "http",
+          "tel"
+        ],
         "NSLocationWhenInUseUsageDescription": "نستخدم موقعك لعرضك على خريطة التوزيع ولتتبع الطلبات النشطة.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "للتتبع أثناء التوصيل عند تفعيل الخلفية لاحقًا.",
         "NSAppTransportSecurity": {
