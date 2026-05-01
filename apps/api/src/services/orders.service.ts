@@ -18,6 +18,7 @@ import {
 import { CAPTAIN_SOCKET_EVENTS } from "../realtime/captain-events.js";
 import { emitPublicCustomerTrackingOnly, emitToCaptain } from "../realtime/hub.js";
 import { DISTRIBUTION_TIMEOUT_SECONDS } from "./distribution/constants.js";
+import { DISTRIBUTION_TRANSACTION_OPTIONS } from "./distribution/distribution-engine.js";
 import { lockOrderDistributionTx } from "./distribution/order-lock.js";
 import { logCaptainOrderResponse } from "./captain-order-response-log.js";
 import { resolveOrderCustomerUserId } from "./order-customer-link.js";
@@ -625,7 +626,7 @@ export const ordersService = {
         },
       });
       return { order: nextOrder, previousStatus: orderRow.status };
-    }).then(({ order, previousStatus }) => {
+    }, DISTRIBUTION_TRANSACTION_OPTIONS).then(({ order, previousStatus }) => {
       logCaptainOrderResponse("REJECT_SUCCESS", {
         orderId,
         orderNumber: order?.orderNumber ?? null,
@@ -644,23 +645,32 @@ export const ordersService = {
         nextCaptainUserId !== userId
       ) {
         logCaptainOrderResponse("REJECT_EMIT_NEXT_OFFER", { orderId, nextCaptainUserId });
-        emitToCaptain(nextCaptainUserId, CAPTAIN_SOCKET_EVENTS.ASSIGNMENT, {
-          kind: "OFFER",
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          status: order.status,
-          timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
-        });
-        emitCaptainOrderUpdated(nextCaptainUserId, order);
-        void pushNotificationService.sendCaptainOrderPush({
-          userId: nextCaptainUserId,
-          title: "ط·ظ„ط¨ ط¬ط¯ظٹط¯ ط¨ط§ظ†طھط¸ط§ط± ظ‚ط¨ظˆظ„ظƒ",
-          body: `طھظ… ط¹ط±ط¶ ط§ظ„ط·ظ„ط¨ ${order.orderNumber} ط¹ظ„ظٹظƒ. ط§ط¶ط؛ط· ظ„ظ„ظ‚ط¨ظˆظ„ ط£ظˆ ط§ظ„ط±ظپط¶.`,
-          orderId: order.id,
-          orderNumber: order.orderNumber,
-          kind: "OFFER",
-          status: order.status,
-        });
+        try {
+          emitToCaptain(nextCaptainUserId, CAPTAIN_SOCKET_EVENTS.ASSIGNMENT, {
+            kind: "OFFER",
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            status: order.status,
+            timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
+          });
+          emitCaptainOrderUpdated(nextCaptainUserId, order);
+          void pushNotificationService.sendCaptainOrderPush({
+            userId: nextCaptainUserId,
+            title: "New Delivery Order",
+            body: `Order ${order.orderNumber}: open the app to accept or reject.`,
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            kind: "OFFER",
+            status: order.status,
+          });
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.error("[orders.rejectByCaptain] post_reject_dispatch_emit non_fatal", {
+            orderId,
+            nextCaptainUserId,
+            error: e instanceof Error ? e.message : String(e),
+          });
+        }
       }
       return order;
     });

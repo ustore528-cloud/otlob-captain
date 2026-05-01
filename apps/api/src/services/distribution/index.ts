@@ -38,6 +38,7 @@ function mergeEngineCtx(
 ): DistributionRequestContext {
   return {
     ...ctx,
+    actorRole: actorScope?.role ?? ctx.actorRole,
     bypassSupervisorLinkScope: actorScope
       ? isSuperAdminRole(actorScope.role) || isCompanyAdminRole(actorScope.role)
       : false,
@@ -170,48 +171,57 @@ async function emitCaptainDistributionSocket(
   previousOrderStatus?: OrderStatus | null,
 ): Promise<void> {
   if (!order?.assignedCaptain?.userId) return;
-  const pendingAssignment = await prisma.orderAssignmentLog.findFirst({
-    where: {
+  try {
+    const pendingAssignment = await prisma.orderAssignmentLog.findFirst({
+      where: {
+        orderId: order.id,
+        responseStatus: $Enums.AssignmentResponseStatus.PENDING,
+        captain: { userId: order.assignedCaptain.userId },
+      },
+      orderBy: { assignedAt: "desc" },
+      select: { id: true },
+    });
+    emitToCaptain(order.assignedCaptain.userId, CAPTAIN_SOCKET_EVENTS.ASSIGNMENT, {
+      kind,
       orderId: order.id,
-      responseStatus: $Enums.AssignmentResponseStatus.PENDING,
-      captain: { userId: order.assignedCaptain.userId },
-    },
-    orderBy: { assignedAt: "desc" },
-    select: { id: true },
-  });
-  emitToCaptain(order.assignedCaptain.userId, CAPTAIN_SOCKET_EVENTS.ASSIGNMENT, {
-    kind,
-    orderId: order.id,
-    orderNumber: order.orderNumber,
-    status: order.status,
-    timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
-  });
-  emitOrderUpdated(
-    {
-      id: order.id,
       orderNumber: order.orderNumber,
       status: order.status,
-      ...(previousOrderStatus !== undefined && previousOrderStatus !== null ? { previousStatus: previousOrderStatus } : {}),
-    },
-    { companyId: order.companyId, branchId: order.branchId },
-  );
-  // eslint-disable-next-line no-console
-  console.info("[new-order-push] distribution emit (socket + preparing push)", {
-    orderId: order.id,
-    assignmentId: pendingAssignment?.id ?? null,
-    captainUserId: order.assignedCaptain.userId,
-    kind,
-  });
-  void pushNotificationService.sendCaptainOrderPush({
-    userId: order.assignedCaptain.userId,
-    title: "New Delivery Order",
-    body: "You have a new delivery request. Open the app to accept it.",
-    orderId: order.id,
-    assignmentId: pendingAssignment?.id ?? null,
-    orderNumber: order.orderNumber,
-    kind,
-    status: order.status,
-  });
+      timeoutSeconds: DISTRIBUTION_TIMEOUT_SECONDS,
+    });
+    emitOrderUpdated(
+      {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        ...(previousOrderStatus !== undefined && previousOrderStatus !== null ? { previousStatus: previousOrderStatus } : {}),
+      },
+      { companyId: order.companyId, branchId: order.branchId },
+    );
+    // eslint-disable-next-line no-console
+    console.info("[new-order-push] distribution emit (socket + preparing push)", {
+      orderId: order.id,
+      assignmentId: pendingAssignment?.id ?? null,
+      captainUserId: order.assignedCaptain.userId,
+      kind,
+    });
+    void pushNotificationService.sendCaptainOrderPush({
+      userId: order.assignedCaptain.userId,
+      title: "New Delivery Order",
+      body: "You have a new delivery request. Open the app to accept it.",
+      orderId: order.id,
+      assignmentId: pendingAssignment?.id ?? null,
+      orderNumber: order.orderNumber,
+      kind,
+      status: order.status,
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[distribution.emitCaptainDistributionSocket] non_fatal", {
+      orderId: order.id,
+      kind,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
 }
 
 /**
@@ -368,6 +378,7 @@ export const distributionService = {
     let sumEligibleCaptainCount = 0;
     let sumSkippedForPrepaid = 0;
     let sumSkippedForCapacity = 0;
+    let sumSkippedForOther = 0;
     let telemetryOrders = 0;
 
     for (const orderId of uniqueOrderIds) {
@@ -380,6 +391,7 @@ export const distributionService = {
             sumEligibleCaptainCount += tel.eligibleCaptainCount;
             sumSkippedForPrepaid += tel.skippedForPrepaid;
             sumSkippedForCapacity += tel.skippedForCapacity;
+            sumSkippedForOther += tel.skippedForOther;
             telemetryOrders += 1;
           }
         }
@@ -424,6 +436,7 @@ export const distributionService = {
             eligibleCaptainCount: sumEligibleCaptainCount,
             skippedForPrepaid: sumSkippedForPrepaid,
             skippedForCapacity: sumSkippedForCapacity,
+            skippedForOther: sumSkippedForOther,
             telemetryOrderCount: telemetryOrders,
           }
         : {
@@ -663,6 +676,15 @@ export const distributionService = {
 
 export { distributionEngine } from "./distribution-engine.js";
 export {
+  assertAssignmentEligibilityOrThrow,
+  canAssignCaptainToOrder,
+  isSuperAdminPlatformOrder,
+  loadLatestCaptainLocationsTx,
+  logAssignmentEligibilityAudit,
+  type AssignmentEligibilityReasonCode,
+  type AssignmentEligibilityResult,
+} from "./assignment-eligibility.js";
+export {
   getAutoPoolOfferTelemetry,
   type AutoPoolOfferTelemetry,
 } from "./auto-pool-telemetry.js";
@@ -671,10 +693,10 @@ export {
   type AutoDistributionPolicy,
   CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES,
   canBypassAutomaticSingleOrderRule,
+  captainPoolWhereAutoDistribution,
   captainHasActiveWorkingOrder,
   canCaptainReceiveAutomaticOrder,
   captainEligibleForManualOverride,
-  eligibleCaptainsForAutoDistribution,
   isManualMultiOrderOverrideEnabled,
   isCaptainBusyForAutomaticDistribution,
   maxActiveOrdersForAutoDistributionPolicy,

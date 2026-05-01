@@ -471,52 +471,62 @@ export const pushNotificationService = {
   },
 
   async sendCaptainOrderPush(input: CaptainOrderPushInput): Promise<void> {
-    const captain = await prisma.captain.findFirst({
-      where: { userId: input.userId },
-      select: { id: true },
-    });
-    const activeTokenCount = await prisma.captainPushToken.count({
-      where: { userId: input.userId, isActive: true },
-    });
-    // eslint-disable-next-line no-console
-    console.info("[new-order-push] preparing push", {
-      captainId: captain?.id ?? null,
-      captainUserId: input.userId,
-      orderId: input.orderId,
-      assignmentId: input.assignmentId ?? null,
-      numberOfTokensFound: activeTokenCount,
-      title: input.title,
-    });
-    const outcome = await this.sendToCaptainUser(input.userId, {
-      title: input.title,
-      body: input.body,
-      template: input.kind === "ALERT" ? "ORDER_STATUS_UPDATED" : "NEW_ORDER",
-      data: {
-        type: "NEW_ORDER",
+    try {
+      const captain = await prisma.captain.findFirst({
+        where: { userId: input.userId },
+        select: { id: true },
+      });
+      const activeTokenCount = await prisma.captainPushToken.count({
+        where: { userId: input.userId, isActive: true },
+      });
+      // eslint-disable-next-line no-console
+      console.info("[new-order-push] preparing push", {
+        captainId: captain?.id ?? null,
+        captainUserId: input.userId,
         orderId: input.orderId,
-        assignmentId: input.assignmentId ?? undefined,
-        orderNumber: input.orderNumber ?? undefined,
-        kind: input.kind,
-        status: input.status ?? undefined,
-      },
-    });
-    // eslint-disable-next-line no-console
-    console.info("[new-order-push] expo ticket result", {
-      orderId: input.orderId,
-      assignmentId: input.assignmentId ?? null,
-      captainId: captain?.id ?? null,
-      captainUserId: input.userId,
-      tokenRowsFound: outcome?.tokenRowsFound ?? null,
-      validExpoTokenRows: outcome?.validExpoTokenRows ?? null,
-      tickets:
-        outcome?.expoTickets.map((t) => ({
-          status: t.status ?? null,
-          id: t.id ?? null,
-          message: t.message ?? null,
-          error: t.details?.error ?? null,
-        })) ?? null,
-      hadTransportError: outcome === null,
-      expoRawResponse: outcome?.expoRawResponse ?? null,
-    });
+        assignmentId: input.assignmentId ?? null,
+        numberOfTokensFound: activeTokenCount,
+        title: input.title,
+      });
+      const outcome = await this.sendToCaptainUser(input.userId, {
+        title: input.title,
+        body: input.body,
+        template: input.kind === "ALERT" ? "ORDER_STATUS_UPDATED" : "NEW_ORDER",
+        data: {
+          type: "NEW_ORDER",
+          orderId: input.orderId,
+          assignmentId: input.assignmentId ?? undefined,
+          orderNumber: input.orderNumber ?? undefined,
+          kind: input.kind,
+          status: input.status ?? undefined,
+        },
+      });
+      // eslint-disable-next-line no-console
+      console.info("[new-order-push] expo ticket result", {
+        orderId: input.orderId,
+        assignmentId: input.assignmentId ?? null,
+        captainId: captain?.id ?? null,
+        captainUserId: input.userId,
+        tokenRowsFound: outcome?.tokenRowsFound ?? null,
+        validExpoTokenRows: outcome?.validExpoTokenRows ?? null,
+        tickets:
+          outcome?.expoTickets.map((t) => ({
+            status: t.status ?? null,
+            id: t.id ?? null,
+            message: t.message ?? null,
+            error: t.details?.error ?? null,
+          })) ?? null,
+        hadTransportError: outcome === null,
+        expoRawResponse: outcome?.expoRawResponse ?? null,
+      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("[pushNotificationService.sendCaptainOrderPush] non_fatal", {
+        userId: input.userId,
+        orderId: input.orderId,
+        assignmentId: input.assignmentId ?? null,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   },
 };
