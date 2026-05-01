@@ -159,7 +159,8 @@ async function main() {
         captainId: chosen.id,
         assignmentType: AssignmentType.AUTO,
         responseStatus: AssignmentResponseStatus.PENDING,
-        expiredAt: new Date(Date.now() + 30_000),
+        // Long-lived offers: script runs reject/expire/reassign before deliver; 30s caused mass EXPIRED before accept.
+        expiredAt: new Date(Date.now() + 45 * 60 * 1000),
         notes: "QA-STRESS synthetic offer",
       },
     });
@@ -255,7 +256,8 @@ async function main() {
         captainId: newCap.id,
         assignmentType: AssignmentType.REASSIGN,
         responseStatus: AssignmentResponseStatus.PENDING,
-        expiredAt: new Date(Date.now() + 30_000),
+        // Long-lived offers: script runs reject/expire/reassign before deliver; 30s caused mass EXPIRED before accept.
+        expiredAt: new Date(Date.now() + 45 * 60 * 1000),
         notes: "QA-STRESS reassigned synthetic",
       },
     });
@@ -263,35 +265,68 @@ async function main() {
     if (summary.reassigned >= 5) break;
   }
 
-  // accept + deliver 30
-  const deliverCandidates = await prisma.order.findMany({
-    where: {
-      orderNumber: { startsWith: QA_STRESS_ORDER_PREFIX },
-      status: OrderStatus.ASSIGNED,
-      assignedCaptainId: { not: null },
-    },
-    select: {
-      id: true,
-      branchId: true,
-      assignedCaptain: { select: { userId: true, branchId: true } },
-    },
-    take: 120,
-  });
-  const deliverOrders = deliverCandidates.filter(
-    (o) => Boolean(o.assignedCaptain?.userId && o.assignedCaptain.branchId === o.branchId),
-  ).slice(0, 80);
-  for (const o of deliverOrders) {
-    if (!o.assignedCaptain?.userId) continue;
+  // accept + deliver 30 — re-read DB each iteration (pendings/expiry/eviction change while processing).
+  const qaDeliverPrepTtlMs = 50 * 60 * 1000;
+  const deliverSkipOrderIds = new Set<string>();
+  for (let attempt = 0; summary.delivered < 30 && attempt < 320; attempt += 1) {
+    const batch = await prisma.orderAssignmentLog.findMany({
+      where: {
+        responseStatus: AssignmentResponseStatus.PENDING,
+        order: {
+          orderNumber: { startsWith: QA_STRESS_ORDER_PREFIX },
+          status: OrderStatus.ASSIGNED,
+        },
+      },
+      select: {
+        id: true,
+        orderId: true,
+        captainId: true,
+        assignedAt: true,
+        captain: { select: { userId: true, branchId: true } },
+        order: { select: { branchId: true } },
+      },
+      orderBy: [{ assignedAt: "desc" }, { id: "desc" }],
+      take: 500,
+    });
+    const newestByOrder = new Map<string, (typeof batch)[0]>();
+    const cancelDupIds: string[] = [];
+    for (const row of batch) {
+      if (!newestByOrder.has(row.orderId)) newestByOrder.set(row.orderId, row);
+      else cancelDupIds.push(row.id);
+    }
+    if (cancelDupIds.length > 0) {
+      await prisma.orderAssignmentLog.updateMany({
+        where: { id: { in: cancelDupIds } },
+        data: { responseStatus: AssignmentResponseStatus.CANCELLED, notes: "QA-STRESS dedupe stale pending" },
+      });
+    }
+    const cand = [...newestByOrder.values()].find(
+      (r) =>
+        r.captain.userId &&
+        r.captain.branchId === r.order.branchId &&
+        !deliverSkipOrderIds.has(r.orderId),
+    );
+    if (!cand?.captain.userId) break;
+
     try {
-      await captainMobileService.acceptOrder(o.id, o.assignedCaptain.userId);
+      const deliverOfferTtl = new Date(Date.now() + qaDeliverPrepTtlMs);
+      await prisma.order.update({
+        where: { id: cand.orderId },
+        data: { assignedCaptainId: cand.captainId },
+      });
+      await prisma.orderAssignmentLog.update({
+        where: { id: cand.id },
+        data: { expiredAt: deliverOfferTtl },
+      });
+      await captainMobileService.acceptOrder(cand.orderId, cand.captain.userId);
       summary.accepted += 1;
-      await captainMobileService.updateOrderStatus(o.id, OrderStatus.PICKED_UP, o.assignedCaptain.userId);
-      await captainMobileService.updateOrderStatus(o.id, OrderStatus.IN_TRANSIT, o.assignedCaptain.userId);
-      await captainMobileService.updateOrderStatus(o.id, OrderStatus.DELIVERED, o.assignedCaptain.userId);
+      await captainMobileService.updateOrderStatus(cand.orderId, OrderStatus.PICKED_UP, cand.captain.userId);
+      await captainMobileService.updateOrderStatus(cand.orderId, OrderStatus.IN_TRANSIT, cand.captain.userId);
+      await captainMobileService.updateOrderStatus(cand.orderId, OrderStatus.DELIVERED, cand.captain.userId);
       summary.delivered += 1;
-      if (summary.delivered >= 30) break;
     } catch (e) {
-      errors.push(`deliver-flow ${o.id}: ${(e as Error).message}`);
+      deliverSkipOrderIds.add(cand.orderId);
+      errors.push(`deliver-flow ${cand.orderId}: ${(e as Error).message}`);
     }
   }
 
