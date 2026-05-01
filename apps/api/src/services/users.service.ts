@@ -4,6 +4,7 @@ import { hashPassword } from "../lib/password.js";
 import { allocatePublicOwnerCode } from "../lib/public-owner-code.js";
 import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../utils/errors.js";
+import { DEFAULT_BRANCH_NAME_AR, ensureActiveBranchForCompany } from "./company-branch-bootstrap.service.js";
 import { activityService } from "./activity.service.js";
 import { isOrderOperatorRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
 import { resolveStaffTenantOrderListFilter } from "./tenant-scope.service.js";
@@ -107,17 +108,23 @@ export const usersService = {
     try {
       if (input.role === UserRole.COMPANY_ADMIN) {
         const publicOwnerCode = await allocatePublicOwnerCode(prisma);
-        const user = await prisma.user.create({
-          data: {
-            fullName: input.fullName,
-            phone: input.phone,
-            email: input.email,
-            passwordHash,
-            role: UserRole.COMPANY_ADMIN,
-            isActive: true,
-            company: { connect: { id: input.companyId! } },
-            publicOwnerCode,
-          },
+        const user = await prisma.$transaction(async (tx) => {
+          await ensureActiveBranchForCompany(tx, input.companyId!, {
+            actorUserId,
+            preferredBranchName: DEFAULT_BRANCH_NAME_AR,
+          });
+          return tx.user.create({
+            data: {
+              fullName: input.fullName,
+              phone: input.phone,
+              email: input.email,
+              passwordHash,
+              role: UserRole.COMPANY_ADMIN,
+              isActive: true,
+              company: { connect: { id: input.companyId! } },
+              publicOwnerCode,
+            },
+          });
         });
         await activityService.log(actorUserId, "USER_CREATED", "user", user.id, { role: user.role });
         return toPublicUser(user);

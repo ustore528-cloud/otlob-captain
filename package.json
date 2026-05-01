@@ -18,7 +18,8 @@
     "db:generate": "npm run db:generate -w @captain/api",
     "db:migrate": "npm run db:migrate -w @captain/api",
     "db:push": "npm run db:push -w @captain/api",
-    "lint": "npm run lint -w @captain/api -w @captain/web -w @captain/captain-mobile --if-present"
+    "lint": "npm run lint -w @captain/api -w @captain/web -w @captain/captain-mobile --if-present",
+    "verify:public-company-branches": "npm run verify:public-company-branches -w @captain/api"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

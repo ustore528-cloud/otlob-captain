@@ -38,6 +38,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { ApiError } from "@/lib/api/http";
+import i18n from "@/i18n/i18n";
 import {
   createPublicOrder,
   fetchNearbyCaptains,
@@ -53,6 +54,18 @@ import { isRtlLang } from "@/i18n/i18n";
 import { isReasonableFlexiblePhone } from "@captain/shared";
 import { isValidLatLng } from "@/lib/geo-validation";
 import { useTranslation } from "react-i18next";
+
+function formatPublicOrderApiErrorMessage(e: ApiError): string {
+  if (e.code === "COMPANY_BRANCH_REQUIRED" && e.details && typeof e.details === "object") {
+    const d = e.details as { messageAr?: string; messageEn?: string };
+    const raw = i18n.resolvedLanguage ?? i18n.language;
+    const lng = typeof raw === "string" ? raw.split("-")[0] : "en";
+    if (lng === "ar") return (d.messageAr ?? e.message).trim();
+    if (lng === "he") return (d.messageEn ?? d.messageAr ?? e.message).trim();
+    return (d.messageEn ?? e.message).trim();
+  }
+  return e.message.trim();
+}
 import { PublicTrackingLeaflet, type MapPoint } from "@/features/public-request/public-tracking-leaflet";
 import {
   loadPublicRequestSenderProfile,
@@ -539,7 +552,8 @@ export function PublicRequestOrderExperience({
       setStep("form");
       const fallback = t("public.orderExperience.orderSubmitFailedBanner");
       if (e instanceof ApiError) {
-        onSubmitError?.(e.message.trim() !== "" ? e.message : fallback);
+        const msg = formatPublicOrderApiErrorMessage(e);
+        onSubmitError?.(msg !== "" ? msg : fallback);
       } else {
         onSubmitError?.(fallback);
       }

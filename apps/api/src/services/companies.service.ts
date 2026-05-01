@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { companyDisplayI18nFromJson } from "../lib/display-i18n.js";
 import { AppError } from "../utils/errors.js";
+import { ensureActiveBranchForCompany } from "./company-branch-bootstrap.service.js";
 
 export type CompanyListItem = {
   id: string;
@@ -132,6 +133,9 @@ export async function createCompanyForSuperAdmin(input: {
         deliveryFeeRoundingMode: input.deliveryPricing.deliveryFeeRoundingMode ?? "CEIL",
         defaultDeliveryFee: mode === "FIXED" ? fixed : base,
       } as any,
+    });
+    await ensureActiveBranchForCompany(tx, (company as { id: string }).id, {
+      actorUserId: null,
     });
     return tx.company.findUnique({
       where: { id: (company as { id: string }).id },

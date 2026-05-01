@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/errors.js";
+import { DEFAULT_BRANCH_NAME_AR, ensureActiveBranchForCompany } from "./company-branch-bootstrap.service.js";
 
 /** Auto-created system store (pre–Phase S2) */
 export const LEGACY_OPERATIONAL_STORE_NAME = "متجر التشغيل";
@@ -54,16 +55,25 @@ export async function resolveOrCreateOperationalStoreId(input: {
     return existing.id;
   }
 
-  const defaultBranch = await prisma.branch.findFirst({
-    where: {
-      companyId,
-      isActive: true,
-      ...(branchIdFilter ? { id: branchIdFilter } : {}),
-    },
-    orderBy: { createdAt: "asc" },
-  });
-  if (!defaultBranch) {
-    throw new AppError(500, "No active branch configured for this company", "INTERNAL");
+  let defaultBranchId: string;
+  try {
+    const ensured = await ensureActiveBranchForCompany(prisma, companyId, {
+      branchIdConstraint: branchIdFilter,
+      actorUserId: ownerUserId,
+      preferredBranchName: DEFAULT_BRANCH_NAME_AR,
+    });
+    defaultBranchId = ensured.branchId;
+  } catch (e) {
+    if (e instanceof AppError) throw e;
+    throw new AppError(
+      422,
+      "No active branch configured for this company",
+      "COMPANY_BRANCH_REQUIRED",
+      {
+        messageAr: "الفرع غير مفعّل لهذه الشركة. الرجاء التواصل مع الإدارة.",
+        messageEn: "No active branch is configured for this company. Please contact your administrator.",
+      },
+    );
   }
 
   const name = operationalStoreDisplayName(company.name);
@@ -75,7 +85,7 @@ export async function resolveOrCreateOperationalStoreId(input: {
       address: "System operational store (not a public storefront)",
       isActive: true,
       company: { connect: { id: companyId } },
-      branch: { connect: { id: defaultBranch.id } },
+      branch: { connect: { id: defaultBranchId } },
       owner: { connect: { id: ownerUserId } },
     },
   });
