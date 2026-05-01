@@ -2,7 +2,8 @@ import {
   AssignmentResponseStatus,
   CaptainAvailabilityStatus,
   OrderStatus,
-  type Prisma,
+  Prisma,
+  UserRole,
 } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { captainRepository } from "../repositories/captain.repository.js";
@@ -20,7 +21,8 @@ import { DISTRIBUTION_TIMEOUT_SECONDS } from "./distribution/constants.js";
 import { clampOfferExpiredAtToConfiguredWindow } from "./distribution/clamp-offer-expired-at.js";
 import { logOfferPayloadCaptainMobileDiagnostics } from "./distribution/offer-diagnostics.js";
 import { captainPrepaidBalanceService } from "./captain-prepaid-balance.service.js";
-import type { StoreSubscriptionType, UserRole } from "@prisma/client";
+import { activityService } from "./activity.service.js";
+import type { StoreSubscriptionType } from "@prisma/client";
 
 /** @see ./distribution/assigned-order-semantics.ts — ASSIGNED vs OFFER vs ACTIVE (ACCEPTED+). */
 
@@ -487,31 +489,89 @@ export const captainMobileService = {
     const captain = await captainRepository.findByUserId(userId);
     if (!captain) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
 
-    const where: Prisma.OrderWhereInput = {
-      assignedCaptainId: captain.id,
-      status: OrderStatus.DELIVERED,
-    };
-    if (range.from || range.to) {
-      where.updatedAt = {};
-      if (range.from) where.updatedAt.gte = range.from;
-      if (range.to) where.updatedAt.lte = range.to;
-    }
+    /**
+     * Captain-facing earnings = sum of **delivery fees only** (DELIVERED orders).
+     * Matches `resolveDeliveryFeeForCommission`: prefer `delivery_fee`; if null, `max(0, cash_collection - amount)`.
+     * `amount` / `cash_collection` sums are informational (store/customer totals), not captain profit.
+     */
+    const whereParts: Prisma.Sql[] = [
+      Prisma.sql`o.assigned_captain_id = ${captain.id}`,
+      Prisma.sql`o.status = ${OrderStatus.DELIVERED}`,
+    ];
+    if (range.from) whereParts.push(Prisma.sql`o.updated_at >= ${range.from}`);
+    if (range.to) whereParts.push(Prisma.sql`o.updated_at <= ${range.to}`);
 
-    const [agg, count] = await prisma.$transaction([
-      prisma.order.aggregate({
-        where,
-        _sum: { amount: true, cashCollection: true },
-      }),
-      prisma.order.count({ where }),
-    ]);
+    const rows = await prisma.$queryRaw<
+      Array<{
+        delivered_count: bigint;
+        total_order_value: Prisma.Decimal;
+        total_cash_collection: Prisma.Decimal;
+        total_delivery_fees: Prisma.Decimal;
+      }>
+    >(Prisma.sql`
+      SELECT
+        COUNT(*)::bigint AS delivered_count,
+        COALESCE(SUM(o.amount), 0) AS total_order_value,
+        COALESCE(SUM(o.cash_collection), 0) AS total_cash_collection,
+        COALESCE(
+          SUM(
+            CASE
+              WHEN o.delivery_fee IS NOT NULL THEN o.delivery_fee
+              ELSE GREATEST(0::numeric, o.cash_collection - o.amount)
+            END
+          ),
+          0
+        ) AS total_delivery_fees
+      FROM orders o
+      WHERE ${Prisma.join(whereParts, " AND ")}
+    `);
 
-    const amount = agg._sum.amount?.toString() ?? "0";
-    const cashCollection = agg._sum.cashCollection?.toString() ?? "0";
+    const r = rows[0];
+    const deliveredCount = r ? Number(r.delivered_count) : 0;
 
     return {
-      deliveredCount: count,
-      totalAmount: amount,
-      totalCashCollection: cashCollection,
+      deliveredCount,
+      totalDeliveryFees: (r?.total_delivery_fees ?? new Prisma.Decimal(0)).toFixed(2),
+      totalOrderValue: (r?.total_order_value ?? new Prisma.Decimal(0)).toFixed(2),
+      totalCashCollection: (r?.total_cash_collection ?? new Prisma.Decimal(0)).toFixed(2),
     };
+  },
+
+  /**
+   * Self-service soft delete: deactivates user + captain and push tokens.
+   * Preserves orders, ledgers, and history; login and refresh reject inactive users.
+   */
+  async deleteCaptainAccount(userId: string, reason?: string | null) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+    if (!user) throw new AppError(404, "User not found", "NOT_FOUND");
+    if (user.role !== UserRole.CAPTAIN) {
+      throw new AppError(403, "Account deletion is only available for captain accounts", "FORBIDDEN");
+    }
+    const cap = await prisma.captain.findUnique({ where: { userId }, select: { id: true } });
+    if (!cap) throw new AppError(404, "Captain profile not found", "NOT_FOUND");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.captain.update({
+        where: { userId },
+        data: { isActive: false, availabilityStatus: CaptainAvailabilityStatus.OFFLINE },
+      });
+      await tx.user.update({
+        where: { id: userId },
+        data: { isActive: false },
+      });
+      await tx.captainPushToken.updateMany({
+        where: { userId },
+        data: { isActive: false },
+      });
+    });
+
+    await activityService.log(userId, "CAPTAIN_ACCOUNT_DEACTIVATED", "user", userId, {
+      reason: reason?.trim() || null,
+    });
+
+    return { ok: true as const };
   },
 };

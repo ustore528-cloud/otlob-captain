@@ -52,7 +52,7 @@ export const orderRepository = {
         store: orderStoreInclude,
         assignedCaptain: { include: { user: { select: { id: true, fullName: true, phone: true, displayI18n: true } } } },
         assignmentLogs: { orderBy: { assignedAt: "desc" }, take: 50 },
-        createdBy: { select: { id: true, fullName: true, phone: true } },
+        createdBy: { select: { id: true, fullName: true, phone: true, role: true } },
       },
     });
   },
@@ -63,8 +63,10 @@ export const orderRepository = {
       data: normalizedData,
       include: {
         store: orderStoreInclude,
-        assignedCaptain: true,
-        createdBy: { select: { id: true, fullName: true, phone: true } },
+        assignedCaptain: {
+          include: { user: { select: { fullName: true, phone: true, displayI18n: true } } },
+        },
+        createdBy: { select: { id: true, fullName: true, phone: true, role: true } },
       },
     });
   },
@@ -87,8 +89,10 @@ export const orderRepository = {
           data: withSeq,
           include: {
             store: orderStoreInclude,
-            assignedCaptain: true,
-            createdBy: { select: { id: true, fullName: true, phone: true } },
+            assignedCaptain: {
+              include: { user: { select: { fullName: true, phone: true, displayI18n: true } } },
+            },
+            createdBy: { select: { id: true, fullName: true, phone: true, role: true } },
           },
         });
       } catch (e) {
@@ -197,6 +201,7 @@ export const orderRepository = {
         take,
         include: {
           store: { select: orderStoreListSelect },
+          createdBy: { select: { role: true } },
           assignedCaptain: {
             include: { user: { select: { fullName: true, phone: true, displayI18n: true } } },
           },
@@ -230,6 +235,7 @@ export const orderRepository = {
         take,
         include: {
           store: { select: orderStoreListSelect },
+          createdBy: { select: { role: true } },
           assignedCaptain: {
             include: { user: { select: { fullName: true, phone: true, displayI18n: true } } },
           },
@@ -308,6 +314,7 @@ export const orderRepository = {
         take,
         include: {
           store: { select: orderStoreListSelect },
+          createdBy: { select: { role: true } },
           assignedCaptain: {
             include: { user: { select: { id: true, fullName: true, phone: true, displayI18n: true } } },
           },

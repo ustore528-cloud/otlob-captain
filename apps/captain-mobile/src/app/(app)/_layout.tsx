@@ -1,20 +1,28 @@
-import { Redirect, Stack } from "expo-router";
+import { Redirect, Stack, type Href } from "expo-router";
 import { View } from "react-native";
 import { CaptainRealtimeSync, InAppTopBanner } from "@/features/realtime";
+import { GuestCaptainRouteGuard } from "@/features/guest/components/guest-captain-route-guard";
 import { CaptainPushSync } from "@/features/notifications/push/captain-push-sync";
 import { CaptainTrackingProvider } from "@/features/tracking";
 import { homeTheme } from "@/features/home/theme";
 import { useAuth } from "@/hooks/use-auth";
+import { useGuestStore } from "@/store/guest-store";
 
 export default function AppLayout() {
-  const { sessionReady, isAuthenticated } = useAuth();
+  const { routingReady, isAuthenticated } = useAuth();
+  const isGuest = useGuestStore((s) => s.isGuest);
 
-  if (!sessionReady) {
+  if (!routingReady) {
     return null;
   }
 
+  /** Guest deep-linked into `(app)` — keep isolation; explain and offer sign-in vs stay guest. */
+  if (!isAuthenticated && isGuest) {
+    return <GuestCaptainRouteGuard />;
+  }
+
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/login" />;
+    return <Redirect href={"/(auth)/login" as Href} />;
   }
 
   return (

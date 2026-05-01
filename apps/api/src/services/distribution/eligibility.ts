@@ -5,17 +5,22 @@ import {
 } from "./constants.js";
 
 /**
- * شروط التوزيع التلقائي (Round Robin):
+ * شروط التوزيع التلقائي (Round Robin) — WHERE لقاعدة البيانات قبل فلترة المسافة/السبق.
  * - المستخدم: role = CAPTAIN, isActive = true
  * - ملف الكابتن: isActive = true, availabilityStatus = AVAILABLE
- * - نفس فرع الطلب (عزل متعدد المستأجرين)
+ * - companyId إلزامي
+ * - عند `restrictToOrderBranch`: نفس فرع الطلب (الطلبات العادية لشركة غير المنصة فقط)
  */
-export function eligibleCaptainsForAutoDistribution(
-  branchId: string,
-  orderOwnerUserId?: string | null,
-): Prisma.CaptainWhereInput {
+export function captainPoolWhereAutoDistribution(params: {
+  orderCompanyId: string;
+  orderBranchId: string;
+  restrictToOrderBranch: boolean;
+  /** أسطول مدير الشركة: عند تعيينه يُقيّد بـ createdByUserId للكابتن */
+  captainCreatedByUserIdMustMatch?: string | null;
+}): Prisma.CaptainWhereInput {
   const base: Prisma.CaptainWhereInput = {
-    branchId,
+    companyId: params.orderCompanyId,
+    ...(params.restrictToOrderBranch ? { branchId: params.orderBranchId } : {}),
     isActive: true,
     availabilityStatus: CaptainAvailabilityStatus.AVAILABLE,
     user: {
@@ -23,8 +28,9 @@ export function eligibleCaptainsForAutoDistribution(
       role: UserRole.CAPTAIN,
     },
   };
-  if (orderOwnerUserId) {
-    return { ...base, createdByUserId: orderOwnerUserId };
+  const fleet = params.captainCreatedByUserIdMustMatch;
+  if (fleet) {
+    return { ...base, createdByUserId: fleet };
   }
   return base;
 }

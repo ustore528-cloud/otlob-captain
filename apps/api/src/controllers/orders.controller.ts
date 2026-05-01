@@ -5,6 +5,7 @@ import type { AppRole } from "../lib/rbac-roles.js";
 import { ok } from "../utils/api-response.js";
 import { pathParam } from "../utils/path-params.js";
 import { ordersService } from "../services/orders.service.js";
+import { toOrderListItemDto } from "../dto/order.dto.js";
 import { distributionService } from "../services/distribution/index.js";
 
 const actor = (req: Request) => ({
@@ -36,8 +37,8 @@ function createRequestId(action: "manual_assign" | "resend_distribution" | "reas
 
 export const ordersController = {
   create: async (req: Request, res: Response) => {
-    const data = await ordersService.create(req.body as Parameters<typeof ordersService.create>[0], actor(req));
-    return res.status(201).json(ok(data));
+    const order = await ordersService.create(req.body as Parameters<typeof ordersService.create>[0], actor(req));
+    return res.status(201).json(ok(toOrderListItemDto(order)));
   },
 
   archiveOrder: async (req: Request, res: Response) => {

@@ -1,27 +1,39 @@
-import type { DistributionRequestContext } from "./distribution-engine.js";
 import {
-  canCaptainReceiveAutomaticOrder,
-  eligibleCaptainsForAutoDistribution,
+  type DistributionRequestContext,
+  DISTRIBUTION_TRANSACTION_OPTIONS,
+} from "./distribution-engine.js";
+import {
   type AutoDistributionPolicy,
   CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES,
+  canCaptainReceiveAutomaticOrder,
+  captainPoolWhereAutoDistribution,
 } from "./eligibility.js";
+import {
+  canAssignCaptainToOrder,
+  isSuperAdminPlatformOrder,
+  loadLatestCaptainLocationsTx,
+} from "./assignment-eligibility.js";
 import { captainPrepaidBalanceService } from "../captain-prepaid-balance.service.js";
 import { prisma } from "../../lib/prisma.js";
+import { UserRole } from "@prisma/client";
+import type { AppRole } from "../../lib/rbac-roles.js";
 
 /**
- * Same branch pool + same owner / Company Admin bypass as `offerNextAutoCaptainTx` (no offers created).
- * Used for tenant-scoped `autoAssignVisible` logging.
+ * Same pool + SUPER_ADMIN branch relaxation + prepaid / capacity / zone / proximity gates as `offerNextAutoCaptainTx`
+ * (no offers created). Used for tenant-scoped `autoAssignVisible` logging.
  */
 export type AutoPoolOfferTelemetry = {
   orderId: string;
   companyId: string;
   branchId: string;
-  /** Captains in the auto pool (before prepaid/capacity). */
+  /** Captains in the DB pool before per-candidate canAssignCaptainToOrder + prepaid. */
   scopedCaptainCount: number;
-  /** Captains that would pass both capacity and prepaid in this evaluation pass. */
+  /** Captains that would pass eligibility + prepaid in this evaluation pass. */
   eligibleCaptainCount: number;
   skippedForPrepaid: number;
   skippedForCapacity: number;
+  /** Ineligible for zone, distance (platform), or other rules — not prepaid-only and not capacity-only. */
+  skippedForOther: number;
 };
 
 export async function getAutoPoolOfferTelemetry(
@@ -32,19 +44,47 @@ export async function getAutoPoolOfferTelemetry(
   return prisma.$transaction(async (tx) => {
     const order = await tx.order.findFirst({
       where: { id: orderId, archivedAt: null },
-      select: { id: true, branchId: true, companyId: true, ownerUserId: true },
+      select: {
+        id: true,
+        branchId: true,
+        companyId: true,
+        ownerUserId: true,
+        zoneId: true,
+        pickupLat: true,
+        pickupLng: true,
+        createdBy: { select: { role: true } },
+      },
     });
     if (!order) return null;
 
-    const orderOwnerForPool =
+    const platformSaOrder = isSuperAdminPlatformOrder(order.createdBy?.role ?? null);
+    const fleetCreatedByMustMatch =
       engineCtx?.bypassOrderOwnerCaptainFleetForCompanyAdmin === true
-        ? null
-        : (order.ownerUserId ?? null);
-    const where = eligibleCaptainsForAutoDistribution(order.branchId, orderOwnerForPool);
-    const pool = await tx.captain.findMany({
-      where,
-      orderBy: { id: "asc" },
+        ? undefined
+        : (order.ownerUserId ?? undefined);
+
+    const poolWhere = captainPoolWhereAutoDistribution({
+      orderCompanyId: order.companyId,
+      orderBranchId: order.branchId,
+      restrictToOrderBranch: !platformSaOrder,
+      ...(fleetCreatedByMustMatch ? { captainCreatedByUserIdMustMatch: fleetCreatedByMustMatch } : {}),
     });
+
+    const pool = await tx.captain.findMany({
+      where: poolWhere,
+      orderBy: { id: "asc" },
+      include: {
+        user: { select: { isActive: true, role: true } },
+      },
+    });
+
+    const locMap = await loadLatestCaptainLocationsTx(
+      tx,
+      pool.map((c) => c.id),
+    );
+    const applyProxGate =
+      platformSaOrder && order.pickupLat != null && order.pickupLng != null;
+    const actorForEligibility: AppRole = engineCtx?.actorRole ?? UserRole.DISPATCHER;
 
     const capacityRows = await tx.order.groupBy({
       by: ["assignedCaptainId"],
@@ -68,22 +108,59 @@ export async function getAutoPoolOfferTelemetry(
         }),
     );
 
+    const prepaidGatingSettings = await captainPrepaidBalanceService.ensurePrepaidDashboardSettingsTx(tx);
+
     let eligibleCount = 0;
     let skippedForPrepaid = 0;
     let skippedForCapacity = 0;
+    let skippedForOther = 0;
+
     for (const captain of pool) {
       const activeCount = loadByCaptain.get(captain.id) ?? 0;
       const capOk = canCaptainReceiveAutomaticOrder(activeCount, policy);
-      if (!capOk) {
-        skippedForCapacity += 1;
-        continue;
-      }
-      const prepaid = await captainPrepaidBalanceService.getReceivingBlockReasonTx(tx, captain.id);
-      if (prepaid) {
+
+      const eligibilityCore = canAssignCaptainToOrder({
+        actor: { role: actorForEligibility },
+        order: {
+          companyId: order.companyId,
+          branchId: order.branchId,
+          zoneId: order.zoneId ?? null,
+          pickupLat: order.pickupLat ?? null,
+          pickupLng: order.pickupLng ?? null,
+          createdByRole: order.createdBy?.role ?? null,
+        },
+        captain: {
+          id: captain.id,
+          companyId: captain.companyId,
+          branchId: captain.branchId,
+          zoneId: captain.zoneId,
+          isActive: captain.isActive,
+          availabilityStatus: captain.availabilityStatus,
+          user: captain.user,
+        },
+        mode: "AUTO_DISTRIBUTION",
+        captainLatestLocation: locMap.get(captain.id) ?? null,
+        activeBlockingOrderCount: activeCount,
+        autoDistributionPolicy: policy,
+        applySuperAdminProximityGate: applyProxGate,
+      });
+
+      const prepaid = await captainPrepaidBalanceService.getReceivingBlockReasonTx(
+        tx,
+        captain.id,
+        prepaidGatingSettings,
+      );
+      const ok = eligibilityCore.allowed && !prepaid;
+
+      if (ok) {
+        eligibleCount += 1;
+      } else if (prepaid) {
         skippedForPrepaid += 1;
-        continue;
+      } else if (!capOk) {
+        skippedForCapacity += 1;
+      } else {
+        skippedForOther += 1;
       }
-      eligibleCount += 1;
     }
 
     return {
@@ -94,6 +171,7 @@ export async function getAutoPoolOfferTelemetry(
       eligibleCaptainCount: eligibleCount,
       skippedForPrepaid,
       skippedForCapacity,
+      skippedForOther,
     };
-  });
+  }, DISTRIBUTION_TRANSACTION_OPTIONS);
 }

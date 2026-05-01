@@ -188,6 +188,12 @@
       "title": "الكباتن",
       "description": "إدارة الحسابات، التفعيل، التعديل، التقرير (طلبات مع فلترة)، وحذف نهائي للمدير عند عدم وجود طلبات نشطة."
     },
+    "legacyVehicle": {
+      "bicycle": "دراجة",
+      "motorcycle": "دراجة نارية",
+      "car": "سيارة",
+      "cargoVan": "فان / شاحنة صغيرة"
+    },
     "guidance": {
       "title": "إرشاد",
       "description": "التفعيل يتحكم في دخول الكابتن للنظام؛ التوفر يُحدَّث من تطبيق الكابتن أو من لوحة التشغيل."
@@ -271,6 +277,7 @@
       "defaultCommission": "افتراضي",
       "totalDeducted": "إجمالي الخصم ({{currency}})",
       "chargeBalance": "شحن الرصيد",
+      "balanceAdjust": "تعديل الرصيد",
       "ledger": "سجل الحركات",
       "report": "تقرير",
       "chargeSuccess": "تم شحن الرصيد بنجاح",
@@ -1608,7 +1615,16 @@
     "reassignTitle": "إعادة تعيين الطلب",
     "reassignDescription": "نقل الطلب {{order}} إلى كابتن آخر مع تسجيل الإجراء كإعادة تعيين.",
     "supervisorPrefix": "مشرف",
-    "noSupervisorShort": "بدون مشرف"
+    "noSupervisorShort": "بدون مشرف",
+    "roster": {
+      "nearPickup": "قريب من موقع الاستلام",
+      "farPickup": "بعيد عن موقع الاستلام",
+      "zoneMismatch": "غير مسموح لهذه المنطقة",
+      "otherCompany": "شركة مختلفة",
+      "captainLocationUnknown": "موقع الكابتن غير متاح لحساب المسافة",
+      "pickupCoordsMissingBanner": "لم تُحدَّد إحداثيات نقطة الاستلام — سيتحقّق الخادم من صلاحية الإسناد.",
+      "noneForBranch": "لا يوجد كابتن مطابق لفرع هذا الطلب."
+    }
   }
 }
 

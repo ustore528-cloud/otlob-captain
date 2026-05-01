@@ -7,6 +7,7 @@ import {
   useArchiveOrder,
   useAssignOrderToCaptain,
   useCancelOrderCaptainAssignment,
+  useCaptainLocations,
   useCaptains,
   useOrderDetail,
   useOrders,
@@ -16,6 +17,11 @@ import {
   type AdminOverrideTargetStatus,
 } from "@/hooks";
 import { OrderDetailModal } from "@/features/orders/components/order-detail-modal";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import {
+  buildManualAssignmentRoster,
+  isDashboardPlatformOrder,
+} from "@/features/distribution/manual-assign-roster";
 import { ManualAssignModal } from "@/features/shared/manual-assign-modal";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
@@ -41,7 +47,6 @@ export function OrdersPageView() {
   const canDispatch = isDispatchRole(role);
   const hideStoreInOrdersUi = isCompanyAdminRole(role);
   const canReadOrders = canListOrdersRole(role);
-  if (!canReadOrders) return <Navigate to="/" replace />;
 
   const orderParams = useMemo(() => {
     const t = q.trim();
@@ -57,9 +62,56 @@ export function OrdersPageView() {
 
   const orders = useOrders(orderParams);
   const orderDetail = useOrderDetail(detailOrderId, { enabled: Boolean(detailOrderId) });
+  const rosterDialogOpen = Boolean(manualOrder || reassignOrder);
   const captains = useCaptains(
     { page: 1, pageSize: 100 },
-    { enabled: canDispatch && (Boolean(manualOrder) || Boolean(reassignOrder)) },
+    { enabled: canDispatch && rosterDialogOpen },
+  );
+  const { activeMap } = useCaptainLocations({
+    enabledActiveMap: canDispatch && rosterDialogOpen,
+    enabledLatest: false,
+    activeMapRefetchInterval: rosterDialogOpen ? 15_000 : false,
+  });
+  const activeMapRows = activeMap.data ?? [];
+  const captainPool = captains.data?.items ?? [];
+
+  const manualRosterRows = useMemo(
+    () => (manualOrder ? buildManualAssignmentRoster(manualOrder, captainPool, activeMapRows) : []),
+    [manualOrder, captainPool, activeMapRows],
+  );
+  const reassignRosterRows = useMemo(
+    () => (reassignOrder ? buildManualAssignmentRoster(reassignOrder, captainPool, activeMapRows) : []),
+    [reassignOrder, captainPool, activeMapRows],
+  );
+
+  const manualInfoBanner = useMemo(() => {
+    if (!manualOrder || !isDashboardPlatformOrder(manualOrder)) return null;
+    if (manualOrder.pickupLat != null && manualOrder.pickupLng != null) return null;
+    return <InlineAlert variant="info">{t("manualAssign.roster.pickupCoordsMissingBanner")}</InlineAlert>;
+  }, [manualOrder, t]);
+  const reassignInfoBanner = useMemo(() => {
+    if (!reassignOrder || !isDashboardPlatformOrder(reassignOrder)) return null;
+    if (reassignOrder.pickupLat != null && reassignOrder.pickupLng != null) return null;
+    return <InlineAlert variant="info">{t("manualAssign.roster.pickupCoordsMissingBanner")}</InlineAlert>;
+  }, [reassignOrder, t]);
+
+  const emptyHintForOrder = (
+    order: typeof manualOrder,
+    rosterLen: number,
+  ): string | undefined => {
+    if (!order) return undefined;
+    if (order.store.subscriptionType === "SUPERVISOR_LINKED" && rosterLen === 0)
+      return t("distribution.manualAssign.noCompatibleCaptains");
+    if (rosterLen === 0 && !isDashboardPlatformOrder(order)) return t("manualAssign.roster.noneForBranch");
+    return undefined;
+  };
+  const manualEmptyHint = useMemo(
+    () => emptyHintForOrder(manualOrder, manualRosterRows.length),
+    [manualOrder, manualRosterRows.length, t],
+  );
+  const reassignEmptyHint = useMemo(
+    () => emptyHintForOrder(reassignOrder, reassignRosterRows.length),
+    [reassignOrder, reassignRosterRows.length, t],
   );
 
   const auto = useStartOrderAutoDistribution();
@@ -91,6 +143,8 @@ export function OrdersPageView() {
     if (!q.trim()) return null;
     return /^[\d+\s()-]{5,}$/.test(q.trim()) ? t("orders.filter.byPhone") : t("orders.filter.byOrderNumber");
   }, [q, t]);
+
+  if (!canReadOrders) return <Navigate to="/" replace />;
 
   return (
     <div className="grid gap-8">
@@ -167,12 +221,14 @@ export function OrdersPageView() {
       <ManualAssignModal
         open={Boolean(manualOrder)}
         onClose={() => setManualOrder(null)}
+        infoBanner={manualInfoBanner}
         orderLabel={
           manualOrder
             ? formatOrderDisplayLabel(manualOrder.displayOrderNo ?? null, manualOrder.orderNumber)
             : ""
         }
-        captains={captains.data?.items ?? []}
+        captains={manualRosterRows}
+        emptyHint={manualEmptyHint}
         isPending={assign.isPending}
         onSubmit={(captainId) => {
           if (manualOrder)
@@ -192,6 +248,7 @@ export function OrdersPageView() {
       <ManualAssignModal
         open={Boolean(reassignOrder)}
         onClose={() => setReassignOrder(null)}
+        infoBanner={reassignInfoBanner}
         title={t("manualAssign.reassignTitle")}
         description={
           reassignOrder
@@ -205,7 +262,8 @@ export function OrdersPageView() {
             ? formatOrderDisplayLabel(reassignOrder.displayOrderNo ?? null, reassignOrder.orderNumber)
             : ""
         }
-        captains={captains.data?.items ?? []}
+        captains={reassignRosterRows}
+        emptyHint={reassignEmptyHint}
         isPending={reassign.isPending}
         onSubmit={(captainId) => {
           if (!reassignOrder) return;

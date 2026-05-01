@@ -1,4 +1,4 @@
-import { $Enums, AssignmentResponseStatus, OrderStatus, DistributionMode } from "@prisma/client";
+import { $Enums, AssignmentResponseStatus, OrderStatus, DistributionMode, UserRole } from "@prisma/client";
 import type { Prisma, AssignmentType } from "@prisma/client";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../utils/errors.js";
@@ -17,14 +17,19 @@ import {
   type AutoDistributionPolicy,
   CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES,
   canBypassAutomaticSingleOrderRule,
-  canCaptainReceiveAutomaticOrder,
-  captainEligibleForManualOverride,
-  eligibleCaptainsForAutoDistribution,
+  captainPoolWhereAutoDistribution,
 } from "./eligibility.js";
 import { lockCaptainDistributionTx, lockOrderDistributionTx } from "./order-lock.js";
 import { countCompletedAutoRounds, pickCaptainForAutoOffer } from "./round-robin.js";
 import { captainPrepaidBalanceService } from "../captain-prepaid-balance.service.js";
-import { assertOrderAndCaptainSameCompany } from "../tenant-scope.service.js";
+import type { AppRole } from "../../lib/rbac-roles.js";
+import {
+  assertAssignmentEligibilityOrThrow,
+  canAssignCaptainToOrder,
+  isSuperAdminPlatformOrder,
+  loadLatestCaptainLocationsTx,
+  logAssignmentEligibilityAudit,
+} from "./assignment-eligibility.js";
 import { orderStoreListSelect } from "../../repositories/order-store-enrichment.js";
 import { assertCaptainSupervisorScopeForOrderTx } from "./supervisor-order-scope.js";
 
@@ -32,9 +37,11 @@ import { assertCaptainSupervisorScopeForOrderTx } from "./supervisor-order-scope
  * Default Prisma interactive transaction timeout is 5s. Distribution txs run several writes + notifications
  * against a remote DB — latency can exceed 5s → P2028 "Transaction already closed" and HTTP 500.
  */
-const DISTRIBUTION_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 30_000 } as const;
+export const DISTRIBUTION_TRANSACTION_OPTIONS = { maxWait: 10_000, timeout: 30_000 } as const;
 export type DistributionRequestContext = {
   requestId?: string;
+  /** لتدقيق الشروط وسجلات eligibility */
+  actorRole?: AppRole | null;
   /**
    * When true (e.g. SUPER_ADMIN / COMPANY_ADMIN / legacy ADMIN), skip store–captain
    * supervisor link match for SUPERVISOR_LINKED — same idea as read-path bypass in `supervisor-order-read-scope`.
@@ -133,7 +140,10 @@ const orderInclude = {
 } as const;
 
 async function loadOrder(tx: Prisma.TransactionClient, orderId: string) {
-  return tx.order.findUnique({ where: { id: orderId } });
+  return tx.order.findUnique({
+    where: { id: orderId },
+    include: { createdBy: { select: { id: true, role: true } } },
+  });
 }
 
 function assertOrderOperationalForDistribution<T extends { archivedAt?: Date | null }>(
@@ -225,14 +235,14 @@ export class DistributionEngine {
 
           logDistributionTimeout("LOG_MARKED_EXPIRED", { logId: log.id, orderId: row.orderId });
 
-          const order = await tx.order.findUnique({ where: { id: row.orderId } });
-          if (!order) return true;
+          const orderRow = await loadOrder(tx, row.orderId);
+          if (!orderRow) return true;
 
-          if (order.distributionMode === DistributionMode.AUTO && order.status === OrderStatus.ASSIGNED) {
+          if (orderRow.distributionMode === DistributionMode.AUTO && orderRow.status === OrderStatus.ASSIGNED) {
             /** No engineCtx: owner-fleet pool only (see Phase 3.2.4 note on `offerNextAutoCaptainTx`). */
-            const next = await this.offerNextAutoCaptainTx(tx, order.id, null);
+            const next = await this.offerNextAutoCaptainTx(tx, orderRow.id, null);
             logDistributionTimeout(next ? "AUTO_REOFFER_OK" : "AUTO_REOFFER_STOPPED", {
-              orderId: order.id,
+              orderId: orderRow.id,
               nextCaptainId: next?.captainId,
             });
           } else {
@@ -242,8 +252,8 @@ export class DistributionEngine {
             });
             logDistributionTimeout("MANUAL_OR_NON_AUTO_RELEASE", {
               orderId: row.orderId,
-              distributionMode: order.distributionMode,
-              previousStatus: order.status,
+              distributionMode: orderRow.distributionMode,
+              previousStatus: orderRow.status,
             });
           }
           return true;
@@ -318,6 +328,7 @@ export class DistributionEngine {
     }
     const order = await loadOrder(tx, orderId);
     assertOrderOperationalForDistribution(order);
+    const prepaidGatingSettings = await captainPrepaidBalanceService.ensurePrepaidDashboardSettingsTx(tx);
     if (policy === "OVERRIDE_MULTI_ORDER") {
       await activityService.logTx(tx, actorUserId, "DISTRIBUTION_AUTO_OVERRIDE_GATE_USED", "order", orderId, {
         overrideSource: overrideGate?.overrideSource ?? null,
@@ -325,21 +336,35 @@ export class DistributionEngine {
     }
 
     /**
-     * Pool selection (Phase 3.2.3 / 3.2.4):
-     * - With `bypassOrderOwnerCaptainFleetForCompanyAdmin` (COMPANY_ADMIN staff path), use all captains in the
-     *   order branch that pass base auto rules (no `createdByUserId === order.ownerUserId` filter).
-     * - Without that flag (including `processDueTimeouts` / `afterCaptainRejectTx` when `engineCtx` is omitted),
-     *   auto re-offers use the order-owner fleet (`order.ownerUserId`) on purpose: there is no staff actor
-     *   to apply company-wide intent, so we keep the historical owner-scoped automatic pool for unattended flow.
+     * Pool selection:
+     * - طلب أنشأه SUPER_ADMIN: شركة الطلب كاملة (بدون قيد الفرع) + بوابة مسافة عند وجود coords التقاط.
+     * - طلب شركة عادي: شرط فرع الطلب كما كان.
      */
-    const orderOwnerForPool =
-      engineCtx?.bypassOrderOwnerCaptainFleetForCompanyAdmin === true
-        ? null
-        : (order.ownerUserId ?? null);
-    const pool = await tx.captain.findMany({
-      where: eligibleCaptainsForAutoDistribution(order.branchId, orderOwnerForPool),
-      orderBy: { id: "asc" },
+    const platformSaOrder = isSuperAdminPlatformOrder(order.createdBy?.role ?? null);
+    const fleetCreatedByMustMatchOwner =
+      engineCtx?.bypassOrderOwnerCaptainFleetForCompanyAdmin === true ? undefined : (order.ownerUserId ?? undefined);
+
+    const poolWhere = captainPoolWhereAutoDistribution({
+      orderCompanyId: order.companyId,
+      orderBranchId: order.branchId,
+      restrictToOrderBranch: !platformSaOrder,
+      ...(fleetCreatedByMustMatchOwner ? { captainCreatedByUserIdMustMatch: fleetCreatedByMustMatchOwner } : {}),
     });
+
+    const pool = await tx.captain.findMany({
+      where: poolWhere,
+      orderBy: { id: "asc" },
+      include: { user: { select: { isActive: true, role: true, fullName: true, phone: true } } },
+    });
+
+    const locMap = await loadLatestCaptainLocationsTx(
+      tx,
+      pool.map((c) => c.id),
+    );
+    const applyProxGate =
+      platformSaOrder && order.pickupLat != null && order.pickupLng != null;
+    const actorForEligibility: AppRole = engineCtx?.actorRole ?? UserRole.DISPATCHER;
+    const assignAudit = process.env.ASSIGN_ELIGIBILITY_AUDIT === "1";
 
     const capacityRows = await tx.order.groupBy({
       by: ["assignedCaptainId"],
@@ -363,13 +388,47 @@ export class DistributionEngine {
           return [r.assignedCaptainId as string, count] as const;
         }),
     );
-    const availablePool: typeof pool = [];
+    type PoolCap = (typeof pool)[number];
+    const availablePool: PoolCap[] = [];
     for (const captain of pool) {
       const activeBlockingOrderCount = loadByCaptain.get(captain.id) ?? 0;
-      const capacityEligible = canCaptainReceiveAutomaticOrder(activeBlockingOrderCount, policy);
-      const prepaidBlockReason = await captainPrepaidBalanceService.getReceivingBlockReasonTx(tx, captain.id);
-      const eligibilityResult = capacityEligible && !prepaidBlockReason;
+      const prepaidBlockReason = await captainPrepaidBalanceService.getReceivingBlockReasonTx(
+        tx,
+        captain.id,
+        prepaidGatingSettings,
+      );
+      const eligibilityCore = canAssignCaptainToOrder({
+        actor: { role: actorForEligibility },
+        order: {
+          companyId: order.companyId,
+          branchId: order.branchId,
+          zoneId: order.zoneId ?? null,
+          pickupLat: order.pickupLat ?? null,
+          pickupLng: order.pickupLng ?? null,
+          createdByRole: order.createdBy?.role ?? null,
+        },
+        captain: {
+          id: captain.id,
+          companyId: captain.companyId,
+          branchId: captain.branchId,
+          zoneId: captain.zoneId,
+          isActive: captain.isActive,
+          availabilityStatus: captain.availabilityStatus,
+          user: captain.user,
+        },
+        mode: "AUTO_DISTRIBUTION",
+        captainLatestLocation: locMap.get(captain.id) ?? null,
+        activeBlockingOrderCount,
+        autoDistributionPolicy: policy,
+        applySuperAdminProximityGate: applyProxGate,
+      });
+      const eligibilityResult = eligibilityCore.allowed && !prepaidBlockReason;
       if (eligibilityResult) availablePool.push(captain);
+
+      const exclusionParts = [
+        !eligibilityCore.allowed ? eligibilityCore.reasonCode : null,
+        prepaidBlockReason,
+      ].filter(Boolean);
       logAssignmentDecision("AUTO_POOL_EVALUATED", {
         requestId,
         orderId,
@@ -377,9 +436,30 @@ export class DistributionEngine {
         assignmentPath: "automatic",
         activeBlockingOrderCount,
         eligibilityResult,
-        exclusionReason: prepaidBlockReason ?? (capacityEligible ? null : "AUTO_CAPACITY_REACHED"),
+        exclusionReason:
+          exclusionParts.length > 0
+            ? exclusionParts.join(";")
+            : null,
         overrideEnabled: policy === "OVERRIDE_MULTI_ORDER",
       });
+
+      if (assignAudit) {
+        logAssignmentEligibilityAudit("AUTO_POOL", {
+          orderNumber: order.orderNumber,
+          orderCompanyId: order.companyId,
+          orderBranchId: order.branchId,
+          actorRole: actorForEligibility,
+          pickupLat: order.pickupLat ?? null,
+          pickupLng: order.pickupLng ?? null,
+          captainName: "",
+          captainPhone: "",
+          captainCompanyId: captain.companyId,
+          captainBranchId: captain.branchId,
+          distanceMeters: eligibilityCore.distanceMeters,
+          allowed: eligibilityResult,
+          reasonCode: eligibilityCore.allowed ? "OK" : eligibilityCore.reasonCode,
+        });
+      }
     }
 
     if (availablePool.length === 0) {
@@ -430,9 +510,37 @@ export class DistributionEngine {
           status: { in: CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES },
         },
       });
-      const eligibilityResult = canCaptainReceiveAutomaticOrder(activeWorkingOrdersCount, policy);
-      const prepaidBlockReason = await captainPrepaidBalanceService.getReceivingBlockReasonTx(tx, captain.id);
-      const finalEligibilityResult = eligibilityResult && !prepaidBlockReason;
+      const prepaidBlockReason = await captainPrepaidBalanceService.getReceivingBlockReasonTx(
+        tx,
+        captain.id,
+        prepaidGatingSettings,
+      );
+      const eligibilityCore = canAssignCaptainToOrder({
+        actor: { role: actorForEligibility },
+        order: {
+          companyId: order.companyId,
+          branchId: order.branchId,
+          zoneId: order.zoneId ?? null,
+          pickupLat: order.pickupLat ?? null,
+          pickupLng: order.pickupLng ?? null,
+          createdByRole: order.createdBy?.role ?? null,
+        },
+        captain: {
+          id: captain.id,
+          companyId: captain.companyId,
+          branchId: captain.branchId,
+          zoneId: captain.zoneId,
+          isActive: captain.isActive,
+          availabilityStatus: captain.availabilityStatus,
+          user: captain.user,
+        },
+        mode: "AUTO_DISTRIBUTION",
+        captainLatestLocation: locMap.get(captain.id) ?? null,
+        activeBlockingOrderCount: activeWorkingOrdersCount,
+        autoDistributionPolicy: policy,
+        applySuperAdminProximityGate: applyProxGate,
+      });
+      const finalEligibilityResult = eligibilityCore.allowed && !prepaidBlockReason;
       logAssignmentDecision("AUTO_CANDIDATE_RECHECK", {
         requestId,
         orderId,
@@ -440,7 +548,10 @@ export class DistributionEngine {
         assignmentPath: "automatic",
         activeBlockingOrderCount: activeWorkingOrdersCount,
         eligibilityResult: finalEligibilityResult,
-        exclusionReason: prepaidBlockReason ?? (eligibilityResult ? null : "AUTO_CAPACITY_RECHECK_BLOCKED"),
+        exclusionReason:
+          !eligibilityCore.allowed
+            ? eligibilityCore.reasonCode
+            : prepaidBlockReason ?? null,
         overrideEnabled: policy === "OVERRIDE_MULTI_ORDER",
       });
       if (finalEligibilityResult) {
@@ -845,19 +956,52 @@ export class DistributionEngine {
         where: { id: captainId },
         include: { user: true },
       });
-      const manualEligible = Boolean(captain && captainEligibleForManualOverride(captain));
-      const activeBlockingOrderCount = captain
-        ? await tx.order.count({
-            where: {
-              assignedCaptainId: captain.id,
-              status: { in: CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES },
-            },
-          })
-        : null;
-      const prepaidBlockReason = captain
-        ? await captainPrepaidBalanceService.getReceivingBlockReasonTx(tx, captain.id)
-        : null;
-      const finalManualEligible = manualEligible && !prepaidBlockReason;
+      if (!captain) {
+        throw new AppError(400, "Captain not eligible for manual assignment", "CAPTAIN_UNAVAILABLE");
+      }
+      const activeBlockingOrderCount = await tx.order.count({
+        where: {
+          assignedCaptainId: captain.id,
+          status: { in: CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES },
+        },
+      });
+      const locMapManual = await loadLatestCaptainLocationsTx(tx, [captain.id]);
+      const prepaidGatingSettingsManual =
+        await captainPrepaidBalanceService.ensurePrepaidDashboardSettingsTx(tx);
+      const platformSaManual = isSuperAdminPlatformOrder(order.createdBy?.role ?? null);
+      const applyProxManual =
+        platformSaManual && order.pickupLat != null && order.pickupLng != null;
+      const actorForManual: AppRole = ctx.actorRole ?? UserRole.DISPATCHER;
+      const eligibilityCore = canAssignCaptainToOrder({
+        actor: { role: actorForManual },
+        order: {
+          companyId: order.companyId,
+          branchId: order.branchId,
+          zoneId: order.zoneId ?? null,
+          pickupLat: order.pickupLat ?? null,
+          pickupLng: order.pickupLng ?? null,
+          createdByRole: order.createdBy?.role ?? null,
+        },
+        captain: {
+          id: captain.id,
+          companyId: captain.companyId,
+          branchId: captain.branchId,
+          zoneId: captain.zoneId,
+          isActive: captain.isActive,
+          availabilityStatus: captain.availabilityStatus,
+          user: captain.user,
+        },
+        mode: "MANUAL_OVERRIDE",
+        captainLatestLocation: locMapManual.get(captain.id) ?? null,
+        activeBlockingOrderCount,
+        applySuperAdminProximityGate: applyProxManual,
+      });
+      const prepaidBlockReason = await captainPrepaidBalanceService.getReceivingBlockReasonTx(
+        tx,
+        captain.id,
+        prepaidGatingSettingsManual,
+      );
+      const finalManualEligible = eligibilityCore.allowed && !prepaidBlockReason;
       logAssignmentDecision("MANUAL_CAPTAIN_ELIGIBILITY", {
         requestId: ctx.requestId,
         orderId,
@@ -865,20 +1009,33 @@ export class DistributionEngine {
         assignmentPath: "manual",
         activeBlockingOrderCount,
         eligibilityResult: finalManualEligible,
-        exclusionReason: prepaidBlockReason ?? (manualEligible ? null : "CAPTAIN_UNAVAILABLE_FOR_MANUAL_OVERRIDE"),
+        exclusionReason:
+          !eligibilityCore.allowed ? eligibilityCore.reasonCode : prepaidBlockReason ?? null,
         overrideEnabled: true,
       });
-      if (!manualEligible) {
-        throw new AppError(400, "Captain not eligible for manual assignment", "CAPTAIN_UNAVAILABLE");
+      if (process.env.ASSIGN_ELIGIBILITY_AUDIT === "1") {
+        logAssignmentEligibilityAudit("MANUAL_ASSIGN", {
+          orderNumber: order.orderNumber,
+          orderCompanyId: order.companyId,
+          orderBranchId: order.branchId,
+          actorRole: actorForManual,
+          pickupLat: order.pickupLat ?? null,
+          pickupLng: order.pickupLng ?? null,
+          captainName: captain.user.fullName,
+          captainPhone: captain.user.phone,
+          captainCompanyId: captain.companyId,
+          captainBranchId: captain.branchId,
+          distanceMeters: eligibilityCore.distanceMeters,
+          allowed: finalManualEligible,
+          reasonCode: finalManualEligible
+            ? "OK"
+            : !eligibilityCore.allowed
+              ? eligibilityCore.reasonCode
+              : "CAPTAIN_UNAVAILABLE",
+        });
       }
-      if (!captain) {
-        throw new AppError(400, "Captain not eligible for manual assignment", "CAPTAIN_UNAVAILABLE");
-      }
+      assertAssignmentEligibilityOrThrow(eligibilityCore);
       const targetCaptain = captain;
-      assertOrderAndCaptainSameCompany(
-        { companyId: order.companyId, branchId: order.branchId },
-        { companyId: targetCaptain.companyId, branchId: targetCaptain.branchId },
-      );
       if (
         !ctx.bypassOrderOwnerCaptainFleetForCompanyAdmin &&
         order.ownerUserId &&
@@ -894,6 +1051,7 @@ export class DistributionEngine {
       await captainPrepaidBalanceService.assertCanReceiveOrderTx(tx, captain.id, {
         assignmentPath: "manual",
         allowManualOverride: true,
+        prepaidSettings: prepaidGatingSettingsManual,
       });
       logEngineTiming("manual_assign", "captain_lookup_and_checks_done", {
         requestId: ctx.requestId,
@@ -1064,19 +1222,52 @@ export class DistributionEngine {
         where: { id: captainId },
         include: { user: true },
       });
-      const reassignEligible = Boolean(captain && captainEligibleForManualOverride(captain));
-      const activeBlockingOrderCount = captain
-        ? await tx.order.count({
-            where: {
-              assignedCaptainId: captain.id,
-              status: { in: CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES },
-            },
-          })
-        : null;
-      const prepaidBlockReason = captain
-        ? await captainPrepaidBalanceService.getReceivingBlockReasonTx(tx, captain.id)
-        : null;
-      const finalReassignEligible = reassignEligible && !prepaidBlockReason;
+      if (!captain) {
+        throw new AppError(400, "Captain not eligible for reassignment", "CAPTAIN_UNAVAILABLE");
+      }
+      const activeBlockingOrderCount = await tx.order.count({
+        where: {
+          assignedCaptainId: captain.id,
+          status: { in: CAPTAIN_ACTIVE_WORKING_ORDER_STATUSES },
+        },
+      });
+      const locMapReassign = await loadLatestCaptainLocationsTx(tx, [captain.id]);
+      const prepaidGatingSettingsReassign =
+        await captainPrepaidBalanceService.ensurePrepaidDashboardSettingsTx(tx);
+      const platformSaReassign = isSuperAdminPlatformOrder(order.createdBy?.role ?? null);
+      const applyProxReassign =
+        platformSaReassign && order.pickupLat != null && order.pickupLng != null;
+      const actorForReassign: AppRole = ctx.actorRole ?? UserRole.DISPATCHER;
+      const eligibilityCoreRe = canAssignCaptainToOrder({
+        actor: { role: actorForReassign },
+        order: {
+          companyId: order.companyId,
+          branchId: order.branchId,
+          zoneId: order.zoneId ?? null,
+          pickupLat: order.pickupLat ?? null,
+          pickupLng: order.pickupLng ?? null,
+          createdByRole: order.createdBy?.role ?? null,
+        },
+        captain: {
+          id: captain.id,
+          companyId: captain.companyId,
+          branchId: captain.branchId,
+          zoneId: captain.zoneId,
+          isActive: captain.isActive,
+          availabilityStatus: captain.availabilityStatus,
+          user: captain.user,
+        },
+        mode: "REASSIGN",
+        captainLatestLocation: locMapReassign.get(captain.id) ?? null,
+        activeBlockingOrderCount,
+        applySuperAdminProximityGate: applyProxReassign,
+      });
+      const prepaidBlockReason = await captainPrepaidBalanceService.getReceivingBlockReasonTx(
+        tx,
+        captain.id,
+        prepaidGatingSettingsReassign,
+      );
+      const finalReassignEligible = eligibilityCoreRe.allowed && !prepaidBlockReason;
       logAssignmentDecision("REASSIGN_CAPTAIN_ELIGIBILITY", {
         requestId: ctx.requestId,
         orderId,
@@ -1084,20 +1275,33 @@ export class DistributionEngine {
         assignmentPath: "manual",
         activeBlockingOrderCount,
         eligibilityResult: finalReassignEligible,
-        exclusionReason: prepaidBlockReason ?? (reassignEligible ? null : "CAPTAIN_UNAVAILABLE_FOR_REASSIGN"),
+        exclusionReason:
+          !eligibilityCoreRe.allowed ? eligibilityCoreRe.reasonCode : prepaidBlockReason ?? null,
         overrideEnabled: true,
       });
-      if (!reassignEligible) {
-        throw new AppError(400, "Captain not eligible for reassignment", "CAPTAIN_UNAVAILABLE");
+      if (process.env.ASSIGN_ELIGIBILITY_AUDIT === "1") {
+        logAssignmentEligibilityAudit("REASSIGN", {
+          orderNumber: order.orderNumber,
+          orderCompanyId: order.companyId,
+          orderBranchId: order.branchId,
+          actorRole: actorForReassign,
+          pickupLat: order.pickupLat ?? null,
+          pickupLng: order.pickupLng ?? null,
+          captainName: captain.user.fullName,
+          captainPhone: captain.user.phone,
+          captainCompanyId: captain.companyId,
+          captainBranchId: captain.branchId,
+          distanceMeters: eligibilityCoreRe.distanceMeters,
+          allowed: finalReassignEligible,
+          reasonCode: finalReassignEligible
+            ? "OK"
+            : !eligibilityCoreRe.allowed
+              ? eligibilityCoreRe.reasonCode
+              : "CAPTAIN_UNAVAILABLE",
+        });
       }
-      if (!captain) {
-        throw new AppError(400, "Captain not eligible for reassignment", "CAPTAIN_UNAVAILABLE");
-      }
+      assertAssignmentEligibilityOrThrow(eligibilityCoreRe);
       const targetCaptain = captain;
-      assertOrderAndCaptainSameCompany(
-        { companyId: order.companyId, branchId: order.branchId },
-        { companyId: targetCaptain.companyId, branchId: targetCaptain.branchId },
-      );
       if (
         !ctx.bypassOrderOwnerCaptainFleetForCompanyAdmin &&
         order.ownerUserId &&
@@ -1113,6 +1317,7 @@ export class DistributionEngine {
       await captainPrepaidBalanceService.assertCanReceiveOrderTx(tx, captain.id, {
         assignmentPath: "manual",
         allowManualOverride: true,
+        prepaidSettings: prepaidGatingSettingsReassign,
       });
       logEngineTiming("reassign", "captain_lookup_and_checks_done", {
         requestId: ctx.requestId,

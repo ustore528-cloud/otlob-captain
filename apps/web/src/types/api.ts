@@ -63,6 +63,15 @@ export type OrderListItem = {
   orderNumber: string;
   /** Per-company UI sequence from API; null until backfill for legacy rows. */
   displayOrderNo?: number | null;
+  /** Dashboard manual roster / drag scope — from API order list/detail. */
+  companyId?: string;
+  branchId?: string;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  zoneId?: string | null;
+  /** Order creator platform role (`SUPER_ADMIN` ⇒ platform-created order UX). */
+  createdByRole?: string | null;
+  isPlatformOrder?: boolean;
   status: OrderStatus;
   distributionMode: DistributionMode;
   customerName: string;
@@ -168,6 +177,9 @@ export type Paginated<T> = { total: number; items: T[] };
 
 export type CaptainListItem = {
   id: string;
+  companyId: string;
+  branchId: string;
+  zoneId?: string | null;
   vehicleType: string;
   area: string;
   isActive: boolean;

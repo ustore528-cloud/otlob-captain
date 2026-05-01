@@ -13,6 +13,7 @@ import {
 import type { CaptainProfile, SessionSnapshot, SessionUser } from "@/features/auth/types";
 import { queryClient } from "@/lib/query-client";
 import { connectCaptainSocket, disconnectCaptainSocket } from "@/services/socket/socket-client";
+import { useGuestStore } from "@/store/guest-store";
 
 type AuthState = {
   accessToken: string | null;
@@ -26,6 +27,8 @@ type AuthActions = {
   bootstrap: () => Promise<void>;
   signIn: (identifier: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Calls self-delete API then clears session like sign-out. */
+  deleteAccount: (reason?: string | null) => Promise<void>;
 };
 
 function meToSnapshot(me: MeResponse): SessionSnapshot {
@@ -150,6 +153,7 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   },
 
   signIn: async (identifier: string, password: string) => {
+    await useGuestStore.getState().exitGuest();
     const body = toLoginBody(identifier, password);
     const data = await authService.login(body);
     const snapshot = loginResponseToSnapshot(data);
@@ -167,6 +171,14 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   signOut: async () => {
     queryClient.clear();
     await clearSessionInternal(set);
+    await useGuestStore.getState().exitGuest();
+  },
+
+  deleteAccount: async (reason?: string | null) => {
+    await captainService.deleteAccount({ reason: reason ?? null });
+    queryClient.clear();
+    await clearSessionInternal(set);
+    await useGuestStore.getState().exitGuest();
   },
 }));
 

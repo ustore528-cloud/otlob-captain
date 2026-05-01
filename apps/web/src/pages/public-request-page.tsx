@@ -15,9 +15,11 @@ import {
   type PublicRequestContext,
 } from "@/lib/api/services/public-request";
 import { isRtlLang } from "@/i18n/i18n";
+import { useCustomerOrderPwaMeta } from "@/hooks/customer-order-pwa-meta";
 
 export function PublicRequestPage() {
   const { t, i18n } = useTranslation();
+  useCustomerOrderPwaMeta();
   const { ownerCode } = useParams<{ ownerCode: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const rtl = isRtlLang(i18n.resolvedLanguage ?? i18n.language);

@@ -3,9 +3,9 @@ import { homeTheme } from "@/features/home/theme";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function AuthLayout() {
-  const { sessionReady, isAuthenticated } = useAuth();
+  const { routingReady, isAuthenticated } = useAuth();
 
-  if (!sessionReady) {
+  if (!routingReady) {
     return null;
   }
 

@@ -14,7 +14,7 @@ import {
   prepaidChargeLedgerIdempotencyKey,
 } from "../config/captain-prepaid-ledger.js";
 import { isCompanyAdminRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
-import type { CaptainBalanceTransaction } from "@prisma/client";
+import type { CaptainBalanceTransaction, DashboardSettings } from "@prisma/client";
 import {
   DISTRIBUTION_GATING_SHADOW_LOG,
   DISTRIBUTION_GATING_USE_ALIGNED_BALANCE,
@@ -108,8 +108,7 @@ function resolvePolicy(
   };
 }
 
-async function loadCaptainPolicyTx(tx: Tx, captainId: string) {
-  const settings = await getSettingsTx(tx);
+async function loadCaptainPolicyWithSettingsTx(tx: Tx, captainId: string, settings: DashboardSettings) {
   const captain = await tx.captain.findUnique({
     where: { id: captainId },
     select: {
@@ -150,6 +149,11 @@ async function loadCaptainPolicyTx(tx: Tx, captainId: string) {
     }
   }
   return { settings, captain, policy: resolvePolicy(settings, captain, balanceForPrepaidProductChecks) };
+}
+
+async function loadCaptainPolicyTx(tx: Tx, captainId: string) {
+  const settings = await getSettingsTx(tx);
+  return loadCaptainPolicyWithSettingsTx(tx, captainId, settings);
 }
 
 function summaryDto(input: {
@@ -197,17 +201,36 @@ export const captainPrepaidBalanceService = {
     return money(new Prisma.Decimal(deliveryFee).mul(commissionPercent).div(100));
   },
 
-  async getReceivingBlockReasonTx(tx: Tx, captainId: string): Promise<string | null> {
-    const { policy } = await loadCaptainPolicyTx(tx, captainId);
+  /**
+   * Global prepaid gating flags live on `dashboard_settings` (single row). Call **once** per interactive
+   * transaction that evaluates many captains — each `getReceivingBlockReasonTx` used to `upsert` per captain.
+   */
+  ensurePrepaidDashboardSettingsTx(tx: Tx): Promise<DashboardSettings> {
+    return getSettingsTx(tx);
+  },
+
+  async getReceivingBlockReasonTx(
+    tx: Tx,
+    captainId: string,
+    prepaidSettings?: DashboardSettings,
+  ): Promise<string | null> {
+    const settings = prepaidSettings ?? (await getSettingsTx(tx));
+    const { policy } = await loadCaptainPolicyWithSettingsTx(tx, captainId, settings);
     return policy.blockedFromReceivingOrders ? policy.blockReason : null;
   },
 
   async assertCanReceiveOrderTx(
     tx: Tx,
     captainId: string,
-    opts: { assignmentPath: "automatic" | "manual"; allowManualOverride?: boolean },
+    opts: {
+      assignmentPath: "automatic" | "manual";
+      allowManualOverride?: boolean;
+      /** When already loaded for this tx (e.g. auto pool), avoids repeated settings upsert. */
+      prepaidSettings?: DashboardSettings;
+    },
   ) {
-    const { policy } = await loadCaptainPolicyTx(tx, captainId);
+    const settings = opts.prepaidSettings ?? (await getSettingsTx(tx));
+    const { policy } = await loadCaptainPolicyWithSettingsTx(tx, captainId, settings);
     if (!policy.blockedFromReceivingOrders) return;
     if (
       opts.assignmentPath === "manual" &&

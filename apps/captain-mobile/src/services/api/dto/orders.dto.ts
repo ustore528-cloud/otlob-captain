@@ -70,6 +70,13 @@ export type OrderListItemDto = {
   id: string;
   orderNumber: string;
   displayOrderNo?: number | null;
+  companyId?: string;
+  branchId?: string;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  zoneId?: string | null;
+  createdByRole?: string | null;
+  isPlatformOrder?: boolean;
   status: OrderStatusDto;
   customerName: string;
   customerPhone: string;
@@ -108,6 +115,9 @@ export type EarningsSummaryQuery = {
 
 export type EarningsSummaryResponse = {
   deliveredCount: number;
-  totalAmount: string;
+  /** Sum of delivery fees (captain-facing earnings) for delivered orders. */
+  totalDeliveryFees: string;
+  /** Sum of order `amount` — store/customer product total only; not captain earnings. */
+  totalOrderValue: string;
   totalCashCollection: string;
 };

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../../utils/async-handler.js";
 import { validate } from "../../../middlewares/validate.middleware.js";
 import { authMiddleware } from "../../../middlewares/auth.middleware.js";
+import { requireActiveCaptainAccount } from "../../../middlewares/require-active-captain-account.middleware.js";
 import { requireRoles } from "../../../middlewares/rbac.middleware.js";
 import { CaptainLocationBodySchema } from "../../../validators/tracking.schemas.js";
 import {
@@ -13,6 +14,7 @@ import {
   MobileCaptainEarningsQuerySchema,
   MobileCaptainAvailabilityBodySchema,
   MobileCaptainPushTokenBodySchema,
+  MobileCaptainDeleteAccountBodySchema,
 } from "../../../validators/mobile-captain.schemas.js";
 import { mobileCaptainController } from "../../../controllers/mobile-captain.controller.js";
 
@@ -30,7 +32,7 @@ captainMobileRoutes.post(
   asyncHandler(mobileCaptainController.refresh.bind(mobileCaptainController)),
 );
 
-captainMobileRoutes.use(authMiddleware, requireRoles("CAPTAIN"));
+captainMobileRoutes.use(authMiddleware, requireRoles("CAPTAIN"), asyncHandler(requireActiveCaptainAccount));
 
 captainMobileRoutes.get("/me", asyncHandler(mobileCaptainController.me.bind(mobileCaptainController)));
 
@@ -66,6 +68,12 @@ captainMobileRoutes.post(
   "/me/push-token",
   validate("body", MobileCaptainPushTokenBodySchema),
   asyncHandler(mobileCaptainController.registerPushToken.bind(mobileCaptainController)),
+);
+
+captainMobileRoutes.post(
+  "/me/delete-account",
+  validate("body", MobileCaptainDeleteAccountBodySchema),
+  asyncHandler(mobileCaptainController.deleteAccount.bind(mobileCaptainController)),
 );
 
 captainMobileRoutes.get(

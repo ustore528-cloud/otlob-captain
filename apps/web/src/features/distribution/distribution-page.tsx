@@ -12,6 +12,7 @@ import {
   useResendOrderToDistribution,
 } from "@/hooks";
 import { resolveDashboardMapView } from "@/features/distribution/map-default-view";
+import { InlineAlert } from "@/components/ui/inline-alert";
 import { ManualAssignModal } from "@/features/shared/manual-assign-modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { ASSIGNED_LIST_PARAMS, CONFIRMED_LIST_PARAMS, PENDING_LIST_PARAMS } from "@/features/distribution/constants";
@@ -23,7 +24,11 @@ import { CaptainDetailsModal } from "@/features/distribution/components/captain-
 import { DistributionMap } from "@/features/distribution/distribution-map";
 import { GoogleTrackingMap, hasGoogleMapsApiKey } from "@/features/distribution/components/google-tracking-map";
 import { OrdersPanel } from "@/features/distribution/components/orders-panel";
-import { filterCaptainsForManualAssign, isCaptainRosterDropAllowed } from "@/features/distribution/supervisor-assign-ui";
+import {
+  buildManualAssignmentRoster,
+  isDashboardPlatformOrder,
+} from "@/features/distribution/manual-assign-roster";
+import { isCaptainRosterDropAllowed } from "@/features/distribution/supervisor-assign-ui";
 import { isCompanyAdminRole, isDispatchRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ActiveMapCaptain, OrderListItem } from "@/types/api";
@@ -118,14 +123,25 @@ export function DistributionPageView() {
   const lang = i18n.resolvedLanguage ?? i18n.language;
 
   const manualAssignCaptains = useMemo(
-    () => (manualOrder ? filterCaptainsForManualAssign(manualOrder, captainRoster) : []),
-    [manualOrder, captainRoster],
+    () => (manualOrder ? buildManualAssignmentRoster(manualOrder, captainRoster, mapCaptainsDeduped) : []),
+    [manualOrder, captainRoster, mapCaptainsDeduped],
   );
   const manualAssignEmptyHint = useMemo(() => {
-    if (!manualOrder || manualOrder.store.subscriptionType !== "SUPERVISOR_LINKED") return undefined;
-    if (manualAssignCaptains.length > 0) return undefined;
-    return t("distribution.manualAssign.noCompatibleCaptains");
+    if (!manualOrder) return undefined;
+    if (manualOrder.store.subscriptionType === "SUPERVISOR_LINKED" && manualAssignCaptains.length === 0) {
+      return t("distribution.manualAssign.noCompatibleCaptains");
+    }
+    if (manualAssignCaptains.length === 0 && !isDashboardPlatformOrder(manualOrder)) {
+      return t("manualAssign.roster.noneForBranch");
+    }
+    return undefined;
   }, [manualOrder, manualAssignCaptains.length, t]);
+  const manualAssignInfoBanner = useMemo(() => {
+    if (!manualOrder) return null;
+    if (!isDashboardPlatformOrder(manualOrder)) return null;
+    if (manualOrder.pickupLat != null && manualOrder.pickupLng != null) return null;
+    return <InlineAlert variant="info">{t("manualAssign.roster.pickupCoordsMissingBanner")}</InlineAlert>;
+  }, [manualOrder, t]);
 
   const dropScopeGuard = useCallback(
     (orderId: string, captainId: string) => {
@@ -339,6 +355,7 @@ export function DistributionPageView() {
         open={Boolean(manualOrder)}
         onClose={() => setManualOrder(null)}
         orderLabel={manualOrderLabel}
+        infoBanner={manualAssignInfoBanner}
         captains={manualOrder ? manualAssignCaptains : []}
         emptyHint={manualAssignEmptyHint}
         isPending={assign.isPending}

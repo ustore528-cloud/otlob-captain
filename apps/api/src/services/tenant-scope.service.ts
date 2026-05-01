@@ -152,11 +152,7 @@ export async function resolveBranchIdForStaffOperation(
 
 export function assertOrderAndCaptainSameBranch(order: { branchId: string }, captain: { branchId: string }): void {
   if (order.branchId !== captain.branchId) {
-    throw new AppError(
-      403,
-      "Captain belongs to a different branch than this order.",
-      "TENANT_BRANCH_MISMATCH",
-    );
+    throw new AppError(403, "Captain is not allowed to serve this branch.", "TENANT_BRANCH_MISMATCH");
   }
 }
 
@@ -164,8 +160,11 @@ export function assertOrderAndCaptainSameCompany(
   order: { companyId: string; branchId: string },
   captain: { companyId: string; branchId: string },
 ): void {
-  if (order.companyId !== captain.companyId || order.branchId !== captain.branchId) {
-    throw new AppError(403, "Captain is not in the same company/branch as this order.", "TENANT_MISMATCH");
+  if (order.companyId !== captain.companyId) {
+    throw new AppError(403, "Captain belongs to a different company.", "TENANT_COMPANY_MISMATCH");
+  }
+  if (order.branchId !== captain.branchId) {
+    throw new AppError(403, "Captain is not allowed to serve this branch.", "TENANT_BRANCH_MISMATCH");
   }
 }
 

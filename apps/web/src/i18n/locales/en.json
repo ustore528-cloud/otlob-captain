@@ -1615,7 +1615,16 @@
     "reassignTitle": "Reassign order",
     "reassignDescription": "Move order {{order}} to another captain with logged reassignment.",
     "supervisorPrefix": "Supervisor",
-    "noSupervisorShort": "No supervisor"
+    "noSupervisorShort": "No supervisor",
+    "roster": {
+      "nearPickup": "Near pickup location",
+      "farPickup": "Far from pickup location",
+      "zoneMismatch": "Not allowed for this zone/region",
+      "otherCompany": "Different company",
+      "captainLocationUnknown": "Captain location unavailable for distance",
+      "pickupCoordsMissingBanner": "Pickup coordinates are missing — the server will still validate assignment eligibility.",
+      "noneForBranch": "No captains match this order’s branch."
+    }
   }
 }
 

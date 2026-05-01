@@ -51,3 +51,11 @@ export const MobileCaptainPushTokenBodySchema = z.object({
   appVersion: z.string().max(40).nullable().optional(),
   language: z.union([z.literal("ar"), z.literal("en"), z.literal("he")]).nullable().optional(),
 });
+
+/** Optional feedback when a captain self-deactivates their account. */
+export const MobileCaptainDeleteAccountBodySchema = z.preprocess(
+  (raw) => (raw == null || typeof raw !== "object" ? {} : raw),
+  z.object({
+    reason: z.string().max(2000).nullable().optional(),
+  }),
+);

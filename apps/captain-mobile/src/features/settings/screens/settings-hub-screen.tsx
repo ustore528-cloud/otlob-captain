@@ -23,6 +23,8 @@ type Row = {
   icon: keyof typeof Ionicons.glyphMap;
   /** صف غير تفاعلي — قريبًا */
   disabled?: boolean;
+  /** Destructive account action (e.g. delete account). */
+  destructive?: boolean;
 };
 
 const BODY_BLEED = -captainSpacing.md;
@@ -43,6 +45,8 @@ function SettingsRows({ rows, rtl }: { rows: Row[]; rtl: boolean }) {
     <View style={[styles.rowsBleed, { marginHorizontal: BODY_BLEED }]}>
       {rows.map((row, i) => {
         const logoutRow = row.icon === "log-out-outline";
+        const destructiveRow = Boolean(row.destructive);
+        const dangerChrome = logoutRow || destructiveRow;
         const chevron = (
           <Ionicons
             name={rtl ? "chevron-back" : "chevron-forward"}
@@ -58,7 +62,7 @@ function SettingsRows({ rows, rtl }: { rows: Row[]; rtl: boolean }) {
                 styles.rowLabel,
                 { textAlign: rtl ? "right" : "left" },
                 row.disabled && styles.rowLabelMuted,
-                logoutRow && styles.rowLabelLogout,
+                dangerChrome && styles.rowLabelLogout,
               ]}
             >
               {row.label}
@@ -70,7 +74,7 @@ function SettingsRows({ rows, rtl }: { rows: Row[]; rtl: boolean }) {
           <View
             style={[
               styles.iconBubble,
-              logoutRow ? styles.iconBubbleLogout : null,
+              dangerChrome ? styles.iconBubbleLogout : null,
               row.disabled && styles.iconBubbleMuted,
             ]}
           >
@@ -80,7 +84,7 @@ function SettingsRows({ rows, rtl }: { rows: Row[]; rtl: boolean }) {
               color={
                 row.disabled
                   ? captainUiTheme.textSubtle
-                  : logoutRow
+                  : dangerChrome
                     ? captainUiTheme.danger
                     : captainUiTheme.accent
               }
@@ -98,7 +102,7 @@ function SettingsRows({ rows, rtl }: { rows: Row[]; rtl: boolean }) {
               i < rows.length - 1 && styles.rowDivider,
               pressed && (row.href || row.onPress) && !row.disabled && styles.rowPressed,
               row.disabled && styles.rowDisabled,
-              logoutRow && styles.rowLogout,
+              dangerChrome && styles.rowLogout,
             ]}
             onPress={() => {
               if (row.disabled) return;
@@ -197,6 +201,13 @@ export function SettingsHubScreen() {
         label: t("settings.hubAvailabilityLabel"),
         hint: t("settings.hubAvailabilityHint"),
         icon: "radio-button-on-outline",
+      },
+      {
+        href: "/(app)/account-delete" as Href,
+        label: t("settings.hubDeleteAccountLabel"),
+        hint: t("settings.hubDeleteAccountHint"),
+        icon: "trash-outline",
+        destructive: true,
       },
       {
         href: profile,

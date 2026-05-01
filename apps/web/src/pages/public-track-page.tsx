@@ -6,6 +6,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { fetchPublicOrderIdsByTrackingToken } from "@/lib/api/services/public-request";
 import { ApiError } from "@/lib/api/http";
 import { isRtlLang } from "@/i18n/i18n";
+import { useCustomerOrderPwaMeta } from "@/hooks/customer-order-pwa-meta";
 
 /**
  * Deep link from Web Push: `/track/:trackingToken` → resume on `/request/:ownerCode?track=1&...`
@@ -13,6 +14,7 @@ import { isRtlLang } from "@/i18n/i18n";
 export function PublicTrackPage() {
   const { trackingToken = "" } = useParams<{ trackingToken: string }>();
   const { t, i18n } = useTranslation();
+  useCustomerOrderPwaMeta();
   const rtl = isRtlLang(i18n.resolvedLanguage ?? i18n.language);
   const [target, setTarget] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

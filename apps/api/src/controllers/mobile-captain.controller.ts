@@ -166,4 +166,11 @@ export const mobileCaptainController = {
     const data = await captainMobileService.earningsSummary(req.user!.id, q);
     return res.json(ok(data));
   },
+
+  /** POST /mobile/captain/me/delete-account — soft-deactivate authenticated captain only. */
+  deleteAccount: async (req: Request, res: Response) => {
+    const body = req.body as { reason?: string | null };
+    const data = await captainMobileService.deleteCaptainAccount(req.user!.id, body.reason ?? null);
+    return res.json(ok(data));
+  },
 };

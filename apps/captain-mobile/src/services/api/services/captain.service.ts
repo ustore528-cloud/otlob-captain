@@ -55,6 +55,13 @@ export const captainService = {
     });
   },
 
+  deleteAccount(body: { reason?: string | null }): Promise<{ ok: true }> {
+    return authRequest<{ ok: true }>(paths.mobileCaptain.deleteAccount, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
   registerPushTokenWithMeta(
     body: {
       token: string;

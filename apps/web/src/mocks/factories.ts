@@ -18,6 +18,13 @@ export function mockOrderListItem(over: Partial<OrderListItem> = {}): OrderListI
   return {
     id: over.id ?? "mock-order-id",
     orderNumber: over.orderNumber ?? "ORD-MOCK-1",
+    companyId: over.companyId ?? "co-mock",
+    branchId: over.branchId ?? "br-mock",
+    pickupLat: over.pickupLat !== undefined ? over.pickupLat : null,
+    pickupLng: over.pickupLng !== undefined ? over.pickupLng : null,
+    zoneId: over.zoneId !== undefined ? over.zoneId : null,
+    createdByRole: over.createdByRole !== undefined ? over.createdByRole : undefined,
+    isPlatformOrder: over.isPlatformOrder ?? false,
     status,
     distributionMode: over.distributionMode ?? "AUTO",
     customerName: over.customerName ?? "Test customer",
@@ -48,6 +55,9 @@ export function mockOrderListItem(over: Partial<OrderListItem> = {}): OrderListI
 export function mockCaptainListItem(over: Partial<CaptainListItem> = {}): CaptainListItem {
   return {
     id: over.id ?? "mock-captain-id",
+    companyId: over.companyId ?? "co-mock",
+    branchId: over.branchId ?? "br-mock",
+    zoneId: over.zoneId !== undefined ? over.zoneId : null,
     vehicleType: over.vehicleType ?? "motorcycle",
     area: over.area ?? "Riyadh",
     isActive: over.isActive ?? true,

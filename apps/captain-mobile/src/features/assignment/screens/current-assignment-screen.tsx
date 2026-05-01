@@ -1,16 +1,28 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { homeTheme } from "@/features/home/theme";
 import { screenStyles } from "@/theme/screen-styles";
 import { WorkStatusBanner } from "@/features/work-status";
 import { useCaptainAssignmentWorkbench } from "../hooks/use-captain-assignment-workbench";
 import { AssignmentEmptyState } from "../components/assignment-empty-state";
+import { CAPTAIN_TABLET_MIN_WIDTH, captainWideContentStyle } from "@/theme/captain-wide-layout";
 
 /** Hidden tab route: renders current orders from backend assignment + overflow snapshot. */
 export function CurrentAssignmentScreen() {
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
+  const wide = width >= CAPTAIN_TABLET_MIN_WIDTH;
   const {
     orders,
     renderOrderCard,
@@ -30,7 +42,7 @@ export function CurrentAssignmentScreen() {
     <SafeAreaView style={screenStyles.safe} edges={["top", "left", "right"]}>
       <WorkStatusBanner />
       <View style={styles.accentBar} />
-      <View style={styles.main}>
+      <View style={[styles.main, wide && captainWideContentStyle]}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}

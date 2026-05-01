@@ -4,6 +4,7 @@ import {
   DistributionMode,
   OrderStatus,
   Prisma,
+  UserRole as Ur,
 } from "@prisma/client";
 import type { Decimal } from "@prisma/client/runtime/library";
 import {
@@ -147,6 +148,15 @@ export type OrderListItemDto = {
   id: string;
   orderNumber: string;
   displayOrderNo: number | null;
+  /** لتصفية أسطول لوحة الإسناد اليدوي (تطابق شركة الطلب؛ SUPER_ADMIN المنصّة لا يقيّد الفرع بالواجهة). */
+  companyId: string;
+  branchId: string;
+  pickupLat: number | null;
+  pickupLng: number | null;
+  zoneId?: string | null;
+  /** مُنشئ الطلب — عند SUPER_ADMIN يُعامل الطلب كطلب منصّة لتجربة الواجهة. */
+  createdByRole: UserRole | null;
+  isPlatformOrder: boolean;
   status: OrderStatus;
   distributionMode: DistributionMode;
   customerName: string;
@@ -345,6 +355,12 @@ export function toOrderListItemDto(order: {
   id: string;
   orderNumber: string;
   displayOrderNo?: number | null;
+  companyId: string;
+  branchId: string;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  zoneId?: string | null;
+  createdBy?: { role: UserRole } | null;
   status: OrderStatus;
   distributionMode: DistributionMode;
   assignedCaptainId: string | null;
@@ -398,10 +414,18 @@ export function toOrderListItemDto(order: {
   const sup = order.store.supervisorUser;
   const cap = order.assignedCaptain;
   const storeDi = storeDisplayI18nFromJson(order.store.displayI18n ?? undefined);
+  const creatorRole = order.createdBy?.role ?? null;
   return {
     id: order.id,
     orderNumber: order.orderNumber,
     displayOrderNo: order.displayOrderNo ?? null,
+    companyId: order.companyId,
+    branchId: order.branchId,
+    pickupLat: order.pickupLat ?? null,
+    pickupLng: order.pickupLng ?? null,
+    zoneId: order.zoneId ?? null,
+    createdByRole: creatorRole,
+    isPlatformOrder: creatorRole === Ur.SUPER_ADMIN,
     status: order.status,
     distributionMode: order.distributionMode,
     customerName: order.customerName,

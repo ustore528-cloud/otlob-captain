@@ -188,6 +188,12 @@
       "title": "שליחים",
       "description": "ניהול חשבונות, הפעלה, עריכה ודוחות הזמנות של שליחים."
     },
+    "legacyVehicle": {
+      "bicycle": "אופניים",
+      "motorcycle": "אופנוע",
+      "car": "מכונית",
+      "cargoVan": "ואן / מסחרית"
+    },
     "guidance": {
       "title": "הנחיה",
       "description": "הפעלה קובעת אם לשליח יש גישה למערכת; זמינות מתעדכנת מאפליקציית השליח או מלוח הבקרה."
@@ -271,6 +277,7 @@
       "defaultCommission": "ברירת מחדל",
       "totalDeducted": "סה\"כ ניכויים ({{currency}})",
       "chargeBalance": "טעינת יתרה",
+      "balanceAdjust": "התאמת יתרה",
       "ledger": "היסטוריית תנועות",
       "report": "דוח",
       "chargeSuccess": "היתרה נטענה בהצלחה",
@@ -1608,7 +1615,16 @@
     "reassignTitle": "שיוך מחדש",
     "reassignDescription": "העברת הזמנה {{order}} לשליח אחר עם רישום.",
     "supervisorPrefix": "מפקח",
-    "noSupervisorShort": "ללא מפקח"
+    "noSupervisorShort": "ללא מפקח",
+    "roster": {
+      "nearPickup": "קרוב לנקודת האיסוף",
+      "farPickup": "רחוק מנקודת האיסוף",
+      "zoneMismatch": "לא מותר לאזור הזה",
+      "otherCompany": "חברה אחרת",
+      "captainLocationUnknown": "מיקום השליח לא זמין לחישוב מרחק",
+      "pickupCoordsMissingBanner": "חסרות קואורדינטות לאיסוף — השרת עדיין יאמת זכאות לשיוך.",
+      "noneForBranch": "אין שליחים התואמים לסניף של ההזמנה."
+    }
   }
 }
 

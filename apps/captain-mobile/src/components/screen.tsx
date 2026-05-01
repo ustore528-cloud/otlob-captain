@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { homeTheme } from "@/features/home/theme";
+import { CAPTAIN_TABLET_MIN_WIDTH, captainWideContentStyle } from "@/theme/captain-wide-layout";
 
 type Props = {
   title: string;
@@ -10,9 +11,11 @@ type Props = {
 };
 
 export function Screen({ title, subtitle, children }: Props) {
+  const { width } = useWindowDimensions();
+  const wide = width >= CAPTAIN_TABLET_MIN_WIDTH;
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <View style={styles.inner}>
+      <View style={[styles.inner, wide && captainWideContentStyle]}>
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         {children}

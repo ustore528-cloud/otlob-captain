@@ -6,6 +6,9 @@ export const routes = {
   auth: {
     login: "/(auth)/login" as Href,
   },
+  guest: {
+    home: "/(guest)/home" as Href,
+  },
   app: {
     /** المسار الافتراضي بعد تسجيل الدخول — تبويب الطلبات المتاحة */
     tabs: "/(app)/(tabs)/orders" as Href,
@@ -18,5 +21,6 @@ export const routes = {
     tracking: "/(app)/(tabs)/tracking" as Href,
     notifications: "/(app)/(tabs)/notifications" as Href,
     profile: "/(app)/(tabs)/profile" as Href,
+    accountDelete: "/(app)/account-delete" as Href,
   },
 } as const;

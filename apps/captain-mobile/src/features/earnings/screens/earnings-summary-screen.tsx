@@ -179,10 +179,17 @@ export function EarningsSummaryScreen() {
           <>
             <SectionCard title={t("earnings.sectionPerformance")} icon="analytics-outline" compact style={styles.metricsSection}>
               <MetricCard
-                title={t("earnings.totalCollection")}
-                value={formatOrderAmountAr(data?.totalCashCollection ?? "0")}
-                hint={t("earnings.totalCollectionHint")}
+                title={t("earnings.deliveryEarnings")}
+                value={formatOrderAmountAr(data?.totalDeliveryFees ?? "0")}
+                hint={t("earnings.deliveryEarningsHint")}
               />
+              <View style={[styles.secondaryMetric, styles.metricBelowPrimary]}>
+                <MetricCard
+                  title={t("earnings.totalCollection")}
+                  value={formatOrderAmountAr(data?.totalCashCollection ?? "0")}
+                  hint={t("earnings.totalCollectionHint")}
+                />
+              </View>
               <View style={styles.statsRow}>
                 <MetricCard
                   dense
@@ -194,9 +201,10 @@ export function EarningsSummaryScreen() {
                 <MetricCard
                   dense
                   style={styles.statCell}
-                  title={t("earnings.statOrderValue")}
-                  value={formatOrderAmountAr(data?.totalAmount ?? "0")}
-                  accessory={<Ionicons name="pricetag-outline" size={20} color={captainUiTheme.accent} />}
+                  title={t("earnings.statOrderProductsValue")}
+                  value={formatOrderAmountAr(data?.totalOrderValue ?? "0")}
+                  hint={t("earnings.statOrderProductsValueHint")}
+                  accessory={<Ionicons name="information-circle-outline" size={20} color={captainUiTheme.textSubtle} />}
                 />
               </View>
             </SectionCard>
@@ -263,6 +271,12 @@ const styles = StyleSheet.create({
   },
   chipText: { color: captainUiTheme.textMuted, fontSize: 13, fontWeight: "600" },
   chipTextActive: { color: captainUiTheme.accent, fontWeight: "800" },
+  secondaryMetric: {
+    width: "100%",
+  },
+  metricBelowPrimary: {
+    marginTop: captainSpacing.md,
+  },
   statsRow: {
     flexDirection: "row-reverse",
     gap: captainSpacing.sm + 4,
