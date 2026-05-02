@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "npm run build -w @captain/shared",
+    "postinstall": "npm run build -w @captain/shared && patch-package",
     "build": "npm run build -w @captain/shared && npm run build -w @captain/api && npm run build -w @captain/web",
     "dev": "concurrently -n shared,api,web -c blue,green,magenta \"npm run dev -w @captain/shared\" \"npm run dev -w @captain/api\" \"npm run dev -w @captain/web\"",
     "dev:api": "npm run dev -w @captain/api",
@@ -22,7 +22,8 @@
     "verify:public-company-branches": "npm run verify:public-company-branches -w @captain/api"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "patch-package": "^8.0.1"
   },
   "engines": {
     "node": ">=20"

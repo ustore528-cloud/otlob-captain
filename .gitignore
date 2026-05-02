@@ -78,3 +78,6 @@ apps/captain-mobile/com.facebook.react.fabric.mounting.SurfaceMountingManager
 # Misc
 *.pem
 .vercel
+
+# API local scratch / QA dumps (never commit)
+apps/api/tmp/

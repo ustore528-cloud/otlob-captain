@@ -17,7 +17,10 @@ const HEADER_KEYS: Array<[keyof OrdersHistoryReportRow, string]> = [
   ["storeAmount", "csv.storeAmount"],
   ["deliveryFee", "csv.deliveryFee"],
   ["customerCollectionAmount", "csv.customerCollectionAmount"],
-  ["profitOrCommission", "csv.profitOrCommission"],
+  ["profitOrCommission", "csv.platformCommission"],
+  ["companyProfit", "csv.companyProfit"],
+  ["captainNetShare", "csv.captainNetShare"],
+  ["captainBalanceDeduction", "csv.captainBalanceDeduction"],
 ];
 
 function esc(value: string): string {
@@ -54,6 +57,12 @@ function formatCsvCell(
     const time = Date.parse(s);
     if (Number.isNaN(time)) return esc(s);
     return esc(new Date(time).toLocaleString(dateLocale, { hour12: false }));
+  }
+
+  if (v === null || v === undefined) {
+    if (key === "companyProfit" || key === "captainNetShare" || key === "captainBalanceDeduction") {
+      return esc(EM_DASH);
+    }
   }
 
   if (typeof v === "number") return esc(v.toFixed(2));

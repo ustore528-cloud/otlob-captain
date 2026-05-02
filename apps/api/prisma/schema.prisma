@@ -805,6 +805,11 @@ model DashboardSettings {
   prepaidAllowCaptainCustomCommission  Boolean  @default(true) @map("prepaid_allow_captain_custom_commission")
   prepaidMinimumBalanceToReceiveOrders Decimal  @default(0) @map("prepaid_minimum_balance_to_receive_orders") @db.Decimal(12, 2)
   prepaidAllowManualAssignmentOverride Boolean  @default(false) @map("prepaid_allow_manual_assignment_override")
+  /**
+   * صافي حصة الكابتن الثابتة لكل توصيل (مثال ₪10) — أساس: رسوم التوصيل فقط.
+   * خصم رصيد الكابتن = delivery_fee − captain_fixed_share_per_delivery (بحد أدنى 0).
+   */
+  captainFixedSharePerDelivery         Decimal  @default(10) @map("captain_fixed_share_per_delivery") @db.Decimal(12, 2)
   updatedAt                            DateTime @updatedAt @map("updated_at")
 
   @@map("dashboard_settings")

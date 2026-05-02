@@ -392,7 +392,7 @@ export function ReportsPageView() {
           {delivered.isError ? <InlineAlert variant="error">{err(delivered.error)}</InlineAlert> : null}
           {delivered.data ? (
             <TableShell>
-              <table className="w-full min-w-[880px] border-separate border-spacing-0 text-sm">
+              <table className="w-full min-w-[1200px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="bg-muted/30 text-muted">
                     <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">{t("reports.colLineTime")}</th>
@@ -400,13 +400,16 @@ export function ReportsPageView() {
                     <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">{t("reports.colStore")}</th>
                     <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">{t("reports.colCaptain")}</th>
                     <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.colDeliveryFee")}</th>
-                    <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.colCommission")}</th>
+                    <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.colPlatformCommission")}</th>
+                    <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.colCompanyProfit")}</th>
+                    <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.colCaptainNet")}</th>
+                    <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.colCaptainDeduction")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {delivered.data.items.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-0">
+                      <td colSpan={9} className="p-0">
                         <EmptyState title={t("reports.deliveredEmpty")} className="border-0 py-6 shadow-none" />
                       </td>
                     </tr>
@@ -432,7 +435,16 @@ export function ReportsPageView() {
                           {r.deliveryFee} {r.currency === "ILS" ? ILS_LABEL : r.currency}
                         </td>
                         <td className="border-b border-card-border px-3 py-2.5 font-mono" dir="ltr">
-                          {r.commissionAmount} {r.currency === "ILS" ? ILS_LABEL : r.currency}
+                          {r.platformCommission} {r.currency === "ILS" ? ILS_LABEL : r.currency}
+                        </td>
+                        <td className="border-b border-card-border px-3 py-2.5 font-mono" dir="ltr">
+                          {r.companyProfit} {r.currency === "ILS" ? ILS_LABEL : r.currency}
+                        </td>
+                        <td className="border-b border-card-border px-3 py-2.5 font-mono" dir="ltr">
+                          {r.captainNetShare} {r.currency === "ILS" ? ILS_LABEL : r.currency}
+                        </td>
+                        <td className="border-b border-card-border px-3 py-2.5 font-mono" dir="ltr">
+                          {r.captainBalanceDeduction} {r.currency === "ILS" ? ILS_LABEL : r.currency}
                         </td>
                       </tr>
                     ))
@@ -545,16 +557,18 @@ export function ReportsPageView() {
           {ordersHistory.isLoading ? <LoadingBlock message={t("reports.loadingHistory")} compact /> : null}
           {ordersHistory.isError ? <InlineAlert variant="error">{err(ordersHistory.error)}</InlineAlert> : null}
           {ordersHistory.data?.totals ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <StatTile label={t("reports.totStore")} value={ordersHistory.data.totals.totalStoreAmount} />
               <StatTile label={t("reports.totDelivery")} value={ordersHistory.data.totals.totalDeliveryFees} />
               <StatTile label={t("reports.totCustomer")} value={ordersHistory.data.totals.totalCustomerCollection} />
-              <StatTile label={t("reports.totProfit")} value={ordersHistory.data.totals.totalProfitOrCommission} />
+              <StatTile label={t("reports.totPlatform")} value={ordersHistory.data.totals.totalPlatformCommission} />
+              <StatTile label={t("reports.totCompanyProfit")} value={ordersHistory.data.totals.totalCompanyProfit} />
+              <StatTile label={t("reports.totCaptainDeduction")} value={ordersHistory.data.totals.totalCaptainBalanceDeduction} />
             </div>
           ) : null}
           {ordersHistory.data ? (
             <TableShell>
-              <table className="w-full min-w-[1400px] border-separate border-spacing-0 text-sm">
+              <table className="w-full min-w-[1600px] border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr className="bg-muted/30 text-muted">
                     <th className="border-b border-card-border px-3 py-2.5 text-right text-xs font-medium">{t("reports.thOrderNumber")}</th>
@@ -570,13 +584,16 @@ export function ReportsPageView() {
                     <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.thStoreAmount")}</th>
                     <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.thDeliveryFee")}</th>
                     <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.thCustomerCollection")}</th>
-                    <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.thProfit")}</th>
+                    <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.thPlatformCommission")}</th>
+                    <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.thCompanyProfit")}</th>
+                    <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.thCaptainNet")}</th>
+                    <th className="border-b border-card-border px-3 py-2.5 text-left text-xs font-medium">{t("reports.thCaptainDeduction")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ordersHistory.data.rows.length === 0 ? (
                     <tr>
-                      <td colSpan={14} className="p-0">
+                      <td colSpan={17} className="p-0">
                         <EmptyState title={t("reports.historyEmpty")} className="border-0 py-6 shadow-none" />
                       </td>
                     </tr>
@@ -615,6 +632,15 @@ export function ReportsPageView() {
                         <td className="border-b border-card-border px-3 py-2.5 font-mono" dir="ltr">{r.deliveryFee.toFixed(2)}</td>
                         <td className="border-b border-card-border px-3 py-2.5 font-mono" dir="ltr">{r.customerCollectionAmount.toFixed(2)}</td>
                         <td className="border-b border-card-border px-3 py-2.5 font-mono" dir="ltr">{r.profitOrCommission.toFixed(2)}</td>
+                        <td className="border-b border-card-border px-3 py-2.5 font-mono text-muted" dir="ltr">
+                          {r.companyProfit != null ? r.companyProfit.toFixed(2) : "—"}
+                        </td>
+                        <td className="border-b border-card-border px-3 py-2.5 font-mono text-muted" dir="ltr">
+                          {r.captainNetShare != null ? r.captainNetShare.toFixed(2) : "—"}
+                        </td>
+                        <td className="border-b border-card-border px-3 py-2.5 font-mono text-muted" dir="ltr">
+                          {r.captainBalanceDeduction != null ? r.captainBalanceDeduction.toFixed(2) : "—"}
+                        </td>
                       </tr>
                     ))
                   )}

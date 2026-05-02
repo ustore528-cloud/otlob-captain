@@ -74,17 +74,17 @@ export async function applyDeliveredOrderLedgerTx(
 
   if (!order.assignedCaptainId) return;
 
-  const comm = await captainPrepaidBalanceService.resolveDeliveredCommissionForLedgerTx(tx, {
+  const fin = await captainPrepaidBalanceService.resolveDeliveredCommissionForLedgerTx(tx, {
     assignedCaptainId: order.assignedCaptainId,
     amount: order.amount,
     deliveryFee: order.deliveryFee,
     cashCollection: order.cashCollection,
   });
-  if (!comm) return;
+  if (!fin) return;
 
   const captainWallet = await ensureWalletAccountInTx(tx, {
     ownerType: WalletOwnerType.CAPTAIN,
-    ownerId: comm.captainId,
+    ownerId: fin.captainId,
     companyId: order.companyId,
   });
 
@@ -94,7 +94,7 @@ export async function applyDeliveredOrderLedgerTx(
     await appendLedgerEntryInTx(tx, {
       walletAccountId: captainWallet.id,
       entryType: LedgerEntryType.ORDER_DELIVERED_CAPTAIN_DEDUCTION,
-      amount: comm.commission.negated(),
+      amount: fin.captainBalanceDeduction.negated(),
       idempotencyKey,
       orderId: order.id,
       createdByUserId: actorUserId,
@@ -103,15 +103,19 @@ export async function applyDeliveredOrderLedgerTx(
       metadata: {
         orderNumber: order.orderNumber,
         leg: "captain_deduction",
-        deliveryFee: comm.deliveryFee.toFixed(2),
-        commissionPercent: comm.commissionPercent.toFixed(2),
+        deliveryFee: fin.deliveryFee.toFixed(2),
+        commissionPercent: fin.commissionPercent.toFixed(2),
+        platformCommission: fin.platformCommission.toFixed(2),
+        companyProfit: fin.companyProfit.toFixed(2),
+        captainNetShare: fin.captainNetShare.toFixed(2),
+        captainBalanceDeduction: fin.captainBalanceDeduction.toFixed(2),
       },
     });
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error("[order-delivered-ledger] append failed", {
       orderId: order.id,
-      captainId: comm.captainId,
+      captainId: fin.captainId,
       walletId: captainWallet.id,
       transactionType: txType,
       idempotencyKey,
@@ -126,10 +130,13 @@ export async function applyDeliveredOrderLedgerTx(
       orderNumber: order.orderNumber,
     },
     comm: {
-      commission: comm.commission,
-      captainId: comm.captainId,
-      deliveryFee: comm.deliveryFee,
-      commissionPercent: comm.commissionPercent,
+      captainBalanceDeduction: fin.captainBalanceDeduction,
+      captainId: fin.captainId,
+      deliveryFee: fin.deliveryFee,
+      commissionPercent: fin.commissionPercent,
+      platformCommission: fin.platformCommission,
+      captainNetShare: fin.captainNetShare,
+      companyProfit: fin.companyProfit,
     },
     actorUserId,
   });

@@ -272,6 +272,15 @@ export type DeliveredCommissionReportItem = {
   captainId: string | null;
   captainName: string | null;
   deliveryFee: string;
+  /** عمولة المنصّة (% من رسوم التوصيل). */
+  platformCommission: string;
+  /** ربح الشركة بعد عمولة المنصّة من خصم الكابتن. */
+  companyProfit: string;
+  /** صافي حصة الكابتن الثابتة من الإعدادات. */
+  captainNetShare: string;
+  /** إجمالي الخصم من رصيد/محفظة الكابتن. */
+  captainBalanceDeduction: string;
+  /** نفس `captainBalanceDeduction` (مبلغ سطر الدفتر). */
   commissionAmount: string;
   currency: string;
   ledgerCreatedAt: string;
@@ -308,8 +317,11 @@ export type OrdersHistoryReportRow = {
   storeAmount: number;
   deliveryFee: number;
   customerCollectionAmount: number;
-  /** Commission estimate: delivery fee × captain commission % (same basis as list row). */
+  /** عمولة المنصّة (تقدير لو لم يُسلَّم بعد؛ عند DELIVERED = التسوية الفعلية). */
   profitOrCommission: number;
+  companyProfit: number | null;
+  captainNetShare: number | null;
+  captainBalanceDeduction: number | null;
   displayI18n?: {
     storeName?: ValueTranslations;
     storeArea?: ValueTranslations;
@@ -329,7 +341,9 @@ export type OrdersHistoryReportPage = {
     totalStoreAmount: number;
     totalDeliveryFees: number;
     totalCustomerCollection: number;
-    totalProfitOrCommission: number;
+    totalPlatformCommission: number;
+    totalCompanyProfit: number;
+    totalCaptainBalanceDeduction: number;
   };
   dateFilter: {
     field: "created_at";

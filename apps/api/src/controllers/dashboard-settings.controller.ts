@@ -32,6 +32,9 @@ function normalizePatch(body: DashboardSettingsPatchBody) {
     ...(body.prepaidAllowManualAssignmentOverride !== undefined && {
       prepaidAllowManualAssignmentOverride: body.prepaidAllowManualAssignmentOverride,
     }),
+    ...(body.captainFixedSharePerDelivery !== undefined && {
+      captainFixedSharePerDelivery: body.captainFixedSharePerDelivery,
+    }),
   };
 }
 

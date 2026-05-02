@@ -25,7 +25,11 @@ import { AppError } from "../utils/errors.js";
 import { activityService } from "./activity.service.js";
 import { buildCaptainReadAlignment, getBalanceForPrepaidProductChecks } from "./captain-read-alignment.js";
 import { appendLedgerEntryInTx, ensureWalletAccountInTx } from "./ledger/index.js";
-import { resolveDeliveryFeeForCommission } from "../domain/order-delivery-fee-for-commission.js";
+import {
+  resolveDeliveryFeeForCommission,
+  resolveDeliverySettlementFromDeliveryFee,
+  resolveEffectivePlatformCommissionPercent,
+} from "../domain/order-delivery-fee-for-commission.js";
 import { getOrCreateCompanyWallet } from "./company-wallet.service.js";
 
 /** Company wallet debit leg for CA → captain prepaid (pairs with captain `CAPTAIN_PREPAID_CHARGE` leg). */
@@ -192,7 +196,7 @@ function summaryDto(input: {
     lastChargeAt: input.lastChargeAt?.toISOString() ?? null,
     lastDeductionAt: input.lastDeductionAt?.toISOString() ?? null,
     explanationText:
-      "يتم خصم نسبة العمولة من رسوم التوصيل فقط بعد تسليم الطلب. لا يتم الخصم من الطلبات الملغاة أو غير المسلمة.",
+      "يتم خصم من رصيد الكابتن بعد التسليم وفق رسوم التوصيل فقط: الخصم = رسوم التوصيل − صافي حصة الكابتن الثابتة؛ عمولة المنصّة نسبة من رسوم التوصيل؛ لا يُستخدم سعر البضاعة. لا خصم للطلبات الملغاة أو غير المسلمة.",
   };
 }
 
@@ -253,8 +257,9 @@ export const captainPrepaidBalanceService = {
   },
 
   /**
-   * Commission for a delivered order: **percent × delivery fee** (see `resolveDeliveryFeeForCommission`).
-   * For application on the unified ledger (ignores prepaidEnabled).
+   * Settlement for a delivered order on the unified ledger: deduction from captain =
+   * `deliveryFee − captainFixedSharePerDelivery` (min 0); platform commission = `% × deliveryFee`.
+   * Ignores `prepaidEnabled` for ledger posting; mirror uses prepaid flag separately.
    */
   async resolveDeliveredCommissionForLedgerTx(
     tx: Tx,
@@ -265,21 +270,37 @@ export const captainPrepaidBalanceService = {
       cashCollection: Prisma.Decimal;
     },
   ): Promise<{
-    commission: Prisma.Decimal;
+    captainBalanceDeduction: Prisma.Decimal;
+    platformCommission: Prisma.Decimal;
+    companyProfit: Prisma.Decimal;
+    captainNetShare: Prisma.Decimal;
     captainId: string;
     deliveryFee: Prisma.Decimal;
     commissionPercent: Prisma.Decimal;
   } | null> {
     if (!order.assignedCaptainId) return null;
-    const { captain, policy } = await loadCaptainPolicyTx(tx, order.assignedCaptainId);
+    const { captain } = await loadCaptainPolicyTx(tx, order.assignedCaptainId);
+    const settings = await getSettingsTx(tx);
     const deliveryFee = resolveDeliveryFeeForCommission(order);
-    const commission = this.calculateCommission(deliveryFee, policy.commissionPercent);
-    if (commission.lte(ZERO)) return null;
-    return {
-      commission,
-      captainId: captain.id,
+    const commissionPercent = resolveEffectivePlatformCommissionPercent({
+      prepaidAllowCaptainCustomCommission: settings.prepaidAllowCaptainCustomCommission,
+      prepaidDefaultCommissionPercent: settings.prepaidDefaultCommissionPercent,
+      captainCommissionPercentOverride: captain.commissionPercent,
+    });
+    const settlement = resolveDeliverySettlementFromDeliveryFee({
       deliveryFee,
-      commissionPercent: policy.commissionPercent,
+      platformCommissionPercent: commissionPercent,
+      captainFixedSharePerDelivery: settings.captainFixedSharePerDelivery,
+    });
+    if (settlement.captainBalanceDeduction.lte(ZERO)) return null;
+    return {
+      captainBalanceDeduction: settlement.captainBalanceDeduction,
+      platformCommission: settlement.platformCommission,
+      companyProfit: settlement.companyProfit,
+      captainNetShare: settlement.captainNetShare,
+      captainId: captain.id,
+      deliveryFee: settlement.deliveryFee,
+      commissionPercent,
     };
   },
 
@@ -292,10 +313,13 @@ export const captainPrepaidBalanceService = {
     input: {
       order: { id: string; orderNumber: string };
       comm: {
-        commission: Prisma.Decimal;
+        captainBalanceDeduction: Prisma.Decimal;
         captainId: string;
         deliveryFee: Prisma.Decimal;
         commissionPercent: Prisma.Decimal;
+        platformCommission: Prisma.Decimal;
+        captainNetShare: Prisma.Decimal;
+        companyProfit: Prisma.Decimal;
       };
       actorUserId: string | null;
     },
@@ -305,8 +329,8 @@ export const captainPrepaidBalanceService = {
     const { captain, policy } = await loadCaptainPolicyTx(tx, input.comm.captainId);
     if (!policy.prepaidEnabled) return;
 
-    const commission = money(input.comm.commission);
-    if (commission.lte(ZERO)) return;
+    const deduction = money(input.comm.captainBalanceDeduction);
+    if (deduction.lte(ZERO)) return;
 
     const existing = await tx.captainBalanceTransaction.findFirst({
       where: {
@@ -319,13 +343,13 @@ export const captainPrepaidBalanceService = {
     if (existing) return;
 
     const deliveryFee = money(input.comm.deliveryFee);
-    const nextBalance = money(captain.prepaidBalance.minus(commission));
+    const nextBalance = money(captain.prepaidBalance.minus(deduction));
 
     await tx.captain.update({
       where: { id: captain.id },
       data: {
         prepaidBalance: nextBalance,
-        totalDeducted: { increment: commission },
+        totalDeducted: { increment: deduction },
         lastBalanceUpdatedAt: new Date(),
       },
     });
@@ -334,12 +358,12 @@ export const captainPrepaidBalanceService = {
       data: {
         captainId: captain.id,
         type: CaptainBalanceTransactionType.DEDUCTION,
-        amount: commission,
+        amount: deduction,
         balanceAfter: nextBalance,
         commissionPercentSnapshot: policy.commissionPercent,
         deliveryFeeSnapshot: deliveryFee,
         orderId: input.order.id,
-        note: `تم خصم العمولة بعد تسليم الطلب ${input.order.orderNumber}`,
+        note: `خصم التوصيل بعد تسليم الطلب ${input.order.orderNumber} (عمولة منصّة ${money(input.comm.platformCommission).toFixed(2)}، ربح شركة ${money(input.comm.companyProfit).toFixed(2)}، صافي كابتن ${money(input.comm.captainNetShare).toFixed(2)})`,
         createdBy: input.actorUserId,
       },
     });
@@ -349,7 +373,10 @@ export const captainPrepaidBalanceService = {
       orderNumber: input.order.orderNumber,
       deliveryFee: deliveryFee.toFixed(2),
       commissionPercent: policy.commissionPercent.toFixed(2),
-      commission: commission.toFixed(2),
+      platformCommission: money(input.comm.platformCommission).toFixed(2),
+      companyProfit: money(input.comm.companyProfit).toFixed(2),
+      captainNetShare: money(input.comm.captainNetShare).toFixed(2),
+      captainBalanceDeduction: deduction.toFixed(2),
       balanceAfter: nextBalance.toFixed(2),
     });
   },
@@ -383,18 +410,29 @@ export const captainPrepaidBalanceService = {
     if (existing) return { skipped: true as const, reason: "ALREADY_DEDUCTED" as const };
 
     const { captain, policy } = await loadCaptainPolicyTx(tx, order.assignedCaptainId);
+    const settings = await getSettingsTx(tx);
     if (!policy.prepaidEnabled) return { skipped: true as const, reason: "PREPAID_DISABLED" as const };
 
     const deliveryFee = resolveDeliveryFeeForCommission(order);
-    const commission = this.calculateCommission(deliveryFee, policy.commissionPercent);
-    if (commission.lte(0)) return { skipped: true as const, reason: "ZERO_COMMISSION" as const };
+    const commissionPercent = resolveEffectivePlatformCommissionPercent({
+      prepaidAllowCaptainCustomCommission: settings.prepaidAllowCaptainCustomCommission,
+      prepaidDefaultCommissionPercent: settings.prepaidDefaultCommissionPercent,
+      captainCommissionPercentOverride: captain.commissionPercent,
+    });
+    const settlement = resolveDeliverySettlementFromDeliveryFee({
+      deliveryFee,
+      platformCommissionPercent: commissionPercent,
+      captainFixedSharePerDelivery: settings.captainFixedSharePerDelivery,
+    });
+    const deduction = settlement.captainBalanceDeduction;
+    if (deduction.lte(0)) return { skipped: true as const, reason: "ZERO_CAPTAIN_DEDUCTION" as const };
 
-    const nextBalance = money(captain.prepaidBalance.minus(commission));
+    const nextBalance = money(captain.prepaidBalance.minus(deduction));
     await tx.captain.update({
       where: { id: captain.id },
       data: {
         prepaidBalance: nextBalance,
-        totalDeducted: { increment: commission },
+        totalDeducted: { increment: deduction },
         lastBalanceUpdatedAt: new Date(),
       },
     });
@@ -403,12 +441,12 @@ export const captainPrepaidBalanceService = {
       data: {
         captainId: captain.id,
         type: CaptainBalanceTransactionType.DEDUCTION,
-        amount: commission,
+        amount: deduction,
         balanceAfter: nextBalance,
         commissionPercentSnapshot: policy.commissionPercent,
         deliveryFeeSnapshot: deliveryFee,
         orderId,
-        note: `تم خصم العمولة بعد تسليم الطلب ${order.orderNumber}`,
+        note: `خصم التوصيل بعد تسليم الطلب ${order.orderNumber}`,
         createdBy: actorUserId,
       },
     });
@@ -418,7 +456,7 @@ export const captainPrepaidBalanceService = {
       orderNumber: order.orderNumber,
       deliveryFee: deliveryFee.toFixed(2),
       commissionPercent: policy.commissionPercent.toFixed(2),
-      commission: commission.toFixed(2),
+      captainBalanceDeduction: deduction.toFixed(2),
       balanceAfter: nextBalance.toFixed(2),
     });
 
@@ -774,10 +812,13 @@ export const captainPrepaidBalanceService = {
           select: { balanceCached: true },
         }),
       ]);
+      const settings = await getSettingsTx(tx);
       const averageDeliveryFee = money(deliveredFeeAvgRows[0]?.avg ?? 0);
-      const estimatedCommission = this.calculateCommission(averageDeliveryFee, policy.commissionPercent);
-      const estimatedRemainingOrders = estimatedCommission.gt(0)
-        ? Math.max(0, Math.floor(policy.currentBalance.div(estimatedCommission).toNumber()))
+      const captainFixed = money(settings.captainFixedSharePerDelivery);
+      const estimatedDeductionPerOrder = money(averageDeliveryFee.minus(captainFixed));
+      const estimatedUnit = estimatedDeductionPerOrder.gt(0) ? estimatedDeductionPerOrder : ZERO;
+      const estimatedRemainingOrders = estimatedUnit.gt(0)
+        ? Math.max(0, Math.floor(policy.currentBalance.div(estimatedUnit).toNumber()))
         : null;
 
       const readAlignment = buildCaptainReadAlignment({

@@ -9,7 +9,11 @@ import { prisma } from "../lib/prisma.js";
 import { isCompanyAdminRole, isSuperAdminRole, type AppRole } from "../lib/rbac-roles.js";
 import { resolveStaffTenantOrderListFilter } from "./tenant-scope.service.js";
 import { money } from "./ledger/money.js";
-import { resolveDeliveryFeeForCommission } from "../domain/order-delivery-fee-for-commission.js";
+import {
+  resolveDeliveryFeeForCommission,
+  resolveDeliverySettlementFromDeliveryFee,
+  resolveEffectivePlatformCommissionPercent,
+} from "../domain/order-delivery-fee-for-commission.js";
 import { LEDGER_REF_CAPTAIN_PREPAID_OP } from "../config/captain-prepaid-ledger.js";
 import { AppError } from "../utils/errors.js";
 import { normalizePaginationForPrisma } from "../utils/pagination.js";
@@ -30,25 +34,36 @@ const CHARGE_ADJUST_TYPES: CaptainBalanceTransactionType[] = [
 const ORDERS_HISTORY_TOTALS_BATCH = 800;
 
 /**
- * Sums store amount, delivery fees (persisted or derived), customer collection, and estimated
- * commission for **all** orders matching `where` (same predicate as orders history list).
- * Batched reads to avoid loading huge result sets at once.
+ * Sums store amount, delivery fees, customer collection for **all** matching orders; sums platform
+ * commission, company profit, and captain balance deduction for **DELIVERED** only (delivery-fee basis).
  */
 async function aggregateOrdersHistoryTotals(where: Prisma.OrderWhereInput): Promise<{
   totalStoreAmount: Prisma.Decimal;
   totalDeliveryFees: Prisma.Decimal;
   totalCustomerCollection: Prisma.Decimal;
-  totalProfitOrCommission: Prisma.Decimal;
+  totalPlatformCommission: Prisma.Decimal;
+  totalCompanyProfit: Prisma.Decimal;
+  totalCaptainBalanceDeduction: Prisma.Decimal;
 }> {
+  const settings = await prisma.dashboardSettings.upsert({
+    where: { id: "default" },
+    create: { id: "default" },
+    update: {},
+  });
+  const captainFixed = money(settings.captainFixedSharePerDelivery);
+
   let skip = 0;
   let totalStore = money(0);
   let totalDelivery = money(0);
   let totalCustomer = money(0);
-  let totalProfit = money(0);
+  let totalPlatform = money(0);
+  let totalCompany = money(0);
+  let totalCaptainDeduction = money(0);
   for (;;) {
     const batch = await prisma.order.findMany({
       where,
       select: {
+        status: true,
         amount: true,
         deliveryFee: true,
         cashCollection: true,
@@ -65,12 +80,24 @@ async function aggregateOrdersHistoryTotals(where: Prisma.OrderWhereInput): Prom
         deliveryFee: o.deliveryFee,
         cashCollection: o.cashCollection,
       });
-      const pct = o.assignedCaptain?.commissionPercent ?? new Prisma.Decimal(0);
-      const comm = money(fee.mul(pct).div(100));
       totalStore = money(totalStore.plus(o.amount));
       totalDelivery = money(totalDelivery.plus(fee));
       totalCustomer = money(totalCustomer.plus(o.cashCollection));
-      totalProfit = money(totalProfit.plus(comm));
+      if (o.status === OrderStatus.DELIVERED) {
+        const effectivePct = resolveEffectivePlatformCommissionPercent({
+          prepaidAllowCaptainCustomCommission: settings.prepaidAllowCaptainCustomCommission,
+          prepaidDefaultCommissionPercent: settings.prepaidDefaultCommissionPercent,
+          captainCommissionPercentOverride: o.assignedCaptain?.commissionPercent ?? null,
+        });
+        const settlement = resolveDeliverySettlementFromDeliveryFee({
+          deliveryFee: fee,
+          platformCommissionPercent: effectivePct,
+          captainFixedSharePerDelivery: captainFixed,
+        });
+        totalPlatform = money(totalPlatform.plus(settlement.platformCommission));
+        totalCompany = money(totalCompany.plus(settlement.companyProfit));
+        totalCaptainDeduction = money(totalCaptainDeduction.plus(settlement.captainBalanceDeduction));
+      }
     }
     skip += ORDERS_HISTORY_TOTALS_BATCH;
     if (batch.length < ORDERS_HISTORY_TOTALS_BATCH) break;
@@ -79,7 +106,26 @@ async function aggregateOrdersHistoryTotals(where: Prisma.OrderWhereInput): Prom
     totalStoreAmount: totalStore,
     totalDeliveryFees: totalDelivery,
     totalCustomerCollection: totalCustomer,
-    totalProfitOrCommission: totalProfit,
+    totalPlatformCommission: totalPlatform,
+    totalCompanyProfit: totalCompany,
+    totalCaptainBalanceDeduction: totalCaptainDeduction,
+  };
+}
+
+function parseDeliveredCaptainLedgerMetadata(meta: Prisma.JsonValue | null): {
+  platformCommission?: string;
+  companyProfit?: string;
+  captainNetShare?: string;
+  captainBalanceDeduction?: string;
+} {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return {};
+  const m = meta as Record<string, unknown>;
+  const str = (k: string) => (typeof m[k] === "string" ? m[k] : undefined);
+  return {
+    platformCommission: str("platformCommission"),
+    companyProfit: str("companyProfit"),
+    captainNetShare: str("captainNetShare"),
+    captainBalanceDeduction: str("captainBalanceDeduction"),
   };
 }
 
@@ -392,6 +438,7 @@ export const reportsService = {
           currency: true,
           createdAt: true,
           orderId: true,
+          metadata: true,
           order: {
             select: {
               orderNumber: true,
@@ -404,6 +451,7 @@ export const reportsService = {
               assignedCaptain: {
                 select: {
                   id: true,
+                  commissionPercent: true,
                   displayI18n: true,
                   user: { select: { fullName: true, displayI18n: true } },
                 },
@@ -413,13 +461,29 @@ export const reportsService = {
         },
       }),
     ]);
+    const dashSettings = await prisma.dashboardSettings.upsert({
+      where: { id: "default" },
+      create: { id: "default" },
+      update: {},
+    });
     const items = rows.map((r) => {
       const o = r.order!;
-      const commission = money(r.amount).abs();
+      const captainDeductionLedger = money(r.amount).abs();
       const feeForRow = resolveDeliveryFeeForCommission({
         amount: o.amount,
         deliveryFee: o.deliveryFee,
         cashCollection: o.cashCollection,
+      });
+      const parsed = parseDeliveredCaptainLedgerMetadata(r.metadata);
+      const effectivePct = resolveEffectivePlatformCommissionPercent({
+        prepaidAllowCaptainCustomCommission: dashSettings.prepaidAllowCaptainCustomCommission,
+        prepaidDefaultCommissionPercent: dashSettings.prepaidDefaultCommissionPercent,
+        captainCommissionPercentOverride: o.assignedCaptain?.commissionPercent ?? null,
+      });
+      const fallbackSettlement = resolveDeliverySettlementFromDeliveryFee({
+        deliveryFee: feeForRow,
+        platformCommissionPercent: effectivePct,
+        captainFixedSharePerDelivery: dashSettings.captainFixedSharePerDelivery,
       });
       const storeDi = storeDisplayI18nFromJson(o.store.displayI18n ?? undefined);
       const capUi = o.assignedCaptain?.user ? userDisplayI18nFromJson(o.assignedCaptain.user.displayI18n ?? undefined) : undefined;
@@ -441,7 +505,12 @@ export const reportsService = {
         captainId: o.assignedCaptainId ?? o.assignedCaptain?.id ?? null,
         captainName: o.assignedCaptain?.user?.fullName ?? null,
         deliveryFee: feeForRow.toFixed(2),
-        commissionAmount: commission.toFixed(2),
+        platformCommission: parsed.platformCommission ?? fallbackSettlement.platformCommission.toFixed(2),
+        companyProfit: parsed.companyProfit ?? fallbackSettlement.companyProfit.toFixed(2),
+        captainNetShare: parsed.captainNetShare ?? fallbackSettlement.captainNetShare.toFixed(2),
+        captainBalanceDeduction: parsed.captainBalanceDeduction ?? fallbackSettlement.captainBalanceDeduction.toFixed(2),
+        /** Same as captain wallet deduction amount (`abs(ledger.amount)`). */
+        commissionAmount: captainDeductionLedger.toFixed(2),
         currency: r.currency,
         ledgerCreatedAt: r.createdAt.toISOString(),
         ...(hasEnvelope ? { displayI18n: envelope } : {}),
@@ -533,6 +602,12 @@ export const reportsService = {
       }),
     ]);
 
+    const dashSettings = await prisma.dashboardSettings.upsert({
+      where: { id: "default" },
+      create: { id: "default" },
+      update: {},
+    });
+
     const items = rows.map((row) => {
       const logsAsc = row.assignmentLogs;
       const firstAssigned = logsAsc.length ? logsAsc[0]!.assignedAt : null;
@@ -542,8 +617,17 @@ export const reportsService = {
         deliveryFee: row.deliveryFee,
         cashCollection: row.cashCollection,
       });
-      const commissionPercent = row.assignedCaptain?.commissionPercent ?? new Prisma.Decimal(0);
-      const profitOrCommission = money(deliveryFeeResolved.mul(commissionPercent).div(100));
+      const effectivePct = resolveEffectivePlatformCommissionPercent({
+        prepaidAllowCaptainCustomCommission: dashSettings.prepaidAllowCaptainCustomCommission,
+        prepaidDefaultCommissionPercent: dashSettings.prepaidDefaultCommissionPercent,
+        captainCommissionPercentOverride: row.assignedCaptain?.commissionPercent ?? null,
+      });
+      const settlement = resolveDeliverySettlementFromDeliveryFee({
+        deliveryFee: deliveryFeeResolved,
+        platformCommissionPercent: effectivePct,
+        captainFixedSharePerDelivery: dashSettings.captainFixedSharePerDelivery,
+      });
+      const estimatePlatformOnly = money(deliveryFeeResolved.mul(effectivePct).div(100));
       const storeDi = storeDisplayI18nFromJson(row.store.displayI18n ?? undefined);
       const capUi = row.assignedCaptain?.user ? userDisplayI18nFromJson(row.assignedCaptain.user.displayI18n ?? undefined) : undefined;
       const capArea = row.assignedCaptain ? captainDisplayI18nFromJson(row.assignedCaptain.displayI18n ?? undefined) : undefined;
@@ -554,6 +638,9 @@ export const reportsService = {
         ...(capArea?.area ? { captainArea: capArea.area } : {}),
       };
       const hasHistoryEnvelope = Object.keys(historyEnvelope).length > 0;
+
+      const delivered = row.status === OrderStatus.DELIVERED;
+
       return {
         orderNumber: row.orderNumber,
         storeName: row.store.name,
@@ -568,7 +655,12 @@ export const reportsService = {
         storeAmount: Number(money(row.amount).toFixed(2)),
         deliveryFee: Number(deliveryFeeResolved.toFixed(2)),
         customerCollectionAmount: Number(money(row.cashCollection).toFixed(2)),
-        profitOrCommission: Number(profitOrCommission.toFixed(2)),
+        /** Platform commission: settled split when DELIVERED; otherwise %×fee estimate only. */
+        profitOrCommission: Number((delivered ? settlement.platformCommission : estimatePlatformOnly).toFixed(2)),
+        platformCommission: delivered ? Number(settlement.platformCommission.toFixed(2)) : null,
+        companyProfit: delivered ? Number(settlement.companyProfit.toFixed(2)) : null,
+        captainNetShare: delivered ? Number(settlement.captainNetShare.toFixed(2)) : null,
+        captainBalanceDeduction: delivered ? Number(settlement.captainBalanceDeduction.toFixed(2)) : null,
         ...(hasHistoryEnvelope ? { displayI18n: historyEnvelope } : {}),
       };
     });
@@ -585,7 +677,9 @@ export const reportsService = {
         totalStoreAmount: Number(totalsAgg.totalStoreAmount.toFixed(2)),
         totalDeliveryFees: Number(totalsAgg.totalDeliveryFees.toFixed(2)),
         totalCustomerCollection: Number(totalsAgg.totalCustomerCollection.toFixed(2)),
-        totalProfitOrCommission: Number(totalsAgg.totalProfitOrCommission.toFixed(2)),
+        totalPlatformCommission: Number(totalsAgg.totalPlatformCommission.toFixed(2)),
+        totalCompanyProfit: Number(totalsAgg.totalCompanyProfit.toFixed(2)),
+        totalCaptainBalanceDeduction: Number(totalsAgg.totalCaptainBalanceDeduction.toFixed(2)),
       },
       /** Rows are filtered by `orders.created_at` in `[from, to]` (UTC). Not delivery time. */
       dateFilter: {

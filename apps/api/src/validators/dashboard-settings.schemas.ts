@@ -13,6 +13,8 @@ export const DashboardSettingsPatchSchema = z
     prepaidAllowCaptainCustomCommission: z.boolean().optional(),
     prepaidMinimumBalanceToReceiveOrders: z.number().finite().min(0).optional(),
     prepaidAllowManualAssignmentOverride: z.boolean().optional(),
+    /** صافي حصة الكابتن الثابتة لكل توصيل (₪) — أساس التسوية مع رسوم التوصيل. */
+    captainFixedSharePerDelivery: z.number().finite().min(0).optional(),
   })
   .strict();
 
