@@ -40,6 +40,27 @@
     "geocodeBadShape": "תשובה לא חוקית משרת geocoding.",
     "geocodeBadFields": "נתוני קואורדינטות חסרים מהשרת."
   },
+  "chatbot": {
+    "panelTitle": "עוזר 2in",
+    "panelDisclaimer": "להסבר בלבד — אין הרצות שישנו מצב ההזמנות או יתרות.",
+    "welcomeLine": "שלום. הסברים על קישור טרקינג, יצירת הזמנה בעמוד ציבורי וכלים בהפצה — בלי הפעלה אוטומטית בהזמנות או שיבוצי שליח מהצ'אט.",
+    "welcomeAfterReset": "השיחה אופסה מקומית. כותבים בקצרה מה נדרש.",
+    "composerLabel": "הודעה לעוזר",
+    "composerPlaceholder": "שאלה או הפניה קצרה…",
+    "busyPlaceholder": "מעבד…",
+    "send": "שליחה",
+    "openPanel": "פתיחת הצ'אט",
+    "hidePanel": "סגירת הצ'אט",
+    "assistantShort": "עוזר",
+    "you": "אתם",
+    "newConversation": "שיחה חדשה",
+    "genericError": "לא ניתן לשלוח את ההודעה.",
+    "loadHistoryFailed": "נכשלה טעינת היסטוריה — רעננו ובדקו שוב.",
+    "trackResolveFail": "לא הצליח לפענח את קישור המעקב מהעמוד הזה.",
+    "trackResolvingHint": "מפענחים טוקן מעקב רגע…",
+    "trackBrokenHint": "קישור המעקב אינו תקף כאן — פתחו מחדש מההודעות או מהווטסאפ.",
+    "contextMissingHint": "אין הקשר מתאים בעדיין בסביבה הנוכחית."
+  },
   "mutationToasts": {
     "captainCreated": "השליח נוצר",
     "captainCreateFailed": "לא ניתן ליצור שליח",
@@ -1019,6 +1040,9 @@
       "descriptionCompany": "נתוני הלקוח, נקודת איסוף, פרטי מסירה וסכומים. המפה אופציונלית; אם המיקום לא מנוצב כאן, השליח יאשרו מאוחר יותר."
     },
     "form": {
+      "superAdminTenantHint": "הזמנות פלטפורמה חייבות להיות קשורות לחברה אחת כדי שתצוגת השיבוץ והרשימות יישארו ממוקדות.",
+      "superAdminCompany": "חברה",
+      "superAdminBranch": "סניף (אופציונלי)",
       "customerName": "שם הלקוח",
       "customerPhone": "טלפון הלקוח",
       "pickupAddress": "כתובת איסוף",
@@ -1044,6 +1068,7 @@
       "creating": "יוצר…",
       "submit": "יצירת הזמנה",
       "errors": {
+        "superAdminCompany": "בחרו את החברה שאליה ההזמנה משויכת.",
         "customerName": "נדרש שם לקוח.",
         "customerPhone": "נדרש טלפון לקוח.",
         "phoneFormat": "פורמט טלפון לא תקין.",

@@ -17,6 +17,7 @@ import {
 import { useAuthStore } from "@/stores/auth-store";
 import { useTranslation } from "react-i18next";
 import { getLocalizedText } from "@/i18n/localize-dynamic-text";
+import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
 
 export function DashboardLayout() {
   const { i18n } = useTranslation();
@@ -82,6 +83,7 @@ export function DashboardLayout() {
           <Outlet />
         </div>
       </main>
+      <ChatbotWidget mode="dashboard" />
     </div>
   );
 }

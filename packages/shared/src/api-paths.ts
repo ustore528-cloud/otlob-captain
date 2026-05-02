@@ -84,6 +84,38 @@ export const paths = {
     root: `${API_V1}/complaints`,
     status: (id: string) => `${API_V1}/complaints/${id}/status`,
   },
+  /** مساعد دردشة V1 — اختياري JWT؛ سياق العميل بدون Bearer */
+  chatbot: {
+    message: `${API_V1}/chatbot/message`,
+    conversation: (
+      conversationId: string,
+      query?: Partial<{ ownerCode: string; orderId: string; token: string }>,
+    ) => {
+      let u = `${API_V1}/chatbot/conversations/${encodeURIComponent(conversationId)}`;
+      if (query?.ownerCode != null || query?.orderId != null || query?.token != null) {
+        const p = new URLSearchParams();
+        if (query.ownerCode) p.set("ownerCode", query.ownerCode);
+        if (query.orderId) p.set("orderId", query.orderId);
+        if (query.token) p.set("token", query.token);
+        u += `?${p.toString()}`;
+      }
+      return u;
+    },
+    closeConversation: (
+      conversationId: string,
+      query?: Partial<{ ownerCode: string; orderId: string; token: string }>,
+    ) => {
+      let u = `${API_V1}/chatbot/conversations/${encodeURIComponent(conversationId)}/close`;
+      if (query?.ownerCode != null || query?.orderId != null || query?.token != null) {
+        const p = new URLSearchParams();
+        if (query.ownerCode) p.set("ownerCode", query.ownerCode);
+        if (query.orderId) p.set("orderId", query.orderId);
+        if (query.token) p.set("token", query.token);
+        u += `?${p.toString()}`;
+      }
+      return u;
+    },
+  },
   captains: {
     root: `${API_V1}/captains`,
     byId: (id: string) => `${API_V1}/captains/${id}`,

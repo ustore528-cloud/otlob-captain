@@ -851,3 +851,46 @@ model CaptainApplication {
   @@index([city])
   @@map("captain_applications")
 }
+
+enum ChatbotAudience {
+  DASHBOARD
+  CUSTOMER_PUBLIC
+}
+
+/**
+ * مساعد الدردشة V1 — سجل المحادثة فقط؛ لا علاقة مباشرة بتعديل الطلبات.
+ */
+model ChatbotConversation {
+  id        String           @id @default(cuid())
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+  closedAt  DateTime?       @map("closed_at")
+  audience  ChatbotAudience
+
+  /** لوحة الشركة — عزل حسب حساب مستخدم الشركة */
+  dashboardUserId String?     @map("dashboard_user_id")
+  companyScopeId String? @map("company_scope_id")
+
+  /** صفحة عمومية — يُعرَف الوصول بالرمز وأكواد الصفحة */
+  publicOwnerCode     String? @map("public_owner_code") @db.VarChar(64)
+  publicOrderId       String? @map("public_order_id")
+  publicTrackingToken String? @map("public_tracking_token") @db.VarChar(200)
+
+  messages ChatbotMessage[]
+
+  @@index([audience, dashboardUserId, updatedAt])
+  @@index([audience, companyScopeId, updatedAt])
+  @@map("chatbot_conversations")
+}
+
+model ChatbotMessage {
+  id             String               @id @default(cuid())
+  conversationId String               @map("conversation_id")
+  conversation   ChatbotConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String               @db.VarChar(16)
+  content        String               @db.Text
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("chatbot_messages")
+}

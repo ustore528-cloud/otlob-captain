@@ -51,6 +51,7 @@ import {
   type PublicRequestContext,
 } from "@/lib/api/services/public-request";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
 import { CustomerOrderBrowserNotifications } from "@/features/public-request/customer-order-browser-notifications";
 import {
   usePublicOrderLiveTracking,
@@ -1295,6 +1296,7 @@ export function PublicRequestOrderExperience({
           </>
         )}
       </main>
+      <ChatbotWidget mode="public_request" ownerCode={ownerCode.trim()} rtl={rtl} />
     </div>
   );
 }
@@ -2043,6 +2045,17 @@ export function PublicRequestSuccessStage({
           </motion.button>
         </div>
       </motion.div>
+      {receipt.orderId.trim() !== "" &&
+      receipt.trackingToken != null &&
+      receipt.trackingToken.trim() !== "" ? (
+        <ChatbotWidget
+          mode="public_order"
+          ownerCode={receipt.ownerCode.trim()}
+          orderId={receipt.orderId.trim()}
+          trackingToken={receipt.trackingToken.trim()}
+          rtl={rtl}
+        />
+      ) : null}
     </div>
   );
 }

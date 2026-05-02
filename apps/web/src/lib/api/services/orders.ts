@@ -3,6 +3,13 @@ import type { OrderDetail, OrderListItem, OrderStatus, Paginated } from "@/types
 
 export type CreateOrderPayload = {
   storeId?: string;
+  /**
+   * SUPER_ADMIN: مطلوب عندما لا يُرسل `storeId` — يُنشأ/يُحمَّل متجر تشغيلي ضمن هذه الشركة.
+   * شركة أخرى: يُرفض إن لم يطابق شركة المستخدم في الخادم.
+   */
+  companyId?: string;
+  /** اختياري مع `companyId` — يقيِّد المتجر التشغيلي والفرع. */
+  branchId?: string;
   /** ربط بحساب عميل — اختياري؛ وإلا يُستنتج من الهاتف في الخادم */
   customerUserId?: string;
   customerName: string;

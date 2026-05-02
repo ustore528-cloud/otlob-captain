@@ -30,5 +30,8 @@
   },
   "overrides": {
     "react-native": "0.76.9"
+  },
+  "dependencies": {
+    "expo-location": "^18.0.10"
   }
 }

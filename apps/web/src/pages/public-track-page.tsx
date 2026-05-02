@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Navigate, useParams } from "react-router-dom";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ChatbotWidget } from "@/components/chatbot/chatbot-widget";
 import { fetchPublicOrderIdsByTrackingToken } from "@/lib/api/services/public-request";
 import { ApiError } from "@/lib/api/http";
 import { isRtlLang } from "@/i18n/i18n";
@@ -19,6 +20,8 @@ export function PublicTrackPage() {
   const [target, setTarget] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [decodedTokenForWidget, setDecodedTokenForWidget] = useState("");
+
   useEffect(() => {
     const raw = typeof trackingToken === "string" ? trackingToken.trim() : "";
     let tok = raw;
@@ -28,6 +31,7 @@ export function PublicTrackPage() {
       tok = raw;
     }
     tok = tok.trim();
+    setDecodedTokenForWidget(tok);
     if (!tok) {
       setError(t("public.invalidLink"));
       return;
@@ -69,13 +73,19 @@ export function PublicTrackPage() {
             <CardDescription className="text-slate-600">{error}</CardDescription>
           </CardHeader>
         </Card>
+        {decodedTokenForWidget.trim() !== "" ? (
+          <ChatbotWidget mode="track_deep_link" trackingToken={decodedTokenForWidget.trim()} rtl={rtl} />
+        ) : null}
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-[50vh] items-center justify-center bg-gray-50 p-6" dir={rtl ? "rtl" : "ltr"}>
+    <div className="relative flex min-h-[50vh] items-center justify-center bg-gray-50 p-6" dir={rtl ? "rtl" : "ltr"}>
       <p className="text-slate-500">{t("public.loading")}</p>
+      {decodedTokenForWidget.trim() !== "" ? (
+        <ChatbotWidget mode="track_deep_link" trackingToken={decodedTokenForWidget.trim()} rtl={rtl} />
+      ) : null}
     </div>
   );
 }

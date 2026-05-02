@@ -1,12 +1,12 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { useCreateOrder } from "@/hooks";
+import { useBranches, useCompaniesForSuperAdmin, useCreateOrder } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { isCompanyAdminRole, isStoreAdminRole } from "@/lib/rbac-roles";
+import { isCompanyAdminRole, isStoreAdminRole, isSuperAdminRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -27,6 +27,32 @@ export function NewOrderForm() {
 
   const lockedStoreId = isStoreAdminRole(user?.role) ? user?.storeId ?? null : null;
   const isCompanyAdmin = isCompanyAdminRole(user?.role);
+  const isSuperAdmin = isSuperAdminRole(user?.role);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+  const companiesQ = useCompaniesForSuperAdmin({ enabled: isSuperAdmin });
+  const branchesList = useBranches(isSuperAdmin ? selectedCompanyId : undefined, {
+    enabled: isSuperAdmin && Boolean(selectedCompanyId.trim()),
+  });
+
+  const companies = companiesQ.data ?? [];
+  const branches = branchesList.data ?? [];
+
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      setSelectedCompanyId("");
+      setSelectedBranchId("");
+      return;
+    }
+    setSelectedCompanyId((prev) => {
+      if (prev.trim()) return prev;
+      return companies[0]?.id ?? "";
+    });
+  }, [isSuperAdmin, companies]);
+
+  useEffect(() => {
+    setSelectedBranchId("");
+  }, [selectedCompanyId]);
 
   useEffect(() => {
     if (!includeMapPin) {
@@ -125,6 +151,9 @@ export function NewOrderForm() {
         next.locationLink = t("newOrder.form.errors.linkInvalid");
       }
     }
+    if (isSuperAdmin && !selectedCompanyId.trim()) {
+      next.superAdminCompany = t("newOrder.form.errors.superAdminCompany");
+    }
     return next;
   }
 
@@ -145,6 +174,12 @@ export function NewOrderForm() {
     create.mutate(
       {
         ...(sid ? { storeId: sid } : {}),
+        ...(isSuperAdmin && selectedCompanyId.trim()
+          ? {
+              companyId: selectedCompanyId.trim(),
+              ...(selectedBranchId.trim() ? { branchId: selectedBranchId.trim() } : {}),
+            }
+          : {}),
         customerName: String(form.get("customerName") ?? "").trim(),
         customerPhone: String(form.get("customerPhone") ?? "").trim(),
         pickupAddress: String(form.get("pickupAddress") ?? "").trim(),
@@ -172,6 +207,56 @@ export function NewOrderForm() {
       onSubmit={onSubmit}
       noValidate
     >
+      {isSuperAdmin ? (
+        <div
+          className="grid gap-3 rounded-xl border border-amber-200/80 bg-amber-50/40 p-4 dark:border-amber-900/50 dark:bg-amber-950/20"
+          dir="auto"
+        >
+          <p className="text-sm text-muted-foreground">{t("newOrder.form.superAdminTenantHint")}</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <label htmlFor="sa-create-company" className="text-sm font-medium">
+                {t("newOrder.form.superAdminCompany")}
+              </label>
+              <select
+                id="sa-create-company"
+                value={selectedCompanyId}
+                onChange={(e) => setSelectedCompanyId(e.target.value)}
+                disabled={companiesQ.isLoading}
+                className={`h-10 rounded-md border border-card-border bg-background px-3 text-sm ${errorClass("superAdminCompany")}`}
+              >
+                <option value="">{companiesQ.isLoading ? "…" : "—"}</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {errors.superAdminCompany ? <p className="text-xs text-red-600">{errors.superAdminCompany}</p> : null}
+            </div>
+            <div className="grid gap-1.5">
+              <label htmlFor="sa-create-branch" className="text-sm font-medium">
+                {t("newOrder.form.superAdminBranch")}
+              </label>
+              <select
+                id="sa-create-branch"
+                value={selectedBranchId}
+                onChange={(e) => setSelectedBranchId(e.target.value)}
+                disabled={branchesList.isLoading || !selectedCompanyId.trim() || branches.length === 0}
+                className="h-10 rounded-md border border-card-border bg-background px-3 text-sm disabled:opacity-60"
+              >
+                <option value="">{branchesList.isLoading ? "…" : "—"}</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-2 sm:col-span-2">
           <Label htmlFor="customerName">{t("newOrder.form.customerName")}</Label>

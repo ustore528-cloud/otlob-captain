@@ -38,6 +38,7 @@ import {
   isCaptainRole,
   isOrderOperatorRole,
   isStoreAdminRole,
+  isSuperAdminRole,
   isSupportedPlatformActorRole,
   type AppRole,
 } from "../lib/rbac-roles.js";
@@ -72,8 +73,9 @@ export const ordersService = {
     input: {
       storeId?: string;
       /**
-       * Frontend-provided tenant fields are ignored; tenant is always derived from store.
-       * Kept here to harden against injected payloads from older/newer clients.
+       * Tenant selection — `SUPER_ADMIN` without `storeId` must supply `companyId` (validated active).
+       * Optional `branchId` scopes operational store resolution (`resolveOrCreateOperationalStoreId`).
+       * COMPANY_ADMIN: spoofing another company's `companyId`/`branchId` is rejected.
        */
       companyId?: string;
       branchId?: string;
@@ -108,7 +110,7 @@ export const ordersService = {
       branchId: string | null;
     },
   ) {
-    let resolvedStoreId = input.storeId;
+    let resolvedStoreId = input.storeId?.trim() || undefined;
     const staffTenant =
       isOrderOperatorRole(actor.role)
         ? await resolveStaffTenantOrderListFilter({
@@ -118,6 +120,14 @@ export const ordersService = {
             branchId: actor.branchId ?? null,
           })
         : null;
+
+    /** Non–super-admin staff cannot spoof another company/branch via the body. */
+    if (staffTenant?.companyId && input.companyId?.trim() && input.companyId.trim() !== staffTenant.companyId) {
+      throw new AppError(403, "Cannot create order for another company.", "FORBIDDEN");
+    }
+    if (staffTenant?.branchId && input.branchId?.trim() && input.branchId.trim() !== staffTenant.branchId) {
+      throw new AppError(403, "Cannot create order outside your branch scope.", "FORBIDDEN");
+    }
 
     if (isStoreAdminRole(actor.role)) {
       if (!actor.storeId || (resolvedStoreId && resolvedStoreId !== actor.storeId)) {
@@ -133,21 +143,43 @@ export const ordersService = {
           branchIdFilter: staffTenant.branchId ?? null,
           ownerUserId: actor.userId,
         });
-      } else {
-        // Super Admin (or unscoped legacy): keep historical behavior — any active store, oldest first
-        const existing = await prisma.store.findFirst({
-          where: { isActive: true },
-          orderBy: { createdAt: "asc" },
-        });
-        if (existing) {
-          resolvedStoreId = existing.id;
-        } else {
-          throw new AppError(400, "storeId is required", "BAD_REQUEST");
+      } else if (isSuperAdminRole(actor.role)) {
+        const cid = input.companyId?.trim();
+        const bid = input.branchId?.trim();
+        if (cid) {
+          const companyOk = await prisma.company.findFirst({
+            where: { id: cid, isActive: true },
+            select: { id: true },
+          });
+          if (!companyOk) {
+            throw new AppError(400, "Company not found or inactive.", "INVALID_COMPANY");
+          }
+          if (bid) {
+            const branchOk = await prisma.branch.findFirst({
+              where: { id: bid, companyId: cid, isActive: true },
+              select: { id: true },
+            });
+            if (!branchOk) {
+              throw new AppError(400, "Branch not found or inactive for this company.", "INVALID_BRANCH");
+            }
+          }
+          resolvedStoreId = await resolveOrCreateOperationalStoreId({
+            companyId: cid,
+            branchIdFilter: bid || null,
+            ownerUserId: actor.userId,
+          });
         }
       }
     }
 
     if (!resolvedStoreId) {
+      if (isOrderOperatorRole(actor.role) && isSuperAdminRole(actor.role)) {
+        throw new AppError(
+          400,
+          "Select a company or store — super-admin orders must be scoped to one tenant.",
+          "COMPANY_OR_STORE_REQUIRED",
+        );
+      }
       throw new AppError(400, "storeId is required", "BAD_REQUEST");
     }
 
@@ -158,6 +190,11 @@ export const ordersService = {
     if (!store?.isActive) throw new AppError(400, "Store not found or inactive", "BAD_REQUEST");
     if (store.branch.companyId !== store.companyId) {
       throw new AppError(500, "Store tenant linkage is inconsistent", "INTERNAL");
+    }
+    if (isSuperAdminRole(actor.role) && input.companyId?.trim()) {
+      if (store.companyId !== input.companyId.trim()) {
+        throw new AppError(400, "Selected store does not belong to the chosen company.", "STORE_COMPANY_MISMATCH");
+      }
     }
     if (
       staffTenant?.companyId &&
@@ -238,6 +275,13 @@ export const ordersService = {
     if (input.publicTrackingToken?.trim()) {
       emitPublicCustomerTrackingOnly(order.id, order.status);
     }
+    emitDispatchersOnlyOrderFresh({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      companyId: order.companyId,
+      branchId: order.branchId,
+    });
     return order;
   },
 

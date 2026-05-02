@@ -16,7 +16,7 @@ import {
   type IncubatorOrderDraft,
 } from "@/features/incubator-host/incubator-order-draft";
 import { parseIncubatorRawOrder, type IncubatorParseResult } from "@/features/incubator-host/parse-incubator-order";
-import { useCompaniesForSuperAdmin, useIncubatorCreateOrderWithDistribution, useStores } from "@/hooks";
+import { useBranches, useCompaniesForSuperAdmin, useIncubatorCreateOrderWithDistribution, useStores } from "@/hooks";
 import { buildIncubatorOrderNotes } from "@/features/incubator-host/incubator-order-notes";
 import { canAccessIncubatorHost, isSuperAdminRole } from "@/lib/rbac-roles";
 import { useAuthStore } from "@/stores/auth-store";
@@ -45,8 +45,12 @@ export function IncubatorHostPageView() {
   const [draft, setDraft] = useState<IncubatorOrderDraft | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(user?.companyId ?? "");
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
 
   const companiesQ = useCompaniesForSuperAdmin({ enabled: isSuperAdmin });
+  const incubatorBranches = useBranches(isSuperAdmin ? selectedCompanyId : undefined, {
+    enabled: isSuperAdmin && Boolean(selectedCompanyId.trim()),
+  });
   const storesQ = useStores(1, 500, {
     enabled: !isSuperAdmin || Boolean(selectedCompanyId),
     companyId: isSuperAdmin ? selectedCompanyId : undefined,
@@ -62,8 +66,13 @@ export function IncubatorHostPageView() {
     }
   }, [isSuperAdmin, user?.companyId, selectedCompanyId, companiesQ.data]);
 
+  useEffect(() => {
+    setSelectedBranchId("");
+  }, [selectedCompanyId]);
+
   const validation = useMemo(() => (draft ? validateIncubatorDraft(draft) : null), [draft]);
   const canCreate = validation?.isValid ?? false;
+  const canCreateTenant = !isSuperAdmin || Boolean(selectedCompanyId.trim());
   const missingLabels = useMemo(() => (draft ? listInvalidRequiredPreviewFields(draft) : []), [draft]);
   const stores = storesQ.data?.items ?? [];
   const restaurantName = parseSnapshot?.fields.restaurantName?.trim() ?? "";
@@ -103,18 +112,26 @@ export function IncubatorHostPageView() {
     if (!draft) return;
     const v = validateIncubatorDraft(draft);
     if (!v.isValid) return;
+    if (isSuperAdmin && !selectedCompanyId.trim()) return;
 
     const amount = Number(draft.amount.replace(",", ".").trim());
     const notes = buildIncubatorOrderNotes(draft.notes, raw);
     create.mutate(
       {
         ...(selectedStoreId ? { storeId: selectedStoreId } : {}),
+        ...(isSuperAdmin && selectedCompanyId.trim()
+          ? {
+              companyId: selectedCompanyId.trim(),
+              ...(selectedBranchId.trim() ? { branchId: selectedBranchId.trim() } : {}),
+            }
+          : {}),
         customerName: draft.customerName.trim(),
         customerPhone: draft.customerPhone.trim(),
         pickupAddress: draft.pickupAddress.trim(),
         dropoffAddress: draft.dropoffAddress.trim(),
         area: draft.area.trim(),
         amount,
+        deliveryFee: 0,
         notes,
         distributionMode: "AUTO",
       },
@@ -152,6 +169,25 @@ export function IncubatorHostPageView() {
                 {(companiesQ.data ?? []).map((company) => (
                   <option key={company.id} value={company.id}>
                     {company.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          {isSuperAdmin ? (
+            <div className="grid gap-1.5">
+              <Label htmlFor="incubator-branch">الفرع (اختياري)</Label>
+              <select
+                id="incubator-branch"
+                value={selectedBranchId}
+                onChange={(e) => setSelectedBranchId(e.target.value)}
+                disabled={incubatorBranches.isLoading || !selectedCompanyId.trim() || (incubatorBranches.data?.length ?? 0) === 0}
+                className="h-10 rounded-md border border-card-border bg-background px-3 text-sm disabled:opacity-60"
+              >
+                <option value="">—</option>
+                {(incubatorBranches.data ?? []).map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
                   </option>
                 ))}
               </select>
@@ -350,7 +386,7 @@ export function IncubatorHostPageView() {
               <Button type="button" variant="secondary" onClick={() => void navigate("/orders")}>
                 {t("incubator.actions.cancel")}
               </Button>
-              <Button type="button" disabled={!canCreate || create.isPending} onClick={onCreate}>
+              <Button type="button" disabled={!canCreate || !canCreateTenant || create.isPending} onClick={onCreate}>
                 {create.isPending ? t("incubator.actions.creating") : t("incubator.actions.create")}
               </Button>
             </div>

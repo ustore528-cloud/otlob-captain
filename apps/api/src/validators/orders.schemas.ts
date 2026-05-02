@@ -17,9 +17,8 @@ export const OrderIdParamSchema = z.object({
  */
 export const CreateOrderBodySchema = z.object({
   storeId: StoreIdSchema.optional(),
-  /** Ignored by backend; company is always derived from selected store. */
+  /** SUPER_ADMIN: اختيار شركة عند الإنشاء بدون `storeId`؛ مع `storeId` يُتحقق التطابق. غير SUPER_ADMIN ممنوع اختيار شركة أخرى. */
   companyId: z.string().cuid().optional(),
-  /** Ignored by backend; branch is always derived from selected store. */
   branchId: z.string().cuid().optional(),
   /** ربط اختياري بحساب عميل — وإلا يُستنتج من تطابق رقم الهاتف مع مستخدم CUSTOMER */
   customerUserId: z.string().cuid().optional(),

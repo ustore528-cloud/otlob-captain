@@ -22,6 +22,7 @@ import { publicRoutes } from "./public.routes.js";
 import { complaintsRoutes } from "./complaints.routes.js";
 import { companyPublicPageRoutes } from "./company-public-page.routes.js";
 import { adminCaptainApplicationsRoutes } from "./admin-captain-applications.routes.js";
+import { chatbotRoutes } from "./chatbot.routes.js";
 
 const v1Router = Router();
 
@@ -48,5 +49,6 @@ v1Router.use("/reports", reportsRoutes);
 v1Router.use("/branches", branchesRoutes);
 v1Router.use("/zones", zonesRoutes);
 v1Router.use("/companies", companiesRoutes);
+v1Router.use("/chatbot", chatbotRoutes);
 
 export { v1Router };
